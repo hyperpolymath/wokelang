@@ -1,0 +1,91 @@
+// Example: WokeLang Standard Library Demo
+// Demonstrates usage of std.math, std.time, std.json, std.io, and std.net
+
+thanks to {
+    "WokeLang Standard Library" -> "For comprehensive utilities";
+}
+
+to main() {
+    hello "Standard Library Demo";
+
+    print("=== Math Functions ===");
+    // Math doesn't require capabilities
+    print("abs(-42) = " + toString(std.math.abs(-42)));
+    print("sqrt(16) = " + toString(std.math.sqrt(16)));
+    print("pow(2, 8) = " + toString(std.math.pow(2, 8)));
+    print("floor(3.7) = " + toString(std.math.floor(3.7)));
+    print("ceil(3.2) = " + toString(std.math.ceil(3.2)));
+    print("min(10, 5) = " + toString(std.math.min(10, 5)));
+    print("max(10, 5) = " + toString(std.math.max(10, 5)));
+    print("PI = " + toString(std.math.pi()));
+    print("E = " + toString(std.math.e()));
+
+    print("");
+    print("=== Time Functions ===");
+    remember now_ms = std.time.now();
+    print("Current time (ms): " + toString(now_ms));
+
+    remember formatted = std.time.format(now_ms, "%Y-%m-%d %H:%M:%S");
+    print("Formatted: " + formatted);
+
+    // Elapsed timer example
+    std.time.elapsed("start", "demo_timer");
+    // Do some work...
+    std.time.sleep(100);
+    remember elapsed_ms = std.time.elapsed("stop", "demo_timer");
+    print("Elapsed: " + toString(elapsed_ms) + "ms");
+
+    print("");
+    print("=== JSON Functions ===");
+    // Parse JSON
+    remember json_str = "{\"name\": \"WokeLang\", \"version\": 1, \"features\": [\"consent\", \"safety\"]}";
+    remember parsed = std.json.parse(json_str);
+    print("Parsed JSON: " + toString(parsed));
+
+    // Get nested value
+    remember name = std.json.get(parsed, "name");
+    print("Name: " + toString(name));
+
+    // Stringify
+    remember back_to_string = std.json.stringify(parsed);
+    print("Stringified: " + back_to_string);
+
+    print("");
+    print("=== File I/O (requires consent) ===");
+    // These operations require file:read and file:write capabilities
+    // In a real program, the user would be prompted for consent
+
+    only if okay {
+        superpower file:write;
+
+        remember path = "/tmp/wokelang_demo.txt";
+        std.io.writeFile(path, "Hello from WokeLang!");
+        print("Wrote to: " + path);
+
+        remember content = std.io.readFile(path);
+        print("Read back: " + content);
+
+        remember exists = std.io.exists(path);
+        print("File exists: " + toString(exists));
+
+        std.io.delete(path);
+        print("File deleted");
+    }
+
+    print("");
+    print("=== Network (requires consent) ===");
+    // Network operations require network:* capability
+    // Note: HTTPS requires TLS library
+
+    only if okay {
+        superpower network:*;
+
+        // HTTP GET (would work with a real HTTP server)
+        // remember response = std.net.httpGet("http://example.com");
+        // print("Response: " + response);
+
+        print("Network functions available but require actual server");
+    }
+
+    goodbye "Demo complete!";
+}
