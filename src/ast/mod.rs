@@ -32,7 +32,6 @@ pub enum TopLevelItem {
     SideQuestDef(SideQuestDef),
     SuperpowerDecl(SuperpowerDecl),
     ModuleImport(ModuleImport),
-    ModuleExport(ModuleExport),
     Pragma(Pragma),
     TypeDef(TypeDef),
     ConstDef(ConstDef),
@@ -43,13 +42,6 @@ pub enum TopLevelItem {
 pub struct ModuleImport {
     pub path: QualifiedName,
     pub rename: Option<String>,
-    pub span: Span,
-}
-
-/// Module export: `share functionName;` or `share MyType;`
-#[derive(Debug, Clone)]
-pub struct ModuleExport {
-    pub name: String,
     pub span: Span,
 }
 
@@ -226,14 +218,6 @@ pub enum Pattern {
     Literal(Literal),
     Identifier(String),
     Wildcard,
-    /// Okay(value) pattern for Result destructuring
-    OkayPattern(Option<String>),
-    /// Oops(error) pattern for Result destructuring
-    OopsPattern(Option<String>),
-    /// Constructor pattern: VariantName(inner_patterns)
-    Constructor(String, Vec<Pattern>),
-    /// Guard pattern: pattern when condition
-    Guard(Box<Pattern>, Box<Spanned<Expr>>),
 }
 
 /// Expression types
@@ -255,12 +239,6 @@ pub enum Expr {
     GratitudeLiteral(String),
     /// Array literal
     Array(Vec<Spanned<Expr>>),
-    /// Result constructor: `Okay(value)` or `Oops(error)`
-    ResultConstructor { is_okay: bool, value: Box<Spanned<Expr>> },
-    /// Try operator: `expr?` - propagates Oops, unwraps Okay
-    Try(Box<Spanned<Expr>>),
-    /// Unwrap: `unwrap expr` - panics on Oops
-    Unwrap(Box<Spanned<Expr>>),
 }
 
 /// Binary operators
@@ -370,10 +348,6 @@ pub enum Type {
     Optional(Box<Type>),
     /// Reference type: &T
     Reference(Box<Type>),
-    /// Result type: Result[T, E] or shorthand Result[T]
-    Result { ok_type: Box<Type>, err_type: Option<Box<Type>> },
-    /// Generic type application: Type[T1, T2]
-    Generic(String, Vec<Type>),
 }
 
 /// Type definition: `type Name = ...;`

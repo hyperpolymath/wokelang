@@ -3,12 +3,8 @@ mod value;
 pub use value::Value;
 
 use crate::ast::*;
-use crate::lexer::Lexer;
-use crate::parser::Parser;
 use std::collections::HashMap;
-use std::collections::HashSet;
 use std::io::{self, Write};
-use std::path::PathBuf;
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -36,18 +32,6 @@ pub enum RuntimeError {
 
     #[error("Arity mismatch: expected {expected}, got {got}")]
     ArityMismatch { expected: usize, got: usize },
-
-    #[error("Oops: {0}")]
-    OopsError(String),
-
-    #[error("Unwrap failed on Oops: {0}")]
-    UnwrapError(String),
-
-    #[error("Module not found: {0}")]
-    ModuleNotFound(String),
-
-    #[error("Module error: {0}")]
-    ModuleError(String),
 }
 
 type Result<T> = std::result::Result<T, RuntimeError>;
@@ -105,15 +89,6 @@ impl Environment {
     }
 }
 
-/// Represents a loaded module
-#[derive(Clone)]
-pub struct Module {
-    pub name: String,
-    pub path: PathBuf,
-    pub exports: HashSet<String>,
-    pub functions: HashMap<String, FunctionDef>,
-}
-
 /// The WokeLang interpreter
 pub struct Interpreter {
     env: Environment,
@@ -123,12 +98,6 @@ pub struct Interpreter {
     consent_cache: HashMap<String, bool>,
     verbose: bool,
     care_mode: bool,
-    /// Loaded modules by qualified path
-    modules: HashMap<String, Module>,
-    /// Module search paths
-    module_paths: Vec<PathBuf>,
-    /// Current module exports
-    exports: HashSet<String>,
 }
 
 impl Interpreter {
@@ -141,122 +110,11 @@ impl Interpreter {
             consent_cache: HashMap::new(),
             verbose: false,
             care_mode: true,
-            modules: HashMap::new(),
-            module_paths: vec![PathBuf::from(".")],
-            exports: HashSet::new(),
         }
-    }
-
-    /// Add a module search path
-    pub fn add_module_path(&mut self, path: PathBuf) {
-        self.module_paths.push(path);
-    }
-
-    /// Load a module from a qualified path (e.g., "std.io" -> "std/io.woke")
-    fn load_module(&mut self, path: &QualifiedName) -> Result<()> {
-        let module_path_str = path.parts.join(".");
-
-        // Check if already loaded
-        if self.modules.contains_key(&module_path_str) {
-            return Ok(());
-        }
-
-        // Convert qualified name to file path
-        let relative_path = path.parts.join("/") + ".woke";
-
-        // Search for module in module paths
-        let mut found_path: Option<PathBuf> = None;
-        for search_path in &self.module_paths {
-            let full_path = search_path.join(&relative_path);
-            if full_path.exists() {
-                found_path = Some(full_path);
-                break;
-            }
-        }
-
-        let file_path = found_path.ok_or_else(|| {
-            RuntimeError::ModuleNotFound(format!("{} (searched: {})", module_path_str, relative_path))
-        })?;
-
-        // Read and parse the module
-        let source = std::fs::read_to_string(&file_path)
-            .map_err(|e| RuntimeError::ModuleError(format!("Failed to read module: {}", e)))?;
-
-        let lexer = Lexer::new(&source);
-        let tokens = lexer.tokenize()
-            .map_err(|e| RuntimeError::ModuleError(format!("Lexer error in module: {:?}", e)))?;
-
-        let mut parser = Parser::new(tokens, &source);
-        let program = parser.parse()
-            .map_err(|e| RuntimeError::ModuleError(format!("Parser error in module: {:?}", e)))?;
-
-        // Create a new module
-        let mut module = Module {
-            name: module_path_str.clone(),
-            path: file_path,
-            exports: HashSet::new(),
-            functions: HashMap::new(),
-        };
-
-        // Process module items
-        for item in &program.items {
-            match item {
-                TopLevelItem::Function(f) => {
-                    module.functions.insert(f.name.clone(), f.clone());
-                }
-                TopLevelItem::ModuleExport(e) => {
-                    module.exports.insert(e.name.clone());
-                }
-                _ => {}
-            }
-        }
-
-        // Store the module
-        self.modules.insert(module_path_str, module);
-
-        Ok(())
-    }
-
-    /// Import items from a module
-    fn import_module(&mut self, import: &ModuleImport) -> Result<()> {
-        self.load_module(&import.path)?;
-
-        let module_path_str = import.path.parts.join(".");
-        let module = self.modules.get(&module_path_str)
-            .ok_or_else(|| RuntimeError::ModuleNotFound(module_path_str.clone()))?
-            .clone();
-
-        // Import exported functions with optional rename
-        let prefix = import.rename.as_ref().unwrap_or(&module_path_str);
-
-        for (name, func) in &module.functions {
-            if module.exports.contains(name) {
-                // Import with qualified name or alias
-                let imported_name = if import.rename.is_some() {
-                    format!("{}_{}", prefix, name)
-                } else if import.path.parts.len() == 1 {
-                    name.clone()
-                } else {
-                    // Use last part of path as prefix
-                    let last = import.path.parts.last().unwrap();
-                    format!("{}_{}", last, name)
-                };
-                self.functions.insert(imported_name, func.clone());
-            }
-        }
-
-        Ok(())
     }
 
     pub fn run(&mut self, program: &Program) -> Result<()> {
-        // First pass: process module imports (must be done first)
-        for item in &program.items {
-            if let TopLevelItem::ModuleImport(import) = item {
-                self.import_module(import)?;
-            }
-        }
-
-        // Second pass: collect all function and worker definitions
+        // First pass: collect all function and worker definitions
         for item in &program.items {
             match item {
                 TopLevelItem::Function(f) => {
@@ -278,9 +136,6 @@ impl Interpreter {
                         PragmaDirective::Strict => {} // TODO
                     }
                 }
-                TopLevelItem::ModuleExport(e) => {
-                    self.exports.insert(e.name.clone());
-                }
                 _ => {}
             }
         }
@@ -294,7 +149,7 @@ impl Interpreter {
             println!();
         }
 
-        // Third pass: execute top-level items
+        // Second pass: execute top-level items
         for item in &program.items {
             match item {
                 TopLevelItem::ConsentBlock(c) => {
@@ -303,9 +158,7 @@ impl Interpreter {
                 TopLevelItem::Function(_)
                 | TopLevelItem::WorkerDef(_)
                 | TopLevelItem::GratitudeDecl(_)
-                | TopLevelItem::Pragma(_)
-                | TopLevelItem::ModuleImport(_)
-                | TopLevelItem::ModuleExport(_) => {
+                | TopLevelItem::Pragma(_) => {
                     // Already processed
                 }
                 _ => {}
@@ -441,11 +294,9 @@ impl Interpreter {
                 for arm in &decide.arms {
                     if self.pattern_matches(&arm.pattern, &scrutinee) {
                         self.env.push_scope();
-                        // Bind pattern variables using bind_pattern
-                        let guard_passed = self.bind_pattern(&arm.pattern, &scrutinee)?;
-                        if !guard_passed {
-                            self.env.pop_scope();
-                            continue; // Guard failed, try next arm
+                        // Bind pattern variables
+                        if let Pattern::Identifier(name) = &arm.pattern {
+                            self.env.define(name.clone(), scrutinee.clone());
                         }
                         for stmt in &arm.body {
                             if let ControlFlow::Return(v) = self.execute_statement(stmt)? {
@@ -501,69 +352,6 @@ impl Interpreter {
             Pattern::Literal(lit) => {
                 let lit_value = self.literal_to_value(lit);
                 value == &lit_value
-            }
-            Pattern::OkayPattern(_) => matches!(value, Value::Okay(_)),
-            Pattern::OopsPattern(_) => matches!(value, Value::Oops(_)),
-            Pattern::Constructor(name, inner_patterns) => {
-                // Handle known constructors
-                match (name.as_str(), value) {
-                    ("Okay", Value::Okay(inner)) => {
-                        if inner_patterns.is_empty() {
-                            true
-                        } else if inner_patterns.len() == 1 {
-                            self.pattern_matches(&inner_patterns[0], inner)
-                        } else {
-                            false
-                        }
-                    }
-                    ("Oops", Value::Oops(_)) => inner_patterns.is_empty(),
-                    _ => false,
-                }
-            }
-            Pattern::Guard(inner, _condition) => {
-                // First check if inner pattern matches
-                // Guard condition will be evaluated during binding
-                self.pattern_matches(inner, value)
-            }
-        }
-    }
-
-    fn bind_pattern(&mut self, pattern: &Pattern, value: &Value) -> Result<bool> {
-        match pattern {
-            Pattern::Wildcard => Ok(true),
-            Pattern::Identifier(name) => {
-                self.env.define(name.clone(), value.clone());
-                Ok(true)
-            }
-            Pattern::Literal(_) => Ok(true), // Already matched
-            Pattern::OkayPattern(Some(name)) => {
-                if let Value::Okay(inner) = value {
-                    self.env.define(name.clone(), (**inner).clone());
-                }
-                Ok(true)
-            }
-            Pattern::OkayPattern(None) => Ok(true),
-            Pattern::OopsPattern(Some(name)) => {
-                if let Value::Oops(msg) = value {
-                    self.env.define(name.clone(), Value::String(msg.clone()));
-                }
-                Ok(true)
-            }
-            Pattern::OopsPattern(None) => Ok(true),
-            Pattern::Constructor(name, inner_patterns) => {
-                match (name.as_str(), value) {
-                    ("Okay", Value::Okay(inner)) if inner_patterns.len() == 1 => {
-                        self.bind_pattern(&inner_patterns[0], inner)
-                    }
-                    _ => Ok(true),
-                }
-            }
-            Pattern::Guard(inner, condition) => {
-                // First bind inner pattern
-                self.bind_pattern(inner, value)?;
-                // Then evaluate guard condition
-                let cond_result = self.evaluate(condition)?;
-                Ok(cond_result.is_truthy())
             }
         }
     }
@@ -625,36 +413,6 @@ impl Interpreter {
                     .collect::<Result<_>>()?;
                 Ok(Value::Array(values))
             }
-            Expr::ResultConstructor { is_okay, value } => {
-                let inner_value = self.evaluate(value)?;
-                if *is_okay {
-                    Ok(Value::Okay(Box::new(inner_value)))
-                } else {
-                    // For Oops, the value should be a string message
-                    match inner_value {
-                        Value::String(msg) => Ok(Value::Oops(msg)),
-                        other => Ok(Value::Oops(other.to_string())),
-                    }
-                }
-            }
-            Expr::Try(inner) => {
-                let value = self.evaluate(inner)?;
-                match value {
-                    Value::Okay(v) => Ok(*v),
-                    Value::Oops(e) => Err(RuntimeError::OopsError(e)),
-                    // Non-Result values pass through
-                    other => Ok(other),
-                }
-            }
-            Expr::Unwrap(inner) => {
-                let value = self.evaluate(inner)?;
-                match value {
-                    Value::Okay(v) => Ok(*v),
-                    Value::Oops(e) => Err(RuntimeError::UnwrapError(e)),
-                    // Non-Result values pass through
-                    other => Ok(other),
-                }
-            }
         }
     }
 
@@ -709,48 +467,6 @@ impl Interpreter {
                     Value::Float(f) => Ok(Some(Value::Int(*f as i64))),
                     Value::Int(n) => Ok(Some(Value::Int(*n))),
                     _ => Err(RuntimeError::TypeError("Cannot convert to Int".into())),
-                }
-            }
-            "isOkay" => {
-                if args.len() != 1 {
-                    return Err(RuntimeError::ArityMismatch {
-                        expected: 1,
-                        got: args.len(),
-                    });
-                }
-                Ok(Some(Value::Bool(args[0].is_okay())))
-            }
-            "isOops" => {
-                if args.len() != 1 {
-                    return Err(RuntimeError::ArityMismatch {
-                        expected: 1,
-                        got: args.len(),
-                    });
-                }
-                Ok(Some(Value::Bool(args[0].is_oops())))
-            }
-            "getOkay" => {
-                if args.len() != 1 {
-                    return Err(RuntimeError::ArityMismatch {
-                        expected: 1,
-                        got: args.len(),
-                    });
-                }
-                match &args[0] {
-                    Value::Okay(v) => Ok(Some((**v).clone())),
-                    _ => Err(RuntimeError::TypeError("getOkay requires an Okay value".into())),
-                }
-            }
-            "getOops" => {
-                if args.len() != 1 {
-                    return Err(RuntimeError::ArityMismatch {
-                        expected: 1,
-                        got: args.len(),
-                    });
-                }
-                match &args[0] {
-                    Value::Oops(msg) => Ok(Some(Value::String(msg.clone()))),
-                    _ => Err(RuntimeError::TypeError("getOops requires an Oops value".into())),
                 }
             }
             _ => Ok(None), // Not a builtin
