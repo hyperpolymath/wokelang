@@ -1,0 +1,38 @@
+// Test program for WokeLang module system
+// Demonstrates use/share keywords
+
+thanks to {
+    "WokeLang" → "For module support";
+}
+
+// Import modules
+use modules.math;
+use modules.greetings renamed greet;
+
+to main() {
+    hello "Testing Module System";
+
+    // Test math module (imported with default prefix)
+    print("=== Math Module ===");
+    remember sum = math_add(5, 3);
+    print("5 + 3 = " + toString(sum));
+
+    remember diff = math_subtract(10, 4);
+    print("10 - 4 = " + toString(diff));
+
+    remember product = math_multiply(6, 7);
+    print("6 * 7 = " + toString(product));
+
+    remember sq = math_square(9);
+    print("9^2 = " + toString(sq));
+
+    // Test greetings module (imported with rename)
+    print("");
+    print("=== Greetings Module ===");
+    greet_sayHello("World");
+    greet_sayGoodbye("Friend");
+    greet_greet("Dr. Smith", true);
+    greet_greet("Bob", false);
+
+    goodbye "Module system working!";
+}

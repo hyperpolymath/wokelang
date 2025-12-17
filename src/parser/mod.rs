@@ -70,6 +70,7 @@ impl<'src> Parser<'src> {
                 Ok(TopLevelItem::SuperpowerDecl(self.parse_superpower_decl()?))
             }
             Some(Token::Use) => Ok(TopLevelItem::ModuleImport(self.parse_module_import()?)),
+            Some(Token::Share) => Ok(TopLevelItem::ModuleExport(self.parse_module_export()?)),
             Some(Token::Hash) => Ok(TopLevelItem::Pragma(self.parse_pragma()?)),
             Some(Token::Type) => Ok(TopLevelItem::TypeDef(self.parse_type_def()?)),
             Some(Token::Const) => Ok(TopLevelItem::ConstDef(self.parse_const_def()?)),
@@ -300,6 +301,19 @@ impl<'src> Parser<'src> {
         Ok(ModuleImport {
             path,
             rename,
+            span: start..end,
+        })
+    }
+
+    fn parse_module_export(&mut self) -> Result<ModuleExport, ParseError> {
+        let start = self.current_span().start;
+        self.expect(Token::Share)?;
+        let name = self.expect_identifier()?;
+        let end = self.current_span().end;
+        self.expect(Token::Semicolon)?;
+
+        Ok(ModuleExport {
+            name,
             span: start..end,
         })
     }
@@ -763,40 +777,96 @@ impl<'src> Parser<'src> {
     }
 
     fn parse_pattern(&mut self) -> Result<Pattern, ParseError> {
-        match self.peek() {
+        let base_pattern = match self.peek() {
             Some(Token::Underscore) => {
                 self.advance();
-                Ok(Pattern::Wildcard)
+                Pattern::Wildcard
             }
             Some(Token::Integer(n)) => {
                 let n = *n;
                 self.advance();
-                Ok(Pattern::Literal(Literal::Integer(n)))
+                Pattern::Literal(Literal::Integer(n))
             }
             Some(Token::Float(n)) => {
                 let n = *n;
                 self.advance();
-                Ok(Pattern::Literal(Literal::Float(n)))
+                Pattern::Literal(Literal::Float(n))
             }
             Some(Token::String(s)) => {
                 let s = s.clone();
                 self.advance();
-                Ok(Pattern::Literal(Literal::String(s)))
+                Pattern::Literal(Literal::String(s))
             }
             Some(Token::True) => {
                 self.advance();
-                Ok(Pattern::Literal(Literal::Bool(true)))
+                Pattern::Literal(Literal::Bool(true))
             }
             Some(Token::False) => {
                 self.advance();
-                Ok(Pattern::Literal(Literal::Bool(false)))
+                Pattern::Literal(Literal::Bool(false))
+            }
+            Some(Token::OkayType) => {
+                self.advance();
+                if self.check(&Token::LParen) {
+                    self.advance();
+                    let inner = if self.check(&Token::Identifier(String::new())) {
+                        let name = self.expect_identifier()?;
+                        Some(name)
+                    } else {
+                        None
+                    };
+                    self.expect(Token::RParen)?;
+                    Pattern::OkayPattern(inner)
+                } else {
+                    Pattern::OkayPattern(None)
+                }
+            }
+            Some(Token::Oops) => {
+                self.advance();
+                if self.check(&Token::LParen) {
+                    self.advance();
+                    let inner = if self.check(&Token::Identifier(String::new())) {
+                        let name = self.expect_identifier()?;
+                        Some(name)
+                    } else {
+                        None
+                    };
+                    self.expect(Token::RParen)?;
+                    Pattern::OopsPattern(inner)
+                } else {
+                    Pattern::OopsPattern(None)
+                }
             }
             Some(Token::Identifier(name)) => {
                 let name = name.clone();
                 self.advance();
-                Ok(Pattern::Identifier(name))
+                // Check for constructor pattern: Name(inner)
+                if self.check(&Token::LParen) {
+                    self.advance();
+                    let mut inner_patterns = Vec::new();
+                    if !self.check(&Token::RParen) {
+                        inner_patterns.push(self.parse_pattern()?);
+                        while self.check(&Token::Comma) {
+                            self.advance();
+                            inner_patterns.push(self.parse_pattern()?);
+                        }
+                    }
+                    self.expect(Token::RParen)?;
+                    Pattern::Constructor(name, inner_patterns)
+                } else {
+                    Pattern::Identifier(name)
+                }
             }
-            _ => Err(self.error("Expected pattern")),
+            _ => return Err(self.error("Expected pattern")),
+        };
+
+        // Check for guard clause: pattern when condition
+        if self.check(&Token::When) {
+            self.advance();
+            let condition = self.parse_expression()?;
+            Ok(Pattern::Guard(Box::new(base_pattern), Box::new(condition)))
+        } else {
+            Ok(base_pattern)
         }
     }
 
@@ -1005,13 +1075,23 @@ impl<'src> Parser<'src> {
     fn parse_postfix(&mut self) -> Result<Spanned<Expr>, ParseError> {
         let mut expr = self.parse_primary()?;
 
-        // Handle unit measurement: expr measured in unit
-        if self.check(&Token::Measured) {
-            self.advance();
-            self.expect(Token::In)?;
-            let unit = self.expect_identifier()?;
-            let span = expr.span.start..self.previous_span().end;
-            expr = Spanned::new(Expr::UnitMeasurement(Box::new(expr), unit), span);
+        loop {
+            // Handle unit measurement: expr measured in unit
+            if self.check(&Token::Measured) {
+                self.advance();
+                self.expect(Token::In)?;
+                let unit = self.expect_identifier()?;
+                let span = expr.span.start..self.previous_span().end;
+                expr = Spanned::new(Expr::UnitMeasurement(Box::new(expr), unit), span);
+            }
+            // Handle try operator: expr?
+            else if self.check(&Token::Question) {
+                self.advance();
+                let span = expr.span.start..self.previous_span().end;
+                expr = Spanned::new(Expr::Try(Box::new(expr)), span);
+            } else {
+                break;
+            }
         }
 
         Ok(expr)
@@ -1056,6 +1136,40 @@ impl<'src> Parser<'src> {
                 self.expect(Token::RParen)?;
                 let end = self.previous_span().end;
                 Ok(Spanned::new(Expr::GratitudeLiteral(name), start..end))
+            }
+            Some(Token::OkayType) => {
+                self.advance();
+                self.expect(Token::LParen)?;
+                let value = self.parse_expression()?;
+                self.expect(Token::RParen)?;
+                let end = self.previous_span().end;
+                Ok(Spanned::new(
+                    Expr::ResultConstructor {
+                        is_okay: true,
+                        value: Box::new(value),
+                    },
+                    start..end,
+                ))
+            }
+            Some(Token::Oops) => {
+                self.advance();
+                self.expect(Token::LParen)?;
+                let value = self.parse_expression()?;
+                self.expect(Token::RParen)?;
+                let end = self.previous_span().end;
+                Ok(Spanned::new(
+                    Expr::ResultConstructor {
+                        is_okay: false,
+                        value: Box::new(value),
+                    },
+                    start..end,
+                ))
+            }
+            Some(Token::Unwrap) => {
+                self.advance();
+                let inner = self.parse_unary()?;
+                let end = inner.span.end;
+                Ok(Spanned::new(Expr::Unwrap(Box::new(inner)), start..end))
             }
             Some(Token::LBracket) => {
                 self.advance();

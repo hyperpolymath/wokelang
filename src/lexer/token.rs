@@ -129,6 +129,9 @@ pub enum Token {
     #[token("renamed")]
     Renamed,
 
+    #[token("share")]
+    Share,
+
     // === Keywords - Types ===
     #[token("type")]
     Type,
@@ -273,6 +276,19 @@ pub enum Token {
     #[token("_")]
     Underscore,
 
+    #[token("?")]
+    Question,
+
+    // === Keywords - Result Types ===
+    #[token("Okay")]
+    OkayType,
+
+    #[token("Oops")]
+    Oops,
+
+    #[token("unwrap")]
+    Unwrap,
+
     // === Literals ===
     #[regex(r"[0-9]+", |lex| lex.slice().parse::<i64>().ok())]
     Integer(i64),
@@ -324,6 +340,7 @@ impl std::fmt::Display for Token {
             Token::In => write!(f, "in"),
             Token::Use => write!(f, "use"),
             Token::Renamed => write!(f, "renamed"),
+            Token::Share => write!(f, "share"),
             Token::Type => write!(f, "type"),
             Token::Const => write!(f, "const"),
             Token::TypeString => write!(f, "String"),
@@ -370,6 +387,10 @@ impl std::fmt::Display for Token {
             Token::Pipe => write!(f, "|"),
             Token::Hash => write!(f, "#"),
             Token::Underscore => write!(f, "_"),
+            Token::Question => write!(f, "?"),
+            Token::OkayType => write!(f, "Okay"),
+            Token::Oops => write!(f, "Oops"),
+            Token::Unwrap => write!(f, "unwrap"),
             Token::Integer(n) => write!(f, "{}", n),
             Token::Float(n) => write!(f, "{}", n),
             Token::String(s) => write!(f, "\"{}\"", s),

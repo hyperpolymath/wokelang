@@ -39,6 +39,8 @@ pub enum WokeValueType {
     Bool = 3,
     Array = 4,
     Unit = 5,
+    Okay = 6,
+    Oops = 7,
 }
 
 // === Interpreter lifecycle ===
@@ -176,6 +178,8 @@ pub unsafe extern "C" fn woke_value_type(value: *const WokeValue) -> WokeValueTy
         Value::Bool(_) => WokeValueType::Bool,
         Value::Array(_) => WokeValueType::Array,
         Value::Unit => WokeValueType::Unit,
+        Value::Okay(_) => WokeValueType::Okay,
+        Value::Oops(_) => WokeValueType::Oops,
     }
 }
 
