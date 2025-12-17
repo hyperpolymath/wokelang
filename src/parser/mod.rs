@@ -234,7 +234,7 @@ impl<'src> Parser<'src> {
     // === Worker/Side Quest/Superpower ===
 
     fn parse_worker_def(&mut self) -> Result<WorkerDef, ParseError> {
-        let start = self.current_next stagespan().start;
+        let start = self.current_span().start;
         self.expect(Token::Worker)?;
         let name = self.expect_identifier()?;
         self.expect(Token::LBrace)?;
