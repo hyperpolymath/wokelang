@@ -442,6 +442,14 @@ impl TypeChecker {
             }
 
             Statement::Complain(_) | Statement::WorkerSpawn(_) => Ok(()),
+
+            Statement::SendMessage(send) => {
+                // Type check the value being sent
+                self.infer_expr(&send.value)?;
+                Ok(())
+            }
+
+            Statement::ReceiveMessage(_) | Statement::AwaitWorker(_) | Statement::CancelWorker(_) => Ok(()),
         }
     }
 

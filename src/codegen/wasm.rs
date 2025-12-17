@@ -271,6 +271,13 @@ impl WasmCompiler {
                 ));
             }
 
+            Statement::SendMessage(_) | Statement::ReceiveMessage(_) |
+            Statement::AwaitWorker(_) | Statement::CancelWorker(_) => {
+                return Err(CompileError::Unsupported(
+                    "Worker messaging not supported in WASM".into(),
+                ));
+            }
+
             Statement::EmoteAnnotated(annotated) => {
                 // Emote tags are metadata, compile the inner statement
                 self.compile_statement(&annotated.statement, func)?;

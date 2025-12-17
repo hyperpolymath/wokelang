@@ -125,6 +125,14 @@ pub enum Statement {
     Expression(Spanned<Expr>),
     /// `spawn worker name;`
     WorkerSpawn(WorkerSpawn),
+    /// `send value to worker;`
+    SendMessage(SendMessage),
+    /// `receive from worker;` or `remember msg = receive from worker;`
+    ReceiveMessage(ReceiveMessage),
+    /// `await worker;`
+    AwaitWorker(AwaitWorker),
+    /// `cancel worker;`
+    CancelWorker(CancelWorker),
     /// `complain "message";`
     Complain(ComplainStmt),
     /// `@emote statement`
@@ -185,6 +193,36 @@ pub struct AttemptBlock {
 /// Worker spawn: `spawn worker name;`
 #[derive(Debug, Clone)]
 pub struct WorkerSpawn {
+    pub worker_name: String,
+    pub span: Span,
+}
+
+/// Send message: `send value to worker;`
+#[derive(Debug, Clone)]
+pub struct SendMessage {
+    pub value: Spanned<Expr>,
+    pub target_worker: String,
+    pub span: Span,
+}
+
+/// Receive message: `receive from worker;`
+#[derive(Debug, Clone)]
+pub struct ReceiveMessage {
+    pub source_worker: String,
+    pub blocking: bool,
+    pub span: Span,
+}
+
+/// Await worker: `await worker;`
+#[derive(Debug, Clone)]
+pub struct AwaitWorker {
+    pub worker_name: String,
+    pub span: Span,
+}
+
+/// Cancel worker: `cancel worker;`
+#[derive(Debug, Clone)]
+pub struct CancelWorker {
     pub worker_name: String,
     pub span: Span,
 }

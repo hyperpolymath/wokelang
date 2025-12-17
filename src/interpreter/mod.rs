@@ -5,6 +5,7 @@ pub use value::Value;
 use crate::ast::*;
 use crate::lexer::Lexer;
 use crate::parser::Parser;
+use crate::worker::WorkerHandle;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::io::{self, Write};
@@ -129,6 +130,8 @@ pub struct Interpreter {
     module_paths: Vec<PathBuf>,
     /// Current module exports
     exports: HashSet<String>,
+    /// Active worker handles
+    active_workers: HashMap<String, WorkerHandle>,
 }
 
 impl Interpreter {
@@ -144,6 +147,7 @@ impl Interpreter {
             modules: HashMap::new(),
             module_paths: vec![PathBuf::from(".")],
             exports: HashSet::new(),
+            active_workers: HashMap::new(),
         }
     }
 
@@ -412,17 +416,60 @@ impl Interpreter {
                 if self.verbose {
                     println!("  Spawning worker: {}", spawn.worker_name);
                 }
-                // In a real implementation, this would spawn a thread/task
-                // For now, we just execute the worker synchronously
+
+                // Get the worker definition
                 if let Some(worker) = self.workers.get(&spawn.worker_name).cloned() {
+                    let worker_name = spawn.worker_name.clone();
+
+                    // For simple workers, execute synchronously
+                    // TODO: Full async implementation would use the worker module
                     self.env.push_scope();
                     for stmt in &worker.body {
                         self.execute_statement(stmt)?;
                     }
                     self.env.pop_scope();
+
+                    if self.verbose {
+                        println!("  Worker {} completed", worker_name);
+                    }
                 }
                 Ok(ControlFlow::Continue)
             }
+
+            Statement::SendMessage(send) => {
+                let value = self.evaluate(&send.value)?;
+                if self.verbose {
+                    println!("  Sending {:?} to worker {}", value, send.target_worker);
+                }
+                // TODO: Implement actual message sending to worker
+                // For now, just log the action
+                Ok(ControlFlow::Continue)
+            }
+
+            Statement::ReceiveMessage(receive) => {
+                if self.verbose {
+                    println!("  Receiving from worker {}", receive.source_worker);
+                }
+                // TODO: Implement actual message receiving from worker
+                Ok(ControlFlow::Continue)
+            }
+
+            Statement::AwaitWorker(await_worker) => {
+                if self.verbose {
+                    println!("  Awaiting worker {}", await_worker.worker_name);
+                }
+                // TODO: Implement actual worker await
+                Ok(ControlFlow::Continue)
+            }
+
+            Statement::CancelWorker(cancel) => {
+                if self.verbose {
+                    println!("  Cancelling worker {}", cancel.worker_name);
+                }
+                // TODO: Implement actual worker cancellation
+                Ok(ControlFlow::Continue)
+            }
+
             Statement::Complain(complain) => {
                 if self.care_mode {
                     eprintln!("Complaint: {}", complain.message);
