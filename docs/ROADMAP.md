@@ -37,36 +37,36 @@ WokeLang aims to be a programming language that prioritizes:
 
 ---
 
-## Phase 2: Language Completeness ✅
+## Phase 2: Language Completeness (Q1 2025)
 
 ### Type System
-- [x] Static type inference
+- [ ] Static type inference
 - [ ] Generic types (`to map[T, U](list: [T], f: T -> U) -> [U]`)
 - [ ] Union types (`String | Int`)
 - [ ] Structural typing for records
 - [ ] Unit types with compile-time checking
 
 ### Pattern Matching
-- [x] Destructuring in `decide based on`
-- [x] Guard clauses
+- [ ] Destructuring in `decide based on`
+- [ ] Guard clauses
 - [ ] Exhaustiveness checking
 - [ ] Nested patterns
 
 ### Module System
 - [ ] Package management (`woke.toml`)
-- [x] Import/export with `use`/`share`
+- [ ] Import/export with `use`/`share`
 - [ ] Namespaces
 - [ ] Circular dependency detection
 
 ### Error Handling
-- [x] Result types (`Okay[T] | Oops[E]`)
-- [x] Error propagation operator (`?`)
+- [ ] Result types (`Okay[T] | Oops[E]`)
+- [ ] Error propagation operator (`?`)
 - [ ] Stack traces with source locations
 - [ ] Custom error types
 
 ---
 
-## Phase 3: Concurrency & Safety (Current)
+## Phase 3: Concurrency & Safety (Q2 2025)
 
 ### Worker System
 - [ ] True async workers

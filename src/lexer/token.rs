@@ -105,24 +105,6 @@ pub enum Token {
     #[token("spawn")]
     Spawn,
 
-    #[token("send")]
-    Send,
-
-    #[token("receive")]
-    Receive,
-
-    #[token("channel")]
-    Channel,
-
-    #[token("await")]
-    Await,
-
-    #[token("cancel")]
-    Cancel,
-
-    #[token("from")]
-    From,
-
     // === Keywords - Pattern Matching ===
     #[token("decide")]
     Decide,
@@ -146,9 +128,6 @@ pub enum Token {
 
     #[token("renamed")]
     Renamed,
-
-    #[token("share")]
-    Share,
 
     // === Keywords - Types ===
     #[token("type")]
@@ -294,19 +273,6 @@ pub enum Token {
     #[token("_")]
     Underscore,
 
-    #[token("?")]
-    Question,
-
-    // === Keywords - Result Types ===
-    #[token("Okay")]
-    OkayType,
-
-    #[token("Oops")]
-    Oops,
-
-    #[token("unwrap")]
-    Unwrap,
-
     // === Literals ===
     #[regex(r"[0-9]+", |lex| lex.slice().parse::<i64>().ok())]
     Integer(i64),
@@ -351,12 +317,6 @@ impl std::fmt::Display for Token {
             Token::Quest => write!(f, "quest"),
             Token::Superpower => write!(f, "superpower"),
             Token::Spawn => write!(f, "spawn"),
-            Token::Send => write!(f, "send"),
-            Token::Receive => write!(f, "receive"),
-            Token::Channel => write!(f, "channel"),
-            Token::Await => write!(f, "await"),
-            Token::Cancel => write!(f, "cancel"),
-            Token::From => write!(f, "from"),
             Token::Decide => write!(f, "decide"),
             Token::Based => write!(f, "based"),
             Token::On => write!(f, "on"),
@@ -364,7 +324,6 @@ impl std::fmt::Display for Token {
             Token::In => write!(f, "in"),
             Token::Use => write!(f, "use"),
             Token::Renamed => write!(f, "renamed"),
-            Token::Share => write!(f, "share"),
             Token::Type => write!(f, "type"),
             Token::Const => write!(f, "const"),
             Token::TypeString => write!(f, "String"),
@@ -411,10 +370,6 @@ impl std::fmt::Display for Token {
             Token::Pipe => write!(f, "|"),
             Token::Hash => write!(f, "#"),
             Token::Underscore => write!(f, "_"),
-            Token::Question => write!(f, "?"),
-            Token::OkayType => write!(f, "Okay"),
-            Token::Oops => write!(f, "Oops"),
-            Token::Unwrap => write!(f, "unwrap"),
             Token::Integer(n) => write!(f, "{}", n),
             Token::Float(n) => write!(f, "{}", n),
             Token::String(s) => write!(f, "\"{}\"", s),
