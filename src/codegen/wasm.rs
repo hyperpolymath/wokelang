@@ -323,7 +323,7 @@ impl WasmCompiler {
                             break;
                         }
                     }
-                }
+                }next stage
 
                 // Close all if blocks
                 for arm in &decide.arms {

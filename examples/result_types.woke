@@ -1,0 +1,57 @@
+// Example: Result Types in WokeLang
+// Demonstrates Okay(value) and Oops(error) result types
+
+thanks to {
+    "Rust" → "For inspiration on Result types";
+}
+
+// Function that may fail - returns Result type
+to safeDivide(a: Int, b: Int) {
+    when b == 0 {
+        give back Oops("Division by zero");
+    }
+    give back Okay(a / b);
+}
+
+// Function using the ? operator for error propagation
+to calculate(x: Int, y: Int) {
+    remember result = safeDivide(x, y)?;
+    give back Okay(result * 2);
+}
+
+to main() {
+    hello "Testing Result Types";
+
+    // Test 1: Successful division
+    remember r1 = safeDivide(10, 2);
+    print("10 / 2 = ");
+    print(r1);
+    print("Is Okay? " + toString(isOkay(r1)));
+
+    // Test 2: Division by zero
+    remember r2 = safeDivide(10, 0);
+    print("10 / 0 = ");
+    print(r2);
+    print("Is Oops? " + toString(isOops(r2)));
+
+    // Test 3: Pattern matching on Result
+    decide based on r1 {
+        Okay(value) → {
+            print("Success with value: " + toString(value));
+        }
+        Oops(error) → {
+            print("Error: " + error);
+        }
+    }
+
+    // Test 4: Using getOkay/getOops
+    when isOkay(r1) {
+        print("Extracted value: " + toString(getOkay(r1)));
+    }
+
+    when isOops(r2) {
+        print("Extracted error: " + getOops(r2));
+    }
+
+    goodbye "Result types working!";
+}
