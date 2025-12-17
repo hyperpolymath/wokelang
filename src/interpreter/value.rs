@@ -8,6 +8,8 @@ pub enum Value {
     String(String),
     Bool(bool),
     Array(Vec<Value>),
+    /// Record/Object with string keys
+    Record(std::collections::HashMap<std::string::String, Value>),
     Unit,
     /// Okay(value) - successful result
     Okay(Box<Value>),
@@ -61,6 +63,7 @@ impl Value {
             Value::Float(f) => *f != 0.0,
             Value::String(s) => !s.is_empty(),
             Value::Array(a) => !a.is_empty(),
+            Value::Record(r) => !r.is_empty(),
             Value::Unit => false,
             Value::Okay(_) => true,
             Value::Oops(_) => false,
@@ -84,6 +87,16 @@ impl fmt::Display for Value {
                     write!(f, "{}", elem)?;
                 }
                 write!(f, "]")
+            }
+            Value::Record(map) => {
+                write!(f, "{{")?;
+                for (i, (key, val)) in map.iter().enumerate() {
+                    if i > 0 {
+                        write!(f, ", ")?;
+                    }
+                    write!(f, "\"{}\": {}", key, val)?;
+                }
+                write!(f, "}}")
             }
             Value::Unit => write!(f, "()"),
             Value::Okay(v) => write!(f, "Okay({})", v),
