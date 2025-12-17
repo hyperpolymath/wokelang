@@ -36,3 +36,7 @@ strip = true
 [profile.release-wasm]
 inherits = "release"
 opt-level = "s"
+
+[[bench]]
+name = "vm_bench"
+harness = false
