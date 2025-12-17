@@ -271,13 +271,6 @@ impl WasmCompiler {
                 ));
             }
 
-            Statement::SendMessage(_) | Statement::ReceiveMessage(_) |
-            Statement::AwaitWorker(_) | Statement::CancelWorker(_) => {
-                return Err(CompileError::Unsupported(
-                    "Worker messaging not supported in WASM".into(),
-                ));
-            }
-
             Statement::EmoteAnnotated(annotated) => {
                 // Emote tags are metadata, compile the inner statement
                 self.compile_statement(&annotated.statement, func)?;
@@ -329,38 +322,8 @@ impl WasmCompiler {
                             }
                             break;
                         }
-                        Pattern::OkayPattern(_) | Pattern::OopsPattern(_) => {
-                            // Result patterns - simplified: just execute body for now
-                            // Full implementation would check discriminant tag
-                            for s in &arm.body {
-                                self.compile_statement(s, func)?;
-                            }
-                        }
-                        Pattern::Constructor(_, _) => {
-                            // Constructor patterns - not fully supported in WASM yet
-                            return Err(CompileError::Unsupported(
-                                "Constructor patterns not yet supported in WASM".into(),
-                            ));
-                        }
-                        Pattern::Guard(inner_pattern, _condition) => {
-                            // Guard patterns - compile inner pattern first
-                            // Full implementation would evaluate guard condition
-                            match inner_pattern.as_ref() {
-                                Pattern::Wildcard => {
-                                    for s in &arm.body {
-                                        self.compile_statement(s, func)?;
-                                    }
-                                    break;
-                                }
-                                _ => {
-                                    return Err(CompileError::Unsupported(
-                                        "Complex guard patterns not yet supported in WASM".into(),
-                                    ));
-                                }
-                            }
-                        }
                     }
-                }
+                }next stage
 
                 // Close all if blocks
                 for arm in &decide.arms {
@@ -451,31 +414,6 @@ impl WasmCompiler {
             Expr::GratitudeLiteral(_) => {
                 // Push 0 as placeholder
                 func.instruction(&Instruction::I64Const(0));
-            }
-
-            Expr::ResultConstructor { is_okay, value } => {
-                // Result types: compile the inner value
-                // In a full implementation, we'd use a tagged union representation
-                self.compile_expr(value, func)?;
-                // Push a tag to indicate Okay(1) or Oops(0)
-                if *is_okay {
-                    // For Okay, we keep the value as-is (simplified)
-                } else {
-                    // For Oops, we could negate or use a different representation
-                    // Simplified: just compile the inner expression
-                }
-            }
-
-            Expr::Try(inner) => {
-                // Try operator (?): compile inner expression
-                // Full implementation would check if it's Oops and return early
-                self.compile_expr(inner, func)?;
-            }
-
-            Expr::Unwrap(inner) => {
-                // Unwrap: compile inner expression
-                // Full implementation would trap on Oops
-                self.compile_expr(inner, func)?;
             }
         }
 
