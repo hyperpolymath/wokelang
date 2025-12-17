@@ -1,0 +1,241 @@
+(* WokeLang Specific Library - Consent Utilities *)
+(* Human-centered consent and permission management *)
+
+#care on;
+
+(* ===================================================================== *)
+(* CONSENT PATTERNS                                                      *)
+(* ===================================================================== *)
+
+(* Consent scope types *)
+type ConsentScope = Once | Session | Persistent;
+
+(* Consent request with metadata *)
+type ConsentRequest = {
+    permission: String,
+    reason: String,
+    scope: ConsentScope,
+    requester: String
+};
+
+(* ===================================================================== *)
+(* SAFE EXECUTION WITH CONSENT                                           *)
+(* ===================================================================== *)
+
+@mindful(importance=10)
+to withConsent(permission: String, reason: String, action: () -> a) -> Result[a, String] {
+    hello "Requesting consent for: " + permission;
+
+    only if okay permission {
+        remember result = action();
+        give back Okay(result);
+    }
+
+    give back Oops("Consent denied for: " + permission + " (Reason requested: " + reason + ")");
+
+    goodbye "Consent check complete";
+}
+
+@careful(level=2)
+to requireAllConsents(permissions: [String], action: () -> a) -> Result[a, String] {
+    hello "Checking multiple permissions";
+
+    repeat len(permissions) times {
+        remember perm = permissions[__i__];
+        only if okay perm {
+            (* Permission granted, continue *)
+        } otherwise {
+            give back Oops("Missing consent for: " + perm);
+        }
+    }
+
+    give back Okay(action());
+
+    goodbye "Multi-permission check complete";
+}
+
+@thoughtful(consideration=5)
+to withAnyConsent(permissions: [String], action: () -> a) -> Result[a, String] {
+    hello "Checking for any valid permission";
+
+    repeat len(permissions) times {
+        remember perm = permissions[__i__];
+        only if okay perm {
+            give back Okay(action());
+        }
+    }
+
+    give back Oops("No valid consent found among: " + join(permissions, ", "));
+
+    goodbye "Any-permission check complete";
+}
+
+(* ===================================================================== *)
+(* PERMISSION CATEGORIES                                                 *)
+(* ===================================================================== *)
+
+(* File system permissions *)
+const PERM_READ_FILE: String = "file.read";
+const PERM_WRITE_FILE: String = "file.write";
+const PERM_DELETE_FILE: String = "file.delete";
+const PERM_LIST_DIR: String = "directory.list";
+
+(* Network permissions *)
+const PERM_NETWORK_HTTP: String = "network.http";
+const PERM_NETWORK_HTTPS: String = "network.https";
+const PERM_NETWORK_SOCKET: String = "network.socket";
+
+(* System permissions *)
+const PERM_ENV_READ: String = "environment.read";
+const PERM_ENV_WRITE: String = "environment.write";
+const PERM_EXEC: String = "process.execute";
+
+(* User data permissions *)
+const PERM_CAMERA: String = "device.camera";
+const PERM_MICROPHONE: String = "device.microphone";
+const PERM_LOCATION: String = "user.location";
+const PERM_CONTACTS: String = "user.contacts";
+
+(* ===================================================================== *)
+(* SAFE FILE OPERATIONS                                                  *)
+(* ===================================================================== *)
+
+@careful(level=3)
+to safeReadFile(path: String) -> Result[String, String] {
+    give back withConsent(PERM_READ_FILE, "Reading file: " + path, to () -> String {
+        give back readFile(path)?;
+    });
+}
+
+@careful(level=3)
+to safeWriteFile(path: String, content: String) -> Result[Bool, String] {
+    give back withConsent(PERM_WRITE_FILE, "Writing to file: " + path, to () -> Bool {
+        writeFile(path, content)?;
+        give back true;
+    });
+}
+
+@careful(level=5)
+to safeDeleteFile(path: String) -> Result[Bool, String] {
+    give back withConsent(PERM_DELETE_FILE, "Deleting file: " + path, to () -> Bool {
+        delete(path)?;
+        give back true;
+    });
+}
+
+(* ===================================================================== *)
+(* SAFE NETWORK OPERATIONS                                               *)
+(* ===================================================================== *)
+
+@thoughtful(consideration=3)
+to safeHttpGet(url: String) -> Result[String, String] {
+    give back withConsent(PERM_NETWORK_HTTP, "HTTP GET request to: " + url, to () -> String {
+        give back httpGet(url)?;
+    });
+}
+
+@thoughtful(consideration=3)
+to safeHttpPost(url: String, body: String) -> Result[String, String] {
+    give back withConsent(PERM_NETWORK_HTTP, "HTTP POST request to: " + url, to () -> String {
+        give back httpPost(url, body)?;
+    });
+}
+
+(* ===================================================================== *)
+(* CONSENT LOGGING & AUDIT                                               *)
+(* ===================================================================== *)
+
+@observant(detail=5)
+to logConsentRequest(request: ConsentRequest) -> Bool {
+    hello "Logging consent request";
+
+    remember logEntry = format(
+        "[CONSENT] Permission: {}, Reason: {}, Requester: {}",
+        [request.permission, request.reason, request.requester]
+    );
+
+    print(logEntry);
+
+    give back true;
+
+    goodbye "Consent logged";
+}
+
+to createAuditTrail(operations: [String]) -> String {
+    hello "Creating audit trail";
+
+    remember trail = "=== Consent Audit Trail ===\n";
+    remember timestamp = format("{}", [now()]);
+
+    trail = trail + "Generated: " + timestamp + "\n";
+    trail = trail + "Operations:\n";
+
+    repeat len(operations) times {
+        trail = trail + "  - " + operations[__i__] + "\n";
+    }
+
+    trail = trail + "=========================\n";
+
+    give back trail;
+
+    goodbye "Audit trail created";
+}
+
+(* ===================================================================== *)
+(* PRIVACY-PRESERVING PATTERNS                                           *)
+(* ===================================================================== *)
+
+@mindful(importance=10)
+to withPrivacy(sensitiveData: a, transform: (a) -> b) -> b {
+    (* Process sensitive data and return transformed (non-sensitive) result *)
+    hello "Processing sensitive data privately";
+
+    remember result = transform(sensitiveData);
+
+    (* Sensitive data goes out of scope here *)
+
+    give back result;
+
+    goodbye "Private processing complete";
+}
+
+@careful(level=5)
+to redact(text: String, patterns: [String]) -> String {
+    hello "Redacting sensitive patterns";
+
+    remember result = text;
+
+    repeat len(patterns) times {
+        result = replace(result, patterns[__i__], "[REDACTED]");
+    }
+
+    give back result;
+
+    goodbye "Redaction complete";
+}
+
+to anonymize(data: Record) -> Record {
+    (* Remove personally identifiable information *)
+    hello "Anonymizing data";
+
+    remember piiFields = ["name", "email", "phone", "address", "ssn", "dob"];
+    remember result = data;
+
+    repeat len(piiFields) times {
+        result = remove(result, piiFields[__i__]);
+    }
+
+    give back result;
+
+    goodbye "Anonymization complete";
+}
+
+(* ===================================================================== *)
+(* GRATITUDE                                                             *)
+(* ===================================================================== *)
+
+thanks to {
+    "Privacy By Design" → "Inspiring consent-first architecture";
+    "GDPR" → "Establishing data protection principles";
+    "Users" → "For trusting us with their data";
+}

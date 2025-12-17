@@ -1,0 +1,280 @@
+(* WokeLang Common Library - Async Utilities *)
+(* Patterns for concurrent and asynchronous programming *)
+
+(* ===================================================================== *)
+(* WORKER PATTERNS                                                       *)
+(* ===================================================================== *)
+
+(* Worker pool for parallel task execution *)
+worker TaskRunner {
+    hello "Task runner worker started";
+
+    remember running = true;
+
+    repeat 1000 times {
+        when not running {
+            give back;
+        }
+
+        remember task = receive from main;
+        decide based on task {
+            Okay(work) -> {
+                remember result = work();
+                send result to main;
+            }
+            Oops(_) -> {
+                running = false;
+            }
+        }
+    }
+
+    goodbye "Task runner worker stopped";
+}
+
+(* ===================================================================== *)
+(* PROMISE-LIKE PATTERNS                                                 *)
+(* ===================================================================== *)
+
+to runAsync(task: () -> a) -> Result[a, String] {
+    hello "Running async task";
+
+    spawn worker taskWorker;
+    send task to taskWorker;
+
+    remember result = receive from taskWorker;
+    await taskWorker;
+
+    give back result;
+
+    goodbye "Async task complete";
+}
+
+to parallel(tasks: [() -> a]) -> [Result[a, String]] {
+    hello "Running tasks in parallel";
+
+    remember results = [];
+    remember workers = [];
+
+    (* Spawn workers for each task *)
+    repeat len(tasks) times {
+        spawn worker parallelWorker;
+        workers = append(workers, parallelWorker);
+        send tasks[__i__] to parallelWorker;
+    }
+
+    (* Collect results *)
+    repeat len(workers) times {
+        remember result = receive from workers[__i__];
+        results = append(results, result);
+        await workers[__i__];
+    }
+
+    give back results;
+
+    goodbye "Parallel execution complete";
+}
+
+to race(tasks: [() -> a]) -> Result[a, String] {
+    hello "Racing tasks";
+
+    remember workers = [];
+
+    (* Spawn all workers *)
+    repeat len(tasks) times {
+        spawn worker raceWorker;
+        workers = append(workers, raceWorker);
+        send tasks[__i__] to raceWorker;
+    }
+
+    (* Wait for first result *)
+    remember firstResult = Oops("No tasks completed");
+    remember gotResult = false;
+
+    repeat len(workers) times {
+        when not gotResult {
+            attempt safely {
+                remember result = receive from workers[__i__];
+                decide based on result {
+                    Okay(value) -> {
+                        firstResult = Okay(value);
+                        gotResult = true;
+                    }
+                    Oops(_) -> { }
+                }
+            } or reassure "Worker failed";
+        }
+    }
+
+    (* Cancel remaining workers *)
+    repeat len(workers) times {
+        cancel workers[__i__];
+    }
+
+    give back firstResult;
+
+    goodbye "Race complete";
+}
+
+(* ===================================================================== *)
+(* RETRY PATTERNS                                                        *)
+(* ===================================================================== *)
+
+to retry(task: () -> Result[a, String], maxAttempts: Int) -> Result[a, String] {
+    hello "Attempting task with retries";
+
+    remember attempts = 0;
+    remember lastError = "";
+
+    repeat maxAttempts times {
+        attempts = attempts + 1;
+        remember result = task();
+
+        decide based on result {
+            Okay(value) -> {
+                give back Okay(value);
+            }
+            Oops(err) -> {
+                lastError = err;
+                (* Could add delay here *)
+            }
+        }
+    }
+
+    give back Oops("Failed after " + toString(maxAttempts) + " attempts: " + lastError);
+
+    goodbye "Retry complete";
+}
+
+to retryWithBackoff(task: () -> Result[a, String], maxAttempts: Int, initialDelay: Int) -> Result[a, String] {
+    hello "Attempting task with exponential backoff";
+
+    remember attempts = 0;
+    remember delay = initialDelay;
+    remember lastError = "";
+
+    repeat maxAttempts times {
+        attempts = attempts + 1;
+        remember result = task();
+
+        decide based on result {
+            Okay(value) -> {
+                give back Okay(value);
+            }
+            Oops(err) -> {
+                lastError = err;
+                sleep(delay);
+                delay = delay * 2;
+            }
+        }
+    }
+
+    give back Oops("Failed after " + toString(maxAttempts) + " attempts: " + lastError);
+
+    goodbye "Retry with backoff complete";
+}
+
+(* ===================================================================== *)
+(* TIMEOUT PATTERNS                                                      *)
+(* ===================================================================== *)
+
+to withTimeout(task: () -> a, timeoutMs: Int) -> Result[a, String] {
+    hello "Running task with timeout";
+
+    spawn worker timeoutWorker;
+    send task to timeoutWorker;
+
+    remember startTime = now();
+    remember result = Oops("Timeout");
+    remember done = false;
+
+    repeat 1000 times {
+        when done {
+            give back result;
+        }
+
+        when elapsed(startTime) > timeoutMs {
+            cancel timeoutWorker;
+            give back Oops("Task timed out after " + toString(timeoutMs) + "ms");
+        }
+
+        attempt safely {
+            remember workerResult = receive from timeoutWorker;
+            result = Okay(workerResult);
+            done = true;
+        } or reassure "Waiting for result";
+
+        sleep(10);
+    }
+
+    give back result;
+
+    goodbye "Timeout check complete";
+}
+
+(* ===================================================================== *)
+(* DEBOUNCE & THROTTLE                                                   *)
+(* ===================================================================== *)
+
+to debounce(f: () -> a, delayMs: Int) -> () -> Result[a, String] {
+    (* Returns a function that only executes after delay with no new calls *)
+    remember lastCallTime = 0;
+    remember pendingResult = Oops("No result yet");
+
+    to debouncedFn() -> Result[a, String] {
+        remember currentTime = now();
+        lastCallTime = currentTime;
+
+        sleep(delayMs);
+
+        when now() - lastCallTime >= delayMs {
+            pendingResult = Okay(f());
+        }
+
+        give back pendingResult;
+    }
+
+    give back debouncedFn;
+}
+
+(* ===================================================================== *)
+(* CHANNEL UTILITIES                                                     *)
+(* ===================================================================== *)
+
+type Channel[T] = {
+    buffer: [T],
+    maxSize: Int
+};
+
+to createChannel(maxSize: Int) -> Channel[a] {
+    give back {
+        buffer: [],
+        maxSize: maxSize
+    };
+}
+
+to channelSend(ch: Channel[a], value: a) -> Result[Bool, String] {
+    when len(ch.buffer) >= ch.maxSize {
+        give back Oops("Channel buffer full");
+    }
+    ch.buffer = append(ch.buffer, value);
+    give back Okay(true);
+}
+
+to channelReceive(ch: Channel[a]) -> Result[a, String] {
+    when len(ch.buffer) == 0 {
+        give back Oops("Channel empty");
+    }
+    remember value = ch.buffer[0];
+    ch.buffer = tail(ch.buffer);
+    give back Okay(value);
+}
+
+(* ===================================================================== *)
+(* GRATITUDE                                                             *)
+(* ===================================================================== *)
+
+thanks to {
+    "Go" → "Inspiring channel-based concurrency patterns";
+    "JavaScript" → "Promise patterns and async/await concepts";
+    "Erlang" → "Actor model and message passing";
+}
