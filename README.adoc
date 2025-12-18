@@ -1,1 +1,275 @@
+= WokeLang
+:toc: macro
+:toclevels: 2
+:icons: font
+:source-highlighter: highlight.js
 
+_A human-centered, consent-driven programming language_
+
+image:https://img.shields.io/badge/version-0.1.0-blue[Version]
+image:https://img.shields.io/badge/license-MIT%20OR%20AGPL--3.0-green[License]
+image:https://img.shields.io/badge/rust-1.70+-orange[Rust]
+
+toc::[]
+
+== Overview
+
+WokeLang is a programming language designed with human values at its core. It prioritizes:
+
+* **Consent** - Every sensitive operation requires explicit permission
+* **Gratitude** - Attribution is a first-class language feature
+* **Emotional Context** - Annotate code with intent and mood
+* **Readability** - Natural language-style syntax
+* **Safety** - Gentle error handling by default
+
+== Quick Start
+
+=== Installation
+
+[source,bash]
+----
+# Clone the repository
+git clone https://github.com/hyperpolymath/wokelang.git
+cd wokelang
+
+# Build with Cargo
+cargo build --release
+
+# Run the REPL
+./target/release/woke
+----
+
+=== Hello World
+
+[source,wokelang]
+----
+thanks to {
+    "You" -> "For trying WokeLang!";
+}
+
+to main() {
+    print("Hello, World!");
+}
+----
+
+=== Key Features Demo
+
+[source,wokelang]
+----
+// Consent-based operations
+only if okay "camera_access" {
+    remember photo = takePhoto();
+}
+
+// Gratitude attribution
+thanks to {
+    "Alice" -> "Algorithm design";
+    "Bob" -> "Performance optimization";
+}
+
+// Emotional annotations
+@cautious
+to deleteUserData(userId: String) {
+    // Sensitive operation
+}
+
+// Natural language syntax
+repeat 5 times {
+    print("Hello!");
+}
+
+when temperature > 100 {
+    complain "It's too hot!";
+}
+
+// Safe error handling
+attempt safely {
+    remember data = fetchData();
+} or reassure "We'll try again later";
+
+// Pattern matching
+decide based on mood {
+    "happy" -> { celebrate(); }
+    "sad" -> { comfort(); }
+    _ -> { acknowledge(); }
+}
+----
+
+== Language Concepts
+
+=== Consent System
+
+WokeLang requires explicit consent for sensitive operations:
+
+[source,wokelang]
+----
+only if okay "file_access" {
+    remember contents = readFile("data.txt");
+}
+----
+
+=== Gratitude
+
+Built-in attribution system:
+
+[source,wokelang]
+----
+thanks to {
+    "Rust Community" -> "For amazing tooling";
+    "Contributors" -> "For making this possible";
+}
+----
+
+=== Emote Tags
+
+Annotate functions with emotional context:
+
+[source,wokelang]
+----
+@enthusiastic
+to celebrate() { /* ... */ }
+
+@cautious
+to handleSensitiveData() { /* ... */ }
+
+@experimental
+to tryNewApproach() { /* ... */ }
+----
+
+=== Workers (Concurrency)
+
+Background task execution:
+
+[source,wokelang]
+----
+worker dataProcessor {
+    remember data = fetchData();
+    processInBackground(data);
+}
+
+spawn worker dataProcessor;
+----
+
+== Project Structure
+
+[source]
+----
+wokelang/
+├── src/
+│   ├── lexer/      # Tokenization (logos-based)
+│   ├── parser/     # Recursive descent parser
+│   ├── ast/        # Abstract syntax tree
+│   ├── interpreter/# Tree-walking interpreter
+│   ├── codegen/    # WASM code generation
+│   └── ffi/        # C/Zig FFI bindings
+├── lib/            # Standard library
+├── examples/       # Example programs
+├── grammar/        # EBNF specification
+└── docs/           # Documentation & wiki
+----
+
+== Building
+
+[source,bash]
+----
+# Development build
+cargo build
+
+# Release build (optimized)
+cargo build --release
+
+# Run tests
+cargo test
+
+# Run clippy lints
+cargo clippy
+
+# Format code
+cargo fmt
+----
+
+== Documentation
+
+* link:docs/wiki/Home.md[Wiki Home]
+* link:docs/ROADMAP.md[Roadmap]
+* link:grammar/wokelang.ebnf[EBNF Grammar]
+* link:CONTRIBUTING.md[Contributing Guide]
+* link:SECURITY.md[Security Policy]
+
+== Roadmap
+
+[cols="1,2,1"]
+|===
+|Phase |Description |Timeline
+
+|Phase 1
+|Foundation (Lexer, Parser, Interpreter)
+|Completed
+
+|Phase 2
+|Type System, Modules, Pattern Matching
+|Q1 2026
+
+|Phase 3
+|Concurrency, Safety, Consent System
+|Q2 2026
+
+|Phase 4
+|Standard Library
+|Q3 2026
+
+|Phase 5
+|Compiler & Performance
+|Q4 2026
+
+|Phase 6
+|IDE Tooling & Ecosystem
+|2027
+
+|Phase 7
+|Frameworks (Web, CLI, Data)
+|2027+
+|===
+
+See link:docs/ROADMAP.md[full roadmap] for details.
+
+== Contributing
+
+We welcome contributions! Please read our link:CONTRIBUTING.md[Contributing Guide] before submitting PRs.
+
+=== Development Setup
+
+[source,bash]
+----
+# Using Nix (recommended)
+nix develop
+
+# Or with standard Rust toolchain
+rustup default stable
+cargo build
+----
+
+== License
+
+This project is dual-licensed under your choice of:
+
+* **MIT License** - Permissive, suitable for most uses
+* **AGPL-3.0-or-later** - Copyleft, ensures source availability for network services
+
+See link:LICENSE.txt[LICENSE.txt] for full details.
+
+This project also encourages (but does not require) adherence to the https://github.com/hyperpolymath/palimpsest-license[Palimpsest License] principles for consent-based digital interaction.
+
+== Community
+
+* https://github.com/hyperpolymath/wokelang[GitHub Repository]
+* https://github.com/hyperpolymath/wokelang/issues[Issue Tracker]
+* https://github.com/hyperpolymath/wokelang/discussions[Discussions]
+
+== Acknowledgments
+
+WokeLang is part of the https://github.com/hyperpolymath[hyperpolymath] ecosystem and follows the https://github.com/hyperpolymath/rhodium-standard-repositories[Rhodium Standard Repository] guidelines.
+
+---
+
+_Built with care, consent, and gratitude._
