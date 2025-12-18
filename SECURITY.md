@@ -335,6 +335,7 @@ When using WokeLang, we recommend:
 
 ## Additional Resources
 
+- [Our PGP Public Key]({{PGP_KEY_URL}})
 - [Security Advisories](https://github.com/hyperpolymath/wokelang/security/advisories)
 - [Changelog](CHANGELOG.md)
 - [Contributing Guidelines](CONTRIBUTING.md)
@@ -347,9 +348,9 @@ When using WokeLang, we recommend:
 
 | Purpose | Contact |
 |---------|---------|
-| **Security issues** | [Report via GitHub](https://github.com/hyperpolymath/wokelang/security/advisories/new) |
+| **Security issues** | [Report via GitHub](https://github.com/hyperpolymath/wokelang/security/advisories/new) or {{SECURITY_EMAIL}} |
 | **General questions** | [GitHub Discussions](https://github.com/hyperpolymath/wokelang/discussions) |
-| **Other enquiries** | See [README](README.adoc) for contact information |
+| **Other enquiries** | See [README](README.md) for contact information |
 
 ---
 

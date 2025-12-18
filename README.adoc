@@ -4,272 +4,170 @@
 :icons: font
 :source-highlighter: highlight.js
 
-_A human-centered, consent-driven programming language_
+WokeLang: A Human-Centered Programming Language
 
-image:https://img.shields.io/badge/version-0.1.0-blue[Version]
-image:https://img.shields.io/badge/license-MIT%20OR%20AGPL--3.0-green[License]
-image:https://img.shields.io/badge/rust-1.70+-orange[Rust]
 
-toc::[]
+[![Build Status](https://github.com/hyperpolymath/wokelang/actions/workflows/ci.yml/badge.svg)](https://github.com/hyperpolymath/wokelang/actions)
+[![OCaml](https://img.shields.io/badge/OCaml-5.0-blue)](https://ocaml.org)
+[![Rust](https://img.shields.io/badge/Rust-1.70-red)](https://rust-lang.org)
+[![Vyper](https://img.shields.io/badge/Vyper-0.3.10-green)](https://vyper.readthedocs.io)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green)](LICENSE)
 
-== Overview
+WokeLang is a programming language designed for **human collaboration**, **empathy**, and **safety**—without sacrificing power or performance. It combines:
 
-WokeLang is a programming language designed with human values at its core. It prioritizes:
+- **Python’s readability** with **Rust’s performance**.
+- **OCaml’s type safety** with **JavaScript’s expressiveness**.
+- **Unique features** like `thanks to`, `only if okay`, and `measured in` for **ethical, self-documenting code**.
 
-* **Consent** - Every sensitive operation requires explicit permission
-* **Gratitude** - Attribution is a first-class language feature
-* **Emotional Context** - Annotate code with intent and mood
-* **Readability** - Natural language-style syntax
-* **Safety** - Gentle error handling by default
 
-== Quick Start
 
-=== Installation
+## Table of Contents
+- [🚀 Quick Start](#-quick-start)
+- [🌟 Key Features](#-key-features)
+- [📦 Project Structure](#-project-structure)
+- [🛠 Development](#-development)
+- [📚 Examples](#-examples)
+- [🎯 Next Steps](#-next-steps)
+- [🤝 Community](#-community)
 
-[source,bash]
-----
-# Clone the repository
+
+
+## 🚀 Quick Start
+
+### 1. Install
+```bash
 git clone https://github.com/hyperpolymath/wokelang.git
 cd wokelang
+./scripts/setup.sh
 
-# Build with Cargo
-cargo build --release
 
-# Run the REPL
-./target/release/woke
-----
+2. Run the REPL
 
-=== Hello World
 
-[source,wokelang]
-----
-thanks to {
-    "You" -> "For trying WokeLang!";
-}
+dune utop
 
-to main() {
-    print("Hello, World!");
-}
-----
 
-=== Key Features Demo
+Example REPL Session:
 
-[source,wokelang]
-----
-// Consent-based operations
-only if okay "camera_access" {
-    remember photo = takePhoto();
-}
+> hello "Welcome to WokeLang!"
+> remember x = 5 measured in km
+> what is x + 3 measured in km?
+8 measured in km
 
-// Gratitude attribution
-thanks to {
-    "Alice" -> "Algorithm design";
-    "Bob" -> "Performance optimization";
-}
 
-// Emotional annotations
-@cautious
-to deleteUserData(userId: String) {
-    // Sensitive operation
-}
+3. Run Examples
 
-// Natural language syntax
-repeat 5 times {
-    print("Hello!");
-}
 
-when temperature > 100 {
-    complain "It's too hot!";
-}
+# Hello World
+dune exec ./examples/hello_world.wl
 
-// Safe error handling
-attempt safely {
-    remember data = fetchData();
-} or reassure "We'll try again later";
+# Fibonacci
+dune exec ./examples/fibonacci.wl
 
-// Pattern matching
-decide based on mood {
-    "happy" -> { celebrate(); }
-    "sad" -> { comfort(); }
-    _ -> { acknowledge(); }
-}
-----
+# Gratitude Tracker (Blockchain)
+dune exec ./examples/gratitude_blockchain.wl
 
-== Language Concepts
 
-=== Consent System
+4. Build for Vyper/WASM
 
-WokeLang requires explicit consent for sensitive operations:
 
-[source,wokelang]
-----
-only if okay "file_access" {
-    remember contents = readFile("data.txt");
-}
-----
+# Vyper FFI
+cd src/ffi/vyper && vyper contracts/gratitude.vy
 
-=== Gratitude
+# WASM
+cd src/ffi/wasm && wasm-pack build --target web
 
-Built-in attribution system:
 
-[source,wokelang]
-----
-thanks to {
-    "Rust Community" -> "For amazing tooling";
-    "Contributors" -> "For making this possible";
-}
-----
 
-=== Emote Tags
 
-Annotate functions with emotional context:
+```markdown
+## 🌟 Key Features
 
-[source,wokelang]
-----
-@enthusiastic
-to celebrate() { /* ... */ }
+| Feature               | Example                                  | Why It’s Special                          |
+|-----------------------|------------------------------------------|-------------------------------------------|
+| **Human Syntax**      | `to add(a, b) -> a + b`                  | Reads like plain English.                 |
+| **Empathy Annotations** | `@feeling(confident=true)`              | Codes with emotional context.             |
+| **Consent Gates**     | `only if okay "Delete?" { ... }`         | Ethical scaffolding for dangerous ops.    |
+| **Gratitude Blocks**  | `thanks to { "Alice" → "Fixed X!" }`      | Acknowledges contributors in code.       |
+| **Units of Measure**  | `5 measured in km`                       | Prevents unit-related bugs.               |
+| **Pipelines**         | `data then clean then analyze`           | Intuitive data transformations.          |
+| **Vyper FFI**         | `vyper call "gratitude.add_entry"`      | Immutable, auditable blockchain ops.      |
+| **WASM Target**       | Compile to run in browsers/Node.js.      | Portable and fast.                       |
 
-@cautious
-to handleSensitiveData() { /* ... */ }
 
-@experimental
-to tryNewApproach() { /* ... */ }
-----
 
-=== Workers (Concurrency)
+## 📦 Project Structure
 
-Background task execution:
-
-[source,wokelang]
-----
-worker dataProcessor {
-    remember data = fetchData();
-    processInBackground(data);
-}
-
-spawn worker dataProcessor;
-----
-
-== Project Structure
-
-[source]
-----
+```bash
 wokelang/
+├── docs/               # Theory docs (EBNF, semantics, etc.)
 ├── src/
-│   ├── lexer/      # Tokenization (logos-based)
-│   ├── parser/     # Recursive descent parser
-│   ├── ast/        # Abstract syntax tree
-│   ├── interpreter/# Tree-walking interpreter
-│   ├── codegen/    # WASM code generation
-│   └── ffi/        # C/Zig FFI bindings
-├── lib/            # Standard library
-├── examples/       # Example programs
-├── grammar/        # EBNF specification
-└── docs/           # Documentation & wiki
-----
+│   ├── lexer.mll       # Lexer (OCaml)
+│   ├── parser.mly      # Parser (Menhir)
+│   ├── ast.ml          # Abstract Syntax Tree
+│   ├── types.ml        # Type checker
+│   ├── eval.ml         # Interpreter
+│   ├── repl.ml         # REPL
+│   └── ffi/            # FFI bindings
+│       ├── vyper/      # Vyper contracts + ABI bindings
+│       │   ├── contracts/
+│       │   ├── abi/
+│       │   └── bindings/
+│       └── wasm/       # WASM (wasm-pack)
+├── examples/
+│   ├── hello.wl        # Hello World
+│   ├── fib.wl          # Fibonacci
+│   └── gratitude_blockchain.wl  # Vyper integration
+├── tests/              # Test cases
+├── scripts/
+│   ├── setup.sh        # Setup script
+│   └── build.sh        # Build script
+├── .devcontainer/       # VS Code Dev Container
+├── .github/workflows/   # GitHub Actions CI/CD
+├── Cargo.toml           # Rust dependencies
+├── dune                # OCaml build system
+├── dune-project
+└── README.md           # This file
 
-== Building
 
-[source,bash]
-----
-# Development build
-cargo build
 
-# Release build (optimized)
-cargo build --release
+## 🛠 Development
 
-# Run tests
-cargo test
+### Dev Container
+```dockerfile
+FROM ocaml/opam:ubuntu-22.04
 
-# Run clippy lints
-cargo clippy
+# Install OCaml + Rust + Vyper
+RUN opam install -y dune merlin ocaml-lsp menhir && \
+    apt-get update && apt-get install -y python3-pip && \
+    pip3 install vyper maturin && \
+    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y && \
+    source "$HOME/.cargo/env" && \
+    rustup target add wasm32-unknown-unknown && \
+    cargo install wasm-pack
 
-# Format code
-cargo fmt
-----
+WORKDIR /workspace
+COPY . .
+RUN dune build
 
-== Documentation
 
-* link:docs/wiki/Home.md[Wiki Home]
-* link:docs/ROADMAP.md[Roadmap]
-* link:grammar/wokelang.ebnf[EBNF Grammar]
-* link:CONTRIBUTING.md[Contributing Guide]
-* link:SECURITY.md[Security Policy]
 
-== Roadmap
+🛠️ Development
 
-[cols="1,2,1"]
-|===
-|Phase |Description |Timeline
+Dev Container
 
-|Phase 1
-|Foundation (Lexer, Parser, Interpreter)
-|Completed
 
-|Phase 2
-|Type System, Modules, Pattern Matching
-|Q1 2026
+FROM ocaml/opam:ubuntu-22.04
 
-|Phase 3
-|Concurrency, Safety, Consent System
-|Q2 2026
+# Install OCaml + Rust + Vyper
+RUN opam install -y dune merlin ocaml-lsp menhir && \
+    apt-get update && apt-get install -y python3-pip && \
+    pip3 install vyper maturin && \
+    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y && \
+    source "$HOME/.cargo/env" && \
+    rustup target add wasm32-unknown-unknown && \
+    cargo install wasm-pack
 
-|Phase 4
-|Standard Library
-|Q3 2026
-
-|Phase 5
-|Compiler & Performance
-|Q4 2026
-
-|Phase 6
-|IDE Tooling & Ecosystem
-|2027
-
-|Phase 7
-|Frameworks (Web, CLI, Data)
-|2027+
-|===
-
-See link:docs/ROADMAP.md[full roadmap] for details.
-
-== Contributing
-
-We welcome contributions! Please read our link:CONTRIBUTING.md[Contributing Guide] before submitting PRs.
-
-=== Development Setup
-
-[source,bash]
-----
-# Using Nix (recommended)
-nix develop
-
-# Or with standard Rust toolchain
-rustup default stable
-cargo build
-----
-
-== License
-
-This project is dual-licensed under your choice of:
-
-* **MIT License** - Permissive, suitable for most uses
-* **AGPL-3.0-or-later** - Copyleft, ensures source availability for network services
-
-See link:LICENSE.txt[LICENSE.txt] for full details.
-
-This project also encourages (but does not require) adherence to the https://github.com/hyperpolymath/palimpsest-license[Palimpsest License] principles for consent-based digital interaction.
-
-== Community
-
-* https://github.com/hyperpolymath/wokelang[GitHub Repository]
-* https://github.com/hyperpolymath/wokelang/issues[Issue Tracker]
-* https://github.com/hyperpolymath/wokelang/discussions[Discussions]
-
-== Acknowledgments
-
-WokeLang is part of the https://github.com/hyperpolymath[hyperpolymath] ecosystem and follows the https://github.com/hyperpolymath/rhodium-standard-repositories[Rhodium Standard Repository] guidelines.
-
----
-
-_Built with care, consent, and gratitude._
+WORKDIR /workspace
+COPY . .
+RUN dune build
