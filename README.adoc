@@ -1,1 +1,168 @@
 
+WokeLang: A Human-Centered Programming Language
+
+
+[![Build Status](https://github.com/hyperpolymath/wokelang/actions/workflows/ci.yml/badge.svg)](https://github.com/hyperpolymath/wokelang/actions)
+[![OCaml](https://img.shields.io/badge/OCaml-5.0-blue)](https://ocaml.org)
+[![Rust](https://img.shields.io/badge/Rust-1.70-red)](https://rust-lang.org)
+[![Vyper](https://img.shields.io/badge/Vyper-0.3.10-green)](https://vyper.readthedocs.io)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green)](LICENSE)
+
+WokeLang is a programming language designed for **human collaboration**, **empathy**, and **safety**—without sacrificing power or performance. It combines:
+
+- **Python’s readability** with **Rust’s performance**.
+- **OCaml’s type safety** with **JavaScript’s expressiveness**.
+- **Unique features** like `thanks to`, `only if okay`, and `measured in` for **ethical, self-documenting code**.
+
+
+
+## Table of Contents
+- [🚀 Quick Start](#-quick-start)
+- [🌟 Key Features](#-key-features)
+- [📦 Project Structure](#-project-structure)
+- [🛠 Development](#-development)
+- [📚 Examples](#-examples)
+- [🎯 Next Steps](#-next-steps)
+- [🤝 Community](#-community)
+
+
+
+## 🚀 Quick Start
+
+### 1. Install
+```bash
+git clone https://github.com/hyperpolymath/wokelang.git
+cd wokelang
+./scripts/setup.sh
+
+
+2. Run the REPL
+
+
+dune utop
+
+
+Example REPL Session:
+
+> hello "Welcome to WokeLang!"
+> remember x = 5 measured in km
+> what is x + 3 measured in km?
+8 measured in km
+
+
+3. Run Examples
+
+
+# Hello World
+dune exec ./examples/hello_world.wl
+
+# Fibonacci
+dune exec ./examples/fibonacci.wl
+
+# Gratitude Tracker (Blockchain)
+dune exec ./examples/gratitude_blockchain.wl
+
+
+4. Build for Vyper/WASM
+
+
+# Vyper FFI
+cd src/ffi/vyper && vyper contracts/gratitude.vy
+
+# WASM
+cd src/ffi/wasm && wasm-pack build --target web
+
+
+
+
+```markdown
+## 🌟 Key Features
+
+| Feature               | Example                                  | Why It’s Special                          |
+|-----------------------|------------------------------------------|-------------------------------------------|
+| **Human Syntax**      | `to add(a, b) -> a + b`                  | Reads like plain English.                 |
+| **Empathy Annotations** | `@feeling(confident=true)`              | Codes with emotional context.             |
+| **Consent Gates**     | `only if okay "Delete?" { ... }`         | Ethical scaffolding for dangerous ops.    |
+| **Gratitude Blocks**  | `thanks to { "Alice" → "Fixed X!" }`      | Acknowledges contributors in code.       |
+| **Units of Measure**  | `5 measured in km`                       | Prevents unit-related bugs.               |
+| **Pipelines**         | `data then clean then analyze`           | Intuitive data transformations.          |
+| **Vyper FFI**         | `vyper call "gratitude.add_entry"`      | Immutable, auditable blockchain ops.      |
+| **WASM Target**       | Compile to run in browsers/Node.js.      | Portable and fast.                       |
+
+
+
+## 📦 Project Structure
+
+```bash
+wokelang/
+├── docs/               # Theory docs (EBNF, semantics, etc.)
+├── src/
+│   ├── lexer.mll       # Lexer (OCaml)
+│   ├── parser.mly      # Parser (Menhir)
+│   ├── ast.ml          # Abstract Syntax Tree
+│   ├── types.ml        # Type checker
+│   ├── eval.ml         # Interpreter
+│   ├── repl.ml         # REPL
+│   └── ffi/            # FFI bindings
+│       ├── vyper/      # Vyper contracts + ABI bindings
+│       │   ├── contracts/
+│       │   ├── abi/
+│       │   └── bindings/
+│       └── wasm/       # WASM (wasm-pack)
+├── examples/
+│   ├── hello.wl        # Hello World
+│   ├── fib.wl          # Fibonacci
+│   └── gratitude_blockchain.wl  # Vyper integration
+├── tests/              # Test cases
+├── scripts/
+│   ├── setup.sh        # Setup script
+│   └── build.sh        # Build script
+├── .devcontainer/       # VS Code Dev Container
+├── .github/workflows/   # GitHub Actions CI/CD
+├── Cargo.toml           # Rust dependencies
+├── dune                # OCaml build system
+├── dune-project
+└── README.md           # This file
+
+
+
+## 🛠 Development
+
+### Dev Container
+```dockerfile
+FROM ocaml/opam:ubuntu-22.04
+
+# Install OCaml + Rust + Vyper
+RUN opam install -y dune merlin ocaml-lsp menhir && \
+    apt-get update && apt-get install -y python3-pip && \
+    pip3 install vyper maturin && \
+    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y && \
+    source "$HOME/.cargo/env" && \
+    rustup target add wasm32-unknown-unknown && \
+    cargo install wasm-pack
+
+WORKDIR /workspace
+COPY . .
+RUN dune build
+
+
+
+🛠️ Development
+
+Dev Container
+
+
+FROM ocaml/opam:ubuntu-22.04
+
+# Install OCaml + Rust + Vyper
+RUN opam install -y dune merlin ocaml-lsp menhir && \
+    apt-get update && apt-get install -y python3-pip && \
+    pip3 install vyper maturin && \
+    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y && \
+    source "$HOME/.cargo/env" && \
+    rustup target add wasm32-unknown-unknown && \
+    cargo install wasm-pack
+
+WORKDIR /workspace
+COPY . .
+RUN dune build
