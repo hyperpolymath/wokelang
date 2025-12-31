@@ -177,7 +177,8 @@ pub enum AuditAction {
 pub struct CapabilityRegistry {
     /// Granted capabilities
     capabilities: HashMap<String, Vec<GrantedCapability>>,
-    /// Pending consent requests
+    /// Pending consent requests (reserved for async consent flows)
+    #[allow(dead_code)]
     pending_requests: HashSet<Capability>,
     /// Audit log
     audit_log: Vec<AuditEntry>,
@@ -345,7 +346,7 @@ impl CapabilityRegistry {
 
     /// Clear expired capabilities
     pub fn cleanup_expired(&mut self) {
-        for (scope, caps) in self.capabilities.iter_mut() {
+        for (_scope, caps) in self.capabilities.iter_mut() {
             caps.retain(|cap| {
                 if !cap.is_valid() {
                     // Log expiration if it was due to time

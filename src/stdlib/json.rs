@@ -7,6 +7,12 @@ use crate::security::CapabilityRegistry;
 use super::{check_arity, expect_string, StdlibError};
 use std::collections::HashMap;
 
+/// Maximum JSON input size (1 MB)
+const MAX_JSON_SIZE: usize = 1024 * 1024;
+
+/// Maximum nesting depth for JSON parsing
+const MAX_NESTING_DEPTH: usize = 100;
+
 /// Simple JSON tokenizer
 #[derive(Debug, Clone, PartialEq)]
 enum JsonToken {
@@ -139,15 +145,22 @@ fn tokenize(input: &str) -> Result<Vec<JsonToken>, StdlibError> {
     Ok(tokens)
 }
 
-/// Parse JSON tokens into Value
-fn parse_value(tokens: &[JsonToken], pos: &mut usize) -> Result<Value, StdlibError> {
+/// Parse JSON tokens into Value with depth tracking
+fn parse_value(tokens: &[JsonToken], pos: &mut usize, depth: usize) -> Result<Value, StdlibError> {
+    if depth > MAX_NESTING_DEPTH {
+        return Err(StdlibError::ParseError(format!(
+            "JSON nesting too deep (max {} levels)",
+            MAX_NESTING_DEPTH
+        )));
+    }
+
     if *pos >= tokens.len() {
         return Err(StdlibError::ParseError("Unexpected end of input".to_string()));
     }
 
     match &tokens[*pos] {
-        JsonToken::LBrace => parse_object(tokens, pos),
-        JsonToken::LBracket => parse_array(tokens, pos),
+        JsonToken::LBrace => parse_object(tokens, pos, depth + 1),
+        JsonToken::LBracket => parse_array(tokens, pos, depth + 1),
         JsonToken::String(s) => {
             *pos += 1;
             Ok(Value::String(s.clone()))
@@ -180,7 +193,7 @@ fn parse_value(tokens: &[JsonToken], pos: &mut usize) -> Result<Value, StdlibErr
 }
 
 /// Parse JSON object
-fn parse_object(tokens: &[JsonToken], pos: &mut usize) -> Result<Value, StdlibError> {
+fn parse_object(tokens: &[JsonToken], pos: &mut usize, depth: usize) -> Result<Value, StdlibError> {
     *pos += 1; // consume '{'
 
     let mut map = HashMap::new();
@@ -207,7 +220,7 @@ fn parse_object(tokens: &[JsonToken], pos: &mut usize) -> Result<Value, StdlibEr
         *pos += 1;
 
         // Parse value
-        let value = parse_value(tokens, pos)?;
+        let value = parse_value(tokens, pos, depth)?;
         map.insert(key, value);
 
         // Check for comma or end
@@ -231,7 +244,7 @@ fn parse_object(tokens: &[JsonToken], pos: &mut usize) -> Result<Value, StdlibEr
 }
 
 /// Parse JSON array
-fn parse_array(tokens: &[JsonToken], pos: &mut usize) -> Result<Value, StdlibError> {
+fn parse_array(tokens: &[JsonToken], pos: &mut usize, depth: usize) -> Result<Value, StdlibError> {
     *pos += 1; // consume '['
 
     let mut items = Vec::new();
@@ -242,7 +255,7 @@ fn parse_array(tokens: &[JsonToken], pos: &mut usize) -> Result<Value, StdlibErr
     }
 
     loop {
-        let value = parse_value(tokens, pos)?;
+        let value = parse_value(tokens, pos, depth)?;
         items.push(value);
 
         if *pos >= tokens.len() {
@@ -299,6 +312,7 @@ fn stringify_value(value: &Value) -> String {
         }
         Value::Okay(inner) => stringify_value(inner),
         Value::Oops(msg) => format!("{{\"error\":\"{}\"}}", msg),
+        Value::Function(_) => "null".to_string(), // Functions cannot be serialized to JSON
     }
 }
 
@@ -307,13 +321,22 @@ pub fn parse(args: &[Value], _caps: &mut CapabilityRegistry) -> Result<Value, St
     check_arity(args, 1)?;
     let json_str = expect_string(&args[0], "json")?;
 
+    // Check input size to prevent memory exhaustion
+    if json_str.len() > MAX_JSON_SIZE {
+        return Err(StdlibError::ParseError(format!(
+            "JSON input too large: {} bytes (max {} bytes)",
+            json_str.len(),
+            MAX_JSON_SIZE
+        )));
+    }
+
     let tokens = tokenize(&json_str)?;
     if tokens.is_empty() {
         return Err(StdlibError::ParseError("Empty JSON".to_string()));
     }
 
     let mut pos = 0;
-    let value = parse_value(&tokens, &mut pos)?;
+    let value = parse_value(&tokens, &mut pos, 0)?;
 
     if pos < tokens.len() {
         return Err(StdlibError::ParseError("Trailing content after JSON".to_string()));
@@ -505,5 +528,32 @@ mod tests {
             }
             _ => panic!("Expected record"),
         }
+    }
+
+    #[test]
+    fn test_nesting_depth_limit() {
+        let mut caps = test_caps();
+
+        // Create deeply nested JSON (150 levels, should fail at 100)
+        let deep_json = format!("{}1{}", "[".repeat(150), "]".repeat(150));
+
+        let result = parse(&[Value::String(deep_json)], &mut caps);
+        assert!(result.is_err());
+
+        // Verify error message mentions nesting
+        if let Err(StdlibError::ParseError(msg)) = result {
+            assert!(msg.contains("nesting"));
+        }
+    }
+
+    #[test]
+    fn test_reasonable_nesting_ok() {
+        let mut caps = test_caps();
+
+        // Create moderately nested JSON (50 levels, should succeed)
+        let nested_json = format!("{}1{}", "[".repeat(50), "]".repeat(50));
+
+        let result = parse(&[Value::String(nested_json)], &mut caps);
+        assert!(result.is_ok());
     }
 }

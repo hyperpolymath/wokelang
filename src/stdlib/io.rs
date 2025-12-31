@@ -7,7 +7,52 @@ use crate::security::{Capability, CapabilityRegistry};
 use super::{check_arity, check_arity_range, expect_string, StdlibError};
 use std::fs;
 use std::io::{self, BufRead, Write};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
+
+/// Maximum file size for read operations (10 MB)
+const MAX_FILE_SIZE: u64 = 10 * 1024 * 1024;
+
+/// Validate a path to prevent path traversal attacks
+/// Rejects paths containing `..` components
+fn validate_path(path: &str) -> Result<PathBuf, StdlibError> {
+    let path_buf = PathBuf::from(path);
+
+    // Check for path traversal attempts
+    for component in path_buf.components() {
+        if let std::path::Component::ParentDir = component {
+            return Err(StdlibError::PermissionDenied(
+                "Path traversal not allowed: '..' in path".to_string(),
+            ));
+        }
+    }
+
+    // Reject null bytes which could be used for injection
+    if path.contains('\0') {
+        return Err(StdlibError::PermissionDenied(
+            "Invalid path: null byte in path".to_string(),
+        ));
+    }
+
+    Ok(path_buf)
+}
+
+/// Check file size before reading
+fn check_file_size(path: &Path) -> Result<(), StdlibError> {
+    match fs::metadata(path) {
+        Ok(meta) => {
+            if meta.len() > MAX_FILE_SIZE {
+                Err(StdlibError::IoError(format!(
+                    "File too large: {} bytes (max {} bytes)",
+                    meta.len(),
+                    MAX_FILE_SIZE
+                )))
+            } else {
+                Ok(())
+            }
+        }
+        Err(_) => Ok(()), // Let the actual read operation handle missing files
+    }
+}
 
 /// Helper to require file read capability
 fn require_read(path: &str, caps: &mut CapabilityRegistry) -> Result<(), StdlibError> {
@@ -40,9 +85,15 @@ pub fn read_file(args: &[Value], caps: &mut CapabilityRegistry) -> Result<Value,
     check_arity(args, 1)?;
     let path = expect_string(&args[0], "path")?;
 
+    // Validate path for security
+    let validated_path = validate_path(&path)?;
+
     require_read(&path, caps)?;
 
-    match fs::read_to_string(&path) {
+    // Check file size to prevent memory exhaustion
+    check_file_size(&validated_path)?;
+
+    match fs::read_to_string(&validated_path) {
         Ok(contents) => Ok(Value::String(contents)),
         Err(e) => Err(StdlibError::IoError(e.to_string())),
     }
@@ -54,9 +105,12 @@ pub fn write_file(args: &[Value], caps: &mut CapabilityRegistry) -> Result<Value
     let path = expect_string(&args[0], "path")?;
     let contents = expect_string(&args[1], "contents")?;
 
+    // Validate path for security
+    let validated_path = validate_path(&path)?;
+
     require_write(&path, caps)?;
 
-    match fs::write(&path, &contents) {
+    match fs::write(&validated_path, &contents) {
         Ok(()) => Ok(Value::Bool(true)),
         Err(e) => Err(StdlibError::IoError(e.to_string())),
     }
@@ -68,10 +122,13 @@ pub fn append_file(args: &[Value], caps: &mut CapabilityRegistry) -> Result<Valu
     let path = expect_string(&args[0], "path")?;
     let contents = expect_string(&args[1], "contents")?;
 
+    // Validate path for security
+    let validated_path = validate_path(&path)?;
+
     require_write(&path, caps)?;
 
     use std::fs::OpenOptions;
-    match OpenOptions::new().create(true).append(true).open(&path) {
+    match OpenOptions::new().create(true).append(true).open(&validated_path) {
         Ok(mut file) => match file.write_all(contents.as_bytes()) {
             Ok(()) => Ok(Value::Bool(true)),
             Err(e) => Err(StdlibError::IoError(e.to_string())),
@@ -85,10 +142,13 @@ pub fn exists(args: &[Value], caps: &mut CapabilityRegistry) -> Result<Value, St
     check_arity(args, 1)?;
     let path = expect_string(&args[0], "path")?;
 
+    // Validate path for security
+    let validated_path = validate_path(&path)?;
+
     // exists only needs read capability to check
     require_read(&path, caps)?;
 
-    Ok(Value::Bool(std::path::Path::new(&path).exists()))
+    Ok(Value::Bool(validated_path.exists()))
 }
 
 /// Delete a file
@@ -96,9 +156,12 @@ pub fn delete(args: &[Value], caps: &mut CapabilityRegistry) -> Result<Value, St
     check_arity(args, 1)?;
     let path = expect_string(&args[0], "path")?;
 
+    // Validate path for security
+    let validated_path = validate_path(&path)?;
+
     require_write(&path, caps)?;
 
-    match fs::remove_file(&path) {
+    match fs::remove_file(&validated_path) {
         Ok(()) => Ok(Value::Bool(true)),
         Err(e) => Err(StdlibError::IoError(e.to_string())),
     }
@@ -109,9 +172,12 @@ pub fn list_dir(args: &[Value], caps: &mut CapabilityRegistry) -> Result<Value, 
     check_arity(args, 1)?;
     let path = expect_string(&args[0], "path")?;
 
+    // Validate path for security
+    let validated_path = validate_path(&path)?;
+
     require_read(&path, caps)?;
 
-    match fs::read_dir(&path) {
+    match fs::read_dir(&validated_path) {
         Ok(entries) => {
             let files: Vec<Value> = entries
                 .filter_map(|e| e.ok())
@@ -128,16 +194,19 @@ pub fn create_dir(args: &[Value], caps: &mut CapabilityRegistry) -> Result<Value
     check_arity(args, 1)?;
     let path = expect_string(&args[0], "path")?;
 
+    // Validate path for security
+    let validated_path = validate_path(&path)?;
+
     require_write(&path, caps)?;
 
-    match fs::create_dir_all(&path) {
+    match fs::create_dir_all(&validated_path) {
         Ok(()) => Ok(Value::Bool(true)),
         Err(e) => Err(StdlibError::IoError(e.to_string())),
     }
 }
 
 /// Read a line from stdin (interactive)
-pub fn read_line(args: &[Value], caps: &mut CapabilityRegistry) -> Result<Value, StdlibError> {
+pub fn read_line(args: &[Value], _caps: &mut CapabilityRegistry) -> Result<Value, StdlibError> {
     check_arity_range(args, 0, 1)?;
 
     // Print optional prompt
@@ -283,5 +352,37 @@ mod tests {
 
         // Cleanup
         let _ = fs::remove_dir_all(&dir_path);
+    }
+
+    #[test]
+    fn test_path_traversal_prevention() {
+        let mut caps = test_caps();
+
+        // Should reject paths with ..
+        let result = read_file(&[Value::String("../etc/passwd".to_string())], &mut caps);
+        assert!(result.is_err());
+
+        let result = read_file(&[Value::String("/tmp/../etc/passwd".to_string())], &mut caps);
+        assert!(result.is_err());
+
+        // Should reject paths with null bytes
+        let result = read_file(&[Value::String("test\0.txt".to_string())], &mut caps);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_validate_path() {
+        // Valid paths should pass
+        assert!(validate_path("test.txt").is_ok());
+        assert!(validate_path("/tmp/test.txt").is_ok());
+        assert!(validate_path("./subdir/file.txt").is_ok());
+
+        // Path traversal should fail
+        assert!(validate_path("../etc/passwd").is_err());
+        assert!(validate_path("/tmp/../etc/passwd").is_err());
+        assert!(validate_path("a/b/../../../etc/passwd").is_err());
+
+        // Null bytes should fail
+        assert!(validate_path("test\0.txt").is_err());
     }
 }
