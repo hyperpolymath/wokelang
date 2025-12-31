@@ -294,10 +294,8 @@ impl Interpreter {
                 for arm in &decide.arms {
                     if self.pattern_matches(&arm.pattern, &scrutinee) {
                         self.env.push_scope();
-                        // Bind pattern variables
-                        if let Pattern::Identifier(name) = &arm.pattern {
-                            self.env.define(name.clone(), scrutinee.clone());
-                        }
+                        // Bind pattern variables (handles Identifier, Constructor, etc.)
+                        self.bind_pattern(&arm.pattern, &scrutinee);
                         for stmt in &arm.body {
                             if let ControlFlow::Return(v) = self.execute_statement(stmt)? {
                                 self.env.pop_scope();
@@ -352,6 +350,45 @@ impl Interpreter {
             Pattern::Literal(lit) => {
                 let lit_value = self.literal_to_value(lit);
                 value == &lit_value
+            }
+            Pattern::Constructor(name, inner_pattern) => match (name.as_str(), value) {
+                ("Okay", Value::Okay(inner_val)) => {
+                    if let Some(pat) = inner_pattern {
+                        self.pattern_matches(pat, inner_val)
+                    } else {
+                        true
+                    }
+                }
+                ("Oops", Value::Oops(_)) => {
+                    // Oops pattern matches any Oops value
+                    // The inner pattern (if any) can bind the error message
+                    true
+                }
+                _ => false,
+            },
+        }
+    }
+
+    fn bind_pattern(&mut self, pattern: &Pattern, value: &Value) {
+        match pattern {
+            Pattern::Identifier(name) => {
+                self.env.define(name.clone(), value.clone());
+            }
+            Pattern::Constructor(name, inner_pattern) => {
+                if let Some(pat) = inner_pattern {
+                    match (name.as_str(), value) {
+                        ("Okay", Value::Okay(inner_val)) => {
+                            self.bind_pattern(pat, inner_val);
+                        }
+                        ("Oops", Value::Oops(err_msg)) => {
+                            self.bind_pattern(pat, &Value::String(err_msg.clone()));
+                        }
+                        _ => {}
+                    }
+                }
+            }
+            Pattern::Wildcard | Pattern::Literal(_) => {
+                // No bindings for wildcards or literals
             }
         }
     }
@@ -413,6 +450,57 @@ impl Interpreter {
                     .collect::<Result<_>>()?;
                 Ok(Value::Array(values))
             }
+            Expr::Index(target, index) => {
+                let target_val = self.evaluate(target)?;
+                let index_val = self.evaluate(index)?;
+                self.apply_index(target_val, index_val)
+            }
+            Expr::Okay(inner) => {
+                let val = self.evaluate(inner)?;
+                Ok(Value::Okay(Box::new(val)))
+            }
+            Expr::Oops(inner) => {
+                let val = self.evaluate(inner)?;
+                match val {
+                    Value::String(s) => Ok(Value::Oops(s)),
+                    other => Ok(Value::Oops(other.to_string())),
+                }
+            }
+            Expr::Unwrap(inner) => {
+                let val = self.evaluate(inner)?;
+                match val {
+                    Value::Okay(v) => Ok(*v),
+                    Value::Oops(e) => Err(RuntimeError::Complaint(e)),
+                    other => Ok(other), // Non-result values pass through
+                }
+            }
+        }
+    }
+
+    fn apply_index(&self, target: Value, index: Value) -> Result<Value> {
+        let idx = match index {
+            Value::Int(n) => {
+                if n < 0 {
+                    return Err(RuntimeError::IndexOutOfBounds(n as usize));
+                }
+                n as usize
+            }
+            _ => return Err(RuntimeError::TypeError("Index must be an integer".into())),
+        };
+
+        match target {
+            Value::Array(arr) => arr
+                .get(idx)
+                .cloned()
+                .ok_or(RuntimeError::IndexOutOfBounds(idx)),
+            Value::String(s) => s
+                .chars()
+                .nth(idx)
+                .map(|c| Value::String(c.to_string()))
+                .ok_or(RuntimeError::IndexOutOfBounds(idx)),
+            _ => Err(RuntimeError::TypeError(
+                "Cannot index this type".into(),
+            )),
         }
     }
 
@@ -467,6 +555,49 @@ impl Interpreter {
                     Value::Float(f) => Ok(Some(Value::Int(*f as i64))),
                     Value::Int(n) => Ok(Some(Value::Int(*n))),
                     _ => Err(RuntimeError::TypeError("Cannot convert to Int".into())),
+                }
+            }
+            "isOkay" => {
+                if args.len() != 1 {
+                    return Err(RuntimeError::ArityMismatch {
+                        expected: 1,
+                        got: args.len(),
+                    });
+                }
+                Ok(Some(Value::Bool(args[0].is_okay())))
+            }
+            "isOops" => {
+                if args.len() != 1 {
+                    return Err(RuntimeError::ArityMismatch {
+                        expected: 1,
+                        got: args.len(),
+                    });
+                }
+                Ok(Some(Value::Bool(args[0].is_oops())))
+            }
+            "unwrapOr" => {
+                if args.len() != 2 {
+                    return Err(RuntimeError::ArityMismatch {
+                        expected: 2,
+                        got: args.len(),
+                    });
+                }
+                match &args[0] {
+                    Value::Okay(v) => Ok(Some((**v).clone())),
+                    Value::Oops(_) => Ok(Some(args[1].clone())),
+                    other => Ok(Some(other.clone())),
+                }
+            }
+            "getError" => {
+                if args.len() != 1 {
+                    return Err(RuntimeError::ArityMismatch {
+                        expected: 1,
+                        got: args.len(),
+                    });
+                }
+                match &args[0] {
+                    Value::Oops(e) => Ok(Some(Value::String(e.clone()))),
+                    _ => Ok(Some(Value::Unit)),
                 }
             }
             _ => Ok(None), // Not a builtin
@@ -674,6 +805,101 @@ mod tests {
                 repeat 5 times {
                     count = count + 1;
                 }
+            }
+        "#;
+        assert!(run_program(source).is_ok());
+    }
+
+    #[test]
+    fn test_result_okay() {
+        let source = r#"
+            to main() {
+                remember result = Okay(42);
+                remember is_ok = isOkay(result);
+            }
+        "#;
+        assert!(run_program(source).is_ok());
+    }
+
+    #[test]
+    fn test_result_oops() {
+        let source = r#"
+            to main() {
+                remember result = Oops("Something went wrong");
+                remember is_err = isOops(result);
+            }
+        "#;
+        assert!(run_program(source).is_ok());
+    }
+
+    #[test]
+    fn test_unwrap_or() {
+        let source = r#"
+            to main() {
+                remember ok_result = Okay(10);
+                remember err_result = Oops("error");
+                remember val1 = unwrapOr(ok_result, 0);
+                remember val2 = unwrapOr(err_result, 0);
+            }
+        "#;
+        assert!(run_program(source).is_ok());
+    }
+
+    #[test]
+    fn test_array_indexing() {
+        let source = r#"
+            to main() {
+                remember arr = [1, 2, 3, 4, 5];
+                remember first = arr[0];
+                remember third = arr[2];
+            }
+        "#;
+        assert!(run_program(source).is_ok());
+    }
+
+    #[test]
+    fn test_string_indexing() {
+        let source = r#"
+            to main() {
+                remember str = "hello";
+                remember first_char = str[0];
+            }
+        "#;
+        assert!(run_program(source).is_ok());
+    }
+
+    #[test]
+    fn test_decide_with_result() {
+        let source = r#"
+            to process(val: Int) -> Result {
+                when val > 0 {
+                    give back Okay(val * 2);
+                } otherwise {
+                    give back Oops("Value must be positive");
+                }
+            }
+
+            to main() {
+                remember result = process(5);
+                decide based on result {
+                    Okay(x) -> {
+                        print(x);
+                    }
+                    Oops(e) -> {
+                        print(e);
+                    }
+                }
+            }
+        "#;
+        assert!(run_program(source).is_ok());
+    }
+
+    #[test]
+    fn test_chained_indexing() {
+        let source = r#"
+            to main() {
+                remember matrix = [[1, 2], [3, 4]];
+                remember val = matrix[0][1];
             }
         "#;
         assert!(run_program(source).is_ok());

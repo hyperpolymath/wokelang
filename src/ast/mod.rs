@@ -215,9 +215,14 @@ pub struct MatchArm {
 /// Pattern for matching
 #[derive(Debug, Clone)]
 pub enum Pattern {
+    /// Literal pattern: `42`, `"hello"`, `true`
     Literal(Literal),
+    /// Identifier pattern (binds value): `x`
     Identifier(String),
+    /// Wildcard pattern: `_`
     Wildcard,
+    /// Constructor pattern: `Okay(x)`, `Oops(e)`
+    Constructor(String, Option<Box<Pattern>>),
 }
 
 /// Expression types
@@ -239,6 +244,14 @@ pub enum Expr {
     GratitudeLiteral(String),
     /// Array literal
     Array(Vec<Spanned<Expr>>),
+    /// Index access: `arr[i]` or `str[i]`
+    Index(Box<Spanned<Expr>>, Box<Spanned<Expr>>),
+    /// Result success: `Okay(expr)`
+    Okay(Box<Spanned<Expr>>),
+    /// Result error: `Oops(expr)`
+    Oops(Box<Spanned<Expr>>),
+    /// Unwrap result: `expr?` or `unwrap(expr)`
+    Unwrap(Box<Spanned<Expr>>),
 }
 
 /// Binary operators

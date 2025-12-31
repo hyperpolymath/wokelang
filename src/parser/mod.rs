@@ -794,7 +794,20 @@ impl<'src> Parser<'src> {
             Some(Token::Identifier(name)) => {
                 let name = name.clone();
                 self.advance();
-                Ok(Pattern::Identifier(name))
+
+                // Check for constructor pattern: Okay(inner) or Oops(inner)
+                if (name == "Okay" || name == "Oops") && self.check(&Token::LParen) {
+                    self.advance(); // consume '('
+                    let inner_pattern = if self.check(&Token::RParen) {
+                        None
+                    } else {
+                        Some(Box::new(self.parse_pattern()?))
+                    };
+                    self.expect(Token::RParen)?;
+                    Ok(Pattern::Constructor(name, inner_pattern))
+                } else {
+                    Ok(Pattern::Identifier(name))
+                }
             }
             _ => Err(self.error("Expected pattern")),
         }
@@ -1005,13 +1018,24 @@ impl<'src> Parser<'src> {
     fn parse_postfix(&mut self) -> Result<Spanned<Expr>, ParseError> {
         let mut expr = self.parse_primary()?;
 
-        // Handle unit measurement: expr measured in unit
-        if self.check(&Token::Measured) {
-            self.advance();
-            self.expect(Token::In)?;
-            let unit = self.expect_identifier()?;
-            let span = expr.span.start..self.previous_span().end;
-            expr = Spanned::new(Expr::UnitMeasurement(Box::new(expr), unit), span);
+        loop {
+            if self.check(&Token::LBracket) {
+                // Array/string indexing: expr[index]
+                self.advance();
+                let index = self.parse_expression()?;
+                self.expect(Token::RBracket)?;
+                let span = expr.span.start..self.previous_span().end;
+                expr = Spanned::new(Expr::Index(Box::new(expr), Box::new(index)), span);
+            } else if self.check(&Token::Measured) {
+                // Unit measurement: expr measured in unit
+                self.advance();
+                self.expect(Token::In)?;
+                let unit = self.expect_identifier()?;
+                let span = expr.span.start..self.previous_span().end;
+                expr = Spanned::new(Expr::UnitMeasurement(Box::new(expr), unit), span);
+            } else {
+                break;
+            }
         }
 
         Ok(expr)
@@ -1083,8 +1107,22 @@ impl<'src> Parser<'src> {
             Some(Token::Identifier(name)) => {
                 self.advance();
                 if self.check(&Token::LParen) {
-                    // Function call
                     self.advance();
+
+                    // Check for Result constructors: Okay(expr), Oops(expr)
+                    if name == "Okay" || name == "Oops" {
+                        let inner = self.parse_expression()?;
+                        self.expect(Token::RParen)?;
+                        let end = self.previous_span().end;
+                        let expr = if name == "Okay" {
+                            Expr::Okay(Box::new(inner))
+                        } else {
+                            Expr::Oops(Box::new(inner))
+                        };
+                        return Ok(Spanned::new(expr, start..end));
+                    }
+
+                    // Regular function call
                     let mut args = Vec::new();
                     if !self.check(&Token::RParen) {
                         args.push(self.parse_expression()?);
