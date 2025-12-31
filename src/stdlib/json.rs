@@ -313,6 +313,7 @@ fn stringify_value(value: &Value) -> String {
         Value::Okay(inner) => stringify_value(inner),
         Value::Oops(msg) => format!("{{\"error\":\"{}\"}}", msg),
         Value::Function(_) => "null".to_string(), // Functions cannot be serialized to JSON
+        Value::Channel(_) => "null".to_string(),  // Channels cannot be serialized to JSON
     }
 }
 
