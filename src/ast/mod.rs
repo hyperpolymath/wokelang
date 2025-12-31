@@ -236,8 +236,10 @@ pub enum Expr {
     Binary(BinaryOp, Box<Spanned<Expr>>, Box<Spanned<Expr>>),
     /// Unary operation
     Unary(UnaryOp, Box<Spanned<Expr>>),
-    /// Function call
+    /// Function call by name
     Call(String, Vec<Spanned<Expr>>),
+    /// Call expression: `expr(args)` - for calling closures
+    CallExpr(Box<Spanned<Expr>>, Vec<Spanned<Expr>>),
     /// Unit measurement: `expr measured in unit`
     UnitMeasurement(Box<Spanned<Expr>>, String),
     /// Gratitude literal: `thanks("name")`
@@ -252,6 +254,8 @@ pub enum Expr {
     Oops(Box<Spanned<Expr>>),
     /// Unwrap result: `expr?` or `unwrap(expr)`
     Unwrap(Box<Spanned<Expr>>),
+    /// Lambda/closure: `|x, y| -> expr` or `|x, y| { ... }`
+    Lambda(LambdaExpr),
 }
 
 /// Binary operators
@@ -286,6 +290,23 @@ pub enum Literal {
     Float(f64),
     String(String),
     Bool(bool),
+}
+
+/// Lambda expression body
+#[derive(Debug, Clone)]
+pub enum LambdaBody {
+    /// Expression body: `|x| -> x + 1`
+    Expr(Box<Spanned<Expr>>),
+    /// Block body: `|x| { give back x + 1; }`
+    Block(Vec<Statement>),
+}
+
+/// Lambda/closure expression: `|x, y| -> expr` or `|x, y| { ... }`
+#[derive(Debug, Clone)]
+pub struct LambdaExpr {
+    pub params: Vec<Parameter>,
+    pub return_type: Option<Type>,
+    pub body: LambdaBody,
 }
 
 /// Emote tag: `@name(params)`
@@ -351,7 +372,7 @@ pub enum PragmaDirective {
 }
 
 /// Type annotation
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Type {
     /// Basic types: String, Int, Float, Bool, or custom
     Basic(String),
@@ -361,6 +382,8 @@ pub enum Type {
     Optional(Box<Type>),
     /// Reference type: &T
     Reference(Box<Type>),
+    /// Function type: (T1, T2) -> R
+    Function(Vec<Type>, Box<Type>),
 }
 
 /// Type definition: `type Name = ...;`

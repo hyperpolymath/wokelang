@@ -1,4 +1,47 @@
+use crate::ast::{LambdaBody, Parameter};
+use std::collections::HashMap;
 use std::fmt;
+use std::rc::Rc;
+use std::cell::RefCell;
+
+/// Captured environment for closures
+#[derive(Debug, Clone)]
+pub struct CapturedEnv {
+    pub bindings: HashMap<String, Value>,
+}
+
+impl CapturedEnv {
+    pub fn new() -> Self {
+        Self {
+            bindings: HashMap::new(),
+        }
+    }
+
+    pub fn from_map(bindings: HashMap<String, Value>) -> Self {
+        Self { bindings }
+    }
+}
+
+impl Default for CapturedEnv {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+/// A closure captures its environment at creation time
+#[derive(Debug, Clone)]
+pub struct Closure {
+    pub params: Vec<Parameter>,
+    pub body: LambdaBody,
+    pub env: Rc<RefCell<CapturedEnv>>,
+}
+
+impl PartialEq for Closure {
+    fn eq(&self, _other: &Self) -> bool {
+        // Closures are never equal (like function identity)
+        false
+    }
+}
 
 /// Runtime value in WokeLang
 #[derive(Debug, Clone, PartialEq)]
@@ -13,6 +56,8 @@ pub enum Value {
     Okay(Box<Value>),
     /// Result error: `Oops(message)`
     Oops(String),
+    /// First-class function/closure
+    Function(Closure),
 }
 
 impl Value {
@@ -27,6 +72,7 @@ impl Value {
             Value::Unit => false,
             Value::Okay(_) => true,
             Value::Oops(_) => false,
+            Value::Function(_) => true,
         }
     }
 
@@ -70,6 +116,10 @@ impl fmt::Display for Value {
             Value::Unit => write!(f, "()"),
             Value::Okay(v) => write!(f, "Okay({})", v),
             Value::Oops(e) => write!(f, "Oops(\"{}\")", e),
+            Value::Function(closure) => {
+                let param_names: Vec<_> = closure.params.iter().map(|p| p.name.as_str()).collect();
+                write!(f, "|{}| -> <closure>", param_names.join(", "))
+            }
         }
     }
 }
