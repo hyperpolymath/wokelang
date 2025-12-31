@@ -315,6 +315,14 @@ impl TypeChecker {
                 self.unify(r1, r2)
             }
 
+            // Type variables with the same name unify
+            (InferredType::TypeVar(a), InferredType::TypeVar(b)) if a == b => Ok(()),
+
+            // Type variables can unify with any type (polymorphic)
+            // In a full implementation, we'd track type var bindings
+            (InferredType::TypeVar(_), _) => Ok(()),
+            (_, InferredType::TypeVar(_)) => Ok(()),
+
             _ => Err(TypeError::TypeMismatch {
                 expected: t1.to_string(),
                 actual: t2.to_string(),
@@ -344,6 +352,32 @@ impl TypeChecker {
                 params: params.iter().map(|p| self.ast_type_to_inferred(p)).collect(),
                 ret: Box::new(self.ast_type_to_inferred(ret)),
             },
+            Type::Generic(name, args) => {
+                let inferred_args: Vec<_> = args.iter().map(|a| self.ast_type_to_inferred(a)).collect();
+                match name.as_str() {
+                    "Result" if args.len() == 2 => InferredType::Result {
+                        ok: Box::new(inferred_args[0].clone()),
+                        err: Box::new(inferred_args[1].clone()),
+                    },
+                    "Result" if args.len() == 1 => InferredType::Result {
+                        ok: Box::new(inferred_args[0].clone()),
+                        err: Box::new(InferredType::String),
+                    },
+                    "Maybe" | "Option" if args.len() == 1 => {
+                        InferredType::Maybe(Box::new(inferred_args[0].clone()))
+                    }
+                    "Array" if args.len() == 1 => {
+                        InferredType::Array(Box::new(inferred_args[0].clone()))
+                    }
+                    _ => {
+                        // For now, treat unknown generics as type variables
+                        // In the future, we'd look up the generic type definition
+                        InferredType::TypeVar(format!("{}<{}>", name,
+                            args.iter().map(|a| format!("{:?}", a)).collect::<Vec<_>>().join(", ")))
+                    }
+                }
+            },
+            Type::TypeVar(name) => InferredType::TypeVar(name.clone()),
         }
     }
 

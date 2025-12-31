@@ -88,6 +88,14 @@ impl<'src> Parser<'src> {
         }
 
         let name = self.expect_identifier()?;
+
+        // Parse optional type parameters: <T, U>
+        let type_params = if self.check(&Token::Less) {
+            self.parse_type_params()?
+        } else {
+            Vec::new()
+        };
+
         self.expect(Token::LParen)?;
         let params = self.parse_parameter_list()?;
         self.expect(Token::RParen)?;
@@ -130,6 +138,7 @@ impl<'src> Parser<'src> {
         Ok(FunctionDef {
             emote,
             name,
+            type_params,
             params,
             return_type,
             hello,
@@ -169,6 +178,45 @@ impl<'src> Parser<'src> {
             ty,
             span: start..end,
         })
+    }
+
+    /// Parse type parameters: <T, U: Bound>
+    fn parse_type_params(&mut self) -> Result<Vec<TypeParam>, ParseError> {
+        self.expect(Token::Less)?; // Consume '<'
+        let mut params = Vec::new();
+
+        if self.check(&Token::Greater) {
+            self.advance();
+            return Ok(params);
+        }
+
+        params.push(self.parse_type_param()?);
+        while self.check(&Token::Comma) {
+            self.advance();
+            params.push(self.parse_type_param()?);
+        }
+
+        self.expect(Token::Greater)?; // Consume '>'
+        Ok(params)
+    }
+
+    /// Parse a single type parameter: T or T: Bound
+    fn parse_type_param(&mut self) -> Result<TypeParam, ParseError> {
+        let name = self.expect_identifier()?;
+        let bounds = if self.check(&Token::Colon) {
+            self.advance();
+            // Parse bounds separated by +
+            let mut bounds = Vec::new();
+            bounds.push(self.expect_identifier()?);
+            while self.check(&Token::Plus) {
+                self.advance();
+                bounds.push(self.expect_identifier()?);
+            }
+            bounds
+        } else {
+            Vec::new()
+        };
+        Ok(TypeParam { name, bounds })
     }
 
     // === Consent Block ===
@@ -515,10 +563,36 @@ impl<'src> Parser<'src> {
             Some(Token::Identifier(name)) => {
                 let name = name.clone();
                 self.advance();
-                Ok(Type::Basic(name))
+                // Check for generic type arguments: Result<T, E>
+                if self.check(&Token::Less) {
+                    let args = self.parse_type_args()?;
+                    Ok(Type::Generic(name, args))
+                } else {
+                    Ok(Type::Basic(name))
+                }
             }
             _ => Err(self.error("Expected type")),
         }
+    }
+
+    /// Parse type arguments: <Int, String>
+    fn parse_type_args(&mut self) -> Result<Vec<Type>, ParseError> {
+        self.expect(Token::Less)?;
+        let mut args = Vec::new();
+
+        if self.check(&Token::Greater) {
+            self.advance();
+            return Ok(args);
+        }
+
+        args.push(self.parse_type()?);
+        while self.check(&Token::Comma) {
+            self.advance();
+            args.push(self.parse_type()?);
+        }
+
+        self.expect(Token::Greater)?;
+        Ok(args)
     }
 
     // === Statement Parsing ===
