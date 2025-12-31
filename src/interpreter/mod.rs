@@ -1,10 +1,12 @@
 mod value;
 
-pub use value::Value;
+pub use value::{CapturedEnv, Closure, Value};
 
 use crate::ast::*;
+use std::cell::RefCell;
 use std::collections::HashMap;
 use std::io::{self, Write};
+use std::rc::Rc;
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -474,7 +476,89 @@ impl Interpreter {
                     other => Ok(other), // Non-result values pass through
                 }
             }
+            Expr::Lambda(lambda) => {
+                // Capture the current environment
+                let captured = self.capture_environment();
+                Ok(Value::Function(Closure {
+                    params: lambda.params.clone(),
+                    body: lambda.body.clone(),
+                    env: Rc::new(RefCell::new(captured)),
+                }))
+            }
+            Expr::CallExpr(callee, args) => {
+                let callee_val = self.evaluate(callee)?;
+                let arg_values: Vec<Value> = args
+                    .iter()
+                    .map(|a| self.evaluate(a))
+                    .collect::<Result<_>>()?;
+
+                match callee_val {
+                    Value::Function(closure) => self.call_closure(&closure, arg_values),
+                    _ => Err(RuntimeError::TypeError("Cannot call non-function value".into())),
+                }
+            }
         }
+    }
+
+    fn capture_environment(&self) -> CapturedEnv {
+        // Flatten all scopes into a single map for the closure
+        let mut bindings = HashMap::new();
+        for scope in &self.env.scopes {
+            for (name, value) in scope {
+                bindings.insert(name.clone(), value.clone());
+            }
+        }
+        CapturedEnv::from_map(bindings)
+    }
+
+    fn call_closure(&mut self, closure: &Closure, args: Vec<Value>) -> Result<Value> {
+        if closure.params.len() != args.len() {
+            return Err(RuntimeError::ArityMismatch {
+                expected: closure.params.len(),
+                got: args.len(),
+            });
+        }
+
+        // Save current environment
+        let saved_env = self.env.clone();
+
+        // Create new environment with captured bindings
+        self.env = Environment::new();
+
+        // Add captured bindings
+        let captured = closure.env.borrow();
+        for (name, value) in &captured.bindings {
+            self.env.define(name.clone(), value.clone());
+        }
+
+        // Push new scope for parameters
+        self.env.push_scope();
+        for (param, arg) in closure.params.iter().zip(args) {
+            self.env.define(param.name.clone(), arg);
+        }
+
+        // Execute the closure body
+        let result = match &closure.body {
+            LambdaBody::Expr(expr) => self.evaluate(expr),
+            LambdaBody::Block(stmts) => {
+                let mut result = Value::Unit;
+                for stmt in stmts {
+                    match self.execute_statement(stmt)? {
+                        ControlFlow::Return(v) => {
+                            result = v;
+                            break;
+                        }
+                        ControlFlow::Continue => {}
+                    }
+                }
+                Ok(result)
+            }
+        };
+
+        // Restore environment
+        self.env = saved_env;
+
+        result
     }
 
     fn apply_index(&self, target: Value, index: Value) -> Result<Value> {
@@ -605,6 +689,14 @@ impl Interpreter {
     }
 
     fn call_function(&mut self, name: &str, args: Vec<Value>) -> Result<Value> {
+        // First, check if name refers to a variable holding a closure
+        if let Some(value) = self.env.get(name).cloned() {
+            if let Value::Function(closure) = value {
+                return self.call_closure(&closure, args);
+            }
+        }
+
+        // Otherwise, look up as a named function
         let func = self
             .functions
             .get(name)
@@ -900,6 +992,72 @@ mod tests {
             to main() {
                 remember matrix = [[1, 2], [3, 4]];
                 remember val = matrix[0][1];
+            }
+        "#;
+        assert!(run_program(source).is_ok());
+    }
+
+    #[test]
+    fn test_lambda_expression() {
+        let source = r#"
+            to main() {
+                remember add = |x, y| -> x + y;
+                remember result = add(3, 4);
+                print(result);
+            }
+        "#;
+        assert!(run_program(source).is_ok());
+    }
+
+    #[test]
+    fn test_lambda_block() {
+        let source = r#"
+            to main() {
+                remember greet = |name| {
+                    give back "Hello, " + name;
+                };
+                remember msg = greet("World");
+                print(msg);
+            }
+        "#;
+        assert!(run_program(source).is_ok());
+    }
+
+    #[test]
+    fn test_closure_captures() {
+        let source = r#"
+            to main() {
+                remember multiplier = 10;
+                remember times_ten = |x| -> x * multiplier;
+                remember result = times_ten(5);
+                print(result);
+            }
+        "#;
+        assert!(run_program(source).is_ok());
+    }
+
+    #[test]
+    fn test_higher_order_function() {
+        let source = r#"
+            to apply(f, x: Int) -> Int {
+                give back f(x);
+            }
+            to main() {
+                remember double = |x| -> x * 2;
+                remember result = apply(double, 21);
+                print(result);
+            }
+        "#;
+        assert!(run_program(source).is_ok());
+    }
+
+    #[test]
+    fn test_lambda_no_params() {
+        let source = r#"
+            to main() {
+                remember get_five = || -> 5;
+                remember result = get_five();
+                print(result);
             }
         "#;
         assert!(run_program(source).is_ok());

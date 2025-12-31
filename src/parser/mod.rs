@@ -1026,6 +1026,24 @@ impl<'src> Parser<'src> {
                 self.expect(Token::RBracket)?;
                 let span = expr.span.start..self.previous_span().end;
                 expr = Spanned::new(Expr::Index(Box::new(expr), Box::new(index)), span);
+            } else if self.check(&Token::LParen) {
+                // Call expression: expr(args) - for calling closures/lambdas
+                // Only if expr is not an identifier (those are handled in parse_primary)
+                if matches!(expr.node, Expr::Identifier(_)) {
+                    break; // Let parse_primary handle named function calls
+                }
+                self.advance();
+                let mut args = Vec::new();
+                if !self.check(&Token::RParen) {
+                    args.push(self.parse_expression()?);
+                    while self.check(&Token::Comma) {
+                        self.advance();
+                        args.push(self.parse_expression()?);
+                    }
+                }
+                self.expect(Token::RParen)?;
+                let span = expr.span.start..self.previous_span().end;
+                expr = Spanned::new(Expr::CallExpr(Box::new(expr), args), span);
             } else if self.check(&Token::Measured) {
                 // Unit measurement: expr measured in unit
                 self.advance();
@@ -1139,8 +1157,63 @@ impl<'src> Parser<'src> {
                     Ok(Spanned::new(Expr::Identifier(name), start..end))
                 }
             }
+            Some(Token::Pipe) => {
+                // Lambda expression: |x, y| -> expr or |x, y| { ... }
+                self.advance(); // consume first '|'
+                let params = self.parse_lambda_params()?;
+                self.expect(Token::Pipe)?; // consume closing '|'
+
+                // Check for optional return type annotation
+                let return_type = if self.check(&Token::Colon) {
+                    self.advance();
+                    Some(self.parse_type()?)
+                } else {
+                    None
+                };
+
+                // Parse body: either -> expr or { statements }
+                let body = if self.check(&Token::Arrow) || self.check(&Token::AsciiArrow) {
+                    self.advance();
+                    let expr = self.parse_expression()?;
+                    LambdaBody::Expr(Box::new(expr))
+                } else if self.check(&Token::LBrace) {
+                    self.advance();
+                    let stmts = self.parse_statement_list()?;
+                    self.expect(Token::RBrace)?;
+                    LambdaBody::Block(stmts)
+                } else {
+                    return Err(self.error("Expected -> or { after lambda parameters"));
+                };
+
+                let end = self.previous_span().end;
+                Ok(Spanned::new(
+                    Expr::Lambda(LambdaExpr {
+                        params,
+                        return_type,
+                        body,
+                    }),
+                    start..end,
+                ))
+            }
             _ => Err(self.error("Expected expression")),
         }
+    }
+
+    fn parse_lambda_params(&mut self) -> Result<Vec<Parameter>, ParseError> {
+        let mut params = Vec::new();
+
+        // Empty params: ||
+        if self.check(&Token::Pipe) {
+            return Ok(params);
+        }
+
+        params.push(self.parse_parameter()?);
+        while self.check(&Token::Comma) {
+            self.advance();
+            params.push(self.parse_parameter()?);
+        }
+
+        Ok(params)
     }
 
     // === Helper Methods ===
