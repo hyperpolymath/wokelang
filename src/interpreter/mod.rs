@@ -1,6 +1,6 @@
 mod value;
 
-pub use value::{CapturedEnv, Closure, Value};
+pub use value::{CapturedEnv, ChannelHandle, Closure, Value};
 
 use crate::ast::*;
 use std::cell::RefCell;

@@ -3,6 +3,7 @@
 //! This module provides the standard library for WokeLang, offering
 //! common functionality with consent-aware operations.
 
+pub mod chan;
 pub mod io;
 pub mod json;
 pub mod math;
@@ -117,6 +118,15 @@ impl StdlibRegistry {
         self.register("std.net.httpGet", net::http_get);
         self.register("std.net.httpPost", net::http_post);
         self.register("std.net.download", net::download);
+
+        // Channel functions (Go-style concurrency)
+        self.register("std.chan.make", chan::make_chan);
+        self.register("std.chan.send", chan::send);
+        self.register("std.chan.recv", chan::recv);
+        self.register("std.chan.tryRecv", chan::try_recv);
+        self.register("std.chan.recvTimeout", chan::recv_timeout);
+        self.register("std.chan.close", chan::close);
+        self.register("std.chan.isClosed", chan::is_closed);
     }
 
     /// Register a function
