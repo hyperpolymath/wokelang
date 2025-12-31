@@ -3,11 +3,13 @@
 //! This module provides the standard library for WokeLang, offering
 //! common functionality with consent-aware operations.
 
+pub mod array;
 pub mod chan;
 pub mod io;
 pub mod json;
 pub mod math;
 pub mod net;
+pub mod string;
 pub mod time;
 
 use crate::interpreter::Value;
@@ -127,6 +129,46 @@ impl StdlibRegistry {
         self.register("std.chan.recvTimeout", chan::recv_timeout);
         self.register("std.chan.close", chan::close);
         self.register("std.chan.isClosed", chan::is_closed);
+
+        // String functions
+        self.register("std.string.length", string::length);
+        self.register("std.string.upper", string::upper);
+        self.register("std.string.lower", string::lower);
+        self.register("std.string.trim", string::trim);
+        self.register("std.string.trimStart", string::trim_start);
+        self.register("std.string.trimEnd", string::trim_end);
+        self.register("std.string.contains", string::contains);
+        self.register("std.string.startsWith", string::starts_with);
+        self.register("std.string.endsWith", string::ends_with);
+        self.register("std.string.replace", string::replace);
+        self.register("std.string.split", string::split);
+        self.register("std.string.join", string::join);
+        self.register("std.string.substring", string::substring);
+        self.register("std.string.indexOf", string::index_of);
+        self.register("std.string.repeat", string::repeat);
+        self.register("std.string.reverse", string::reverse);
+        self.register("std.string.padStart", string::pad_start);
+        self.register("std.string.padEnd", string::pad_end);
+        self.register("std.string.chars", string::chars);
+        self.register("std.string.isEmpty", string::is_empty);
+
+        // Array functions
+        self.register("std.array.length", array::length);
+        self.register("std.array.isEmpty", array::is_empty);
+        self.register("std.array.first", array::first);
+        self.register("std.array.last", array::last);
+        self.register("std.array.push", array::push);
+        self.register("std.array.pop", array::pop);
+        self.register("std.array.concat", array::concat);
+        self.register("std.array.reverse", array::reverse);
+        self.register("std.array.slice", array::slice);
+        self.register("std.array.contains", array::contains);
+        self.register("std.array.indexOf", array::index_of);
+        self.register("std.array.repeat", array::repeat);
+        self.register("std.array.range", array::range);
+        self.register("std.array.flatten", array::flatten);
+        self.register("std.array.unique", array::unique);
+        self.register("std.array.zip", array::zip);
     }
 
     /// Register a function
