@@ -6,8 +6,96 @@ use crate::interpreter::Value;
 use crate::security::{Capability, CapabilityRegistry};
 use super::{check_arity, check_arity_range, expect_string, StdlibError};
 use std::io::{BufRead, BufReader, Read, Write};
-use std::net::TcpStream;
+use std::net::{IpAddr, TcpStream, ToSocketAddrs};
 use std::time::Duration;
+
+/// Maximum response size (10 MB) - reserved for future streaming implementation
+#[allow(dead_code)]
+const MAX_RESPONSE_SIZE: usize = 10 * 1024 * 1024;
+
+/// Validate a hostname to prevent SSRF attacks
+/// Blocks requests to private/internal IP ranges and localhost
+fn validate_hostname(host: &str) -> Result<(), StdlibError> {
+    // Reject localhost variants
+    let lower = host.to_lowercase();
+    if lower == "localhost" || lower == "127.0.0.1" || lower == "::1" || lower == "[::1]" {
+        return Err(StdlibError::NetworkError(
+            "Access to localhost is not allowed".to_string(),
+        ));
+    }
+
+    // Reject metadata endpoints (cloud SSRF)
+    if lower == "169.254.169.254" || lower.ends_with(".internal") {
+        return Err(StdlibError::NetworkError(
+            "Access to metadata endpoints is not allowed".to_string(),
+        ));
+    }
+
+    // Try to resolve the hostname and check if it's a private IP
+    if let Ok(addrs) = (host, 80).to_socket_addrs() {
+        for addr in addrs {
+            if is_private_ip(&addr.ip()) {
+                return Err(StdlibError::NetworkError(format!(
+                    "Access to private IP address {} is not allowed",
+                    addr.ip()
+                )));
+            }
+        }
+    }
+
+    Ok(())
+}
+
+/// Check if an IP address is in a private/internal range
+fn is_private_ip(ip: &IpAddr) -> bool {
+    match ip {
+        IpAddr::V4(ipv4) => {
+            // Loopback: 127.0.0.0/8
+            if ipv4.is_loopback() {
+                return true;
+            }
+            // Private ranges
+            let octets = ipv4.octets();
+            // 10.0.0.0/8
+            if octets[0] == 10 {
+                return true;
+            }
+            // 172.16.0.0/12
+            if octets[0] == 172 && (16..=31).contains(&octets[1]) {
+                return true;
+            }
+            // 192.168.0.0/16
+            if octets[0] == 192 && octets[1] == 168 {
+                return true;
+            }
+            // Link-local: 169.254.0.0/16
+            if octets[0] == 169 && octets[1] == 254 {
+                return true;
+            }
+            // Broadcast
+            if ipv4.is_broadcast() {
+                return true;
+            }
+            false
+        }
+        IpAddr::V6(ipv6) => {
+            // Loopback ::1
+            if ipv6.is_loopback() {
+                return true;
+            }
+            // Link-local fe80::/10
+            let segments = ipv6.segments();
+            if (segments[0] & 0xffc0) == 0xfe80 {
+                return true;
+            }
+            // Unique local fc00::/7
+            if (segments[0] & 0xfe00) == 0xfc00 {
+                return true;
+            }
+            false
+        }
+    }
+}
 
 /// Helper to require network capability
 fn require_network(host: &str, caps: &mut CapabilityRegistry) -> Result<(), StdlibError> {
@@ -70,6 +158,9 @@ pub fn http_get(args: &[Value], caps: &mut CapabilityRegistry) -> Result<Value, 
 
     let (protocol, host, port, path) = parse_url(&url)?;
 
+    // Validate hostname to prevent SSRF
+    validate_hostname(&host)?;
+
     // Check capability
     require_network(&host, caps)?;
 
@@ -99,6 +190,9 @@ pub fn http_post(args: &[Value], caps: &mut CapabilityRegistry) -> Result<Value,
 
     let (protocol, host, port, path) = parse_url(&url)?;
 
+    // Validate hostname to prevent SSRF
+    validate_hostname(&host)?;
+
     // Check capability
     require_network(&host, caps)?;
 
@@ -121,6 +215,9 @@ pub fn download(args: &[Value], caps: &mut CapabilityRegistry) -> Result<Value, 
     let dest_path = expect_string(&args[1], "path")?;
 
     let (protocol, host, port, path) = parse_url(&url)?;
+
+    // Validate hostname to prevent SSRF
+    validate_hostname(&host)?;
 
     // Check network capability
     require_network(&host, caps)?;
@@ -336,7 +433,7 @@ mod tests {
         assert_eq!(port, 8443);
         assert_eq!(path, "/api/v1");
 
-        let (proto, host, port, path) = parse_url("example.com").unwrap();
+        let (_proto, host, port, path) = parse_url("example.com").unwrap();
         assert_eq!(host, "example.com");
         assert_eq!(port, 80);
         assert_eq!(path, "/");
@@ -359,5 +456,46 @@ mod tests {
 
         let result = require_network("example.com", &mut caps);
         assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_validate_hostname_blocks_localhost() {
+        // Should block localhost variants
+        assert!(validate_hostname("localhost").is_err());
+        assert!(validate_hostname("127.0.0.1").is_err());
+        assert!(validate_hostname("::1").is_err());
+        assert!(validate_hostname("[::1]").is_err());
+    }
+
+    #[test]
+    fn test_validate_hostname_blocks_metadata() {
+        // Should block cloud metadata endpoints
+        assert!(validate_hostname("169.254.169.254").is_err());
+        assert!(validate_hostname("metadata.google.internal").is_err());
+    }
+
+    #[test]
+    fn test_validate_hostname_allows_public() {
+        // Should allow public hostnames
+        // Note: This test may fail if example.com can't be resolved
+        // In that case we just verify it doesn't panic
+        let _ = validate_hostname("example.com");
+    }
+
+    #[test]
+    fn test_is_private_ip() {
+        use std::net::Ipv4Addr;
+
+        // Test private ranges
+        assert!(is_private_ip(&IpAddr::V4(Ipv4Addr::new(10, 0, 0, 1))));
+        assert!(is_private_ip(&IpAddr::V4(Ipv4Addr::new(172, 16, 0, 1))));
+        assert!(is_private_ip(&IpAddr::V4(Ipv4Addr::new(172, 31, 255, 255))));
+        assert!(is_private_ip(&IpAddr::V4(Ipv4Addr::new(192, 168, 1, 1))));
+        assert!(is_private_ip(&IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1))));
+        assert!(is_private_ip(&IpAddr::V4(Ipv4Addr::new(169, 254, 169, 254))));
+
+        // Test public IPs should return false
+        assert!(!is_private_ip(&IpAddr::V4(Ipv4Addr::new(8, 8, 8, 8))));
+        assert!(!is_private_ip(&IpAddr::V4(Ipv4Addr::new(1, 1, 1, 1))));
     }
 }

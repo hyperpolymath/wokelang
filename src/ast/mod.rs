@@ -318,23 +318,6 @@ pub struct LambdaExpr {
     pub body: LambdaBody,
 }
 
-/// Lambda expression body
-#[derive(Debug, Clone)]
-pub enum LambdaBody {
-    /// Expression body: `|x| -> x + 1`
-    Expr(Box<Spanned<Expr>>),
-    /// Block body: `|x| { give back x + 1; }`
-    Block(Vec<Statement>),
-}
-
-/// Lambda/closure expression: `|x, y| -> expr` or `|x, y| { ... }`
-#[derive(Debug, Clone)]
-pub struct LambdaExpr {
-    pub params: Vec<Parameter>,
-    pub return_type: Option<Type>,
-    pub body: LambdaBody,
-}
-
 /// Emote tag: `@name(params)`
 #[derive(Debug, Clone)]
 pub struct EmoteTag {

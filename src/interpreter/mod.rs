@@ -32,8 +32,17 @@ pub enum RuntimeError {
     #[error("Index out of bounds: {0}")]
     IndexOutOfBounds(usize),
 
+    #[error("Negative index not allowed: {0}")]
+    NegativeIndex(i64),
+
     #[error("Arity mismatch: expected {expected}, got {got}")]
     ArityMismatch { expected: usize, got: usize },
+
+    #[error("Maximum recursion depth exceeded")]
+    RecursionLimitExceeded,
+
+    #[error("I/O error: {0}")]
+    IoError(String),
 }
 
 type Result<T> = std::result::Result<T, RuntimeError>;
@@ -92,6 +101,9 @@ impl Environment {
 }
 
 /// The WokeLang interpreter
+/// Maximum recursion depth to prevent stack overflow
+const MAX_RECURSION_DEPTH: usize = 1000;
+
 pub struct Interpreter {
     env: Environment,
     functions: HashMap<String, FunctionDef>,
@@ -100,6 +112,7 @@ pub struct Interpreter {
     consent_cache: HashMap<String, bool>,
     verbose: bool,
     care_mode: bool,
+    recursion_depth: usize,
 }
 
 impl Interpreter {
@@ -112,6 +125,7 @@ impl Interpreter {
             consent_cache: HashMap::new(),
             verbose: false,
             care_mode: true,
+            recursion_depth: 0,
         }
     }
 
@@ -322,10 +336,14 @@ impl Interpreter {
         } else {
             // Ask user for consent
             print!("Permission requested: '{}'. Allow? [y/N]: ", permission);
-            io::stdout().flush().unwrap();
+            io::stdout()
+                .flush()
+                .map_err(|e| RuntimeError::IoError(format!("Failed to flush stdout: {}", e)))?;
 
             let mut input = String::new();
-            io::stdin().read_line(&mut input).unwrap();
+            io::stdin()
+                .read_line(&mut input)
+                .map_err(|e| RuntimeError::IoError(format!("Failed to read input: {}", e)))?;
             let granted = input.trim().eq_ignore_ascii_case("y");
 
             self.consent_cache.insert(permission.clone(), granted);
@@ -566,7 +584,7 @@ impl Interpreter {
         let idx = match index {
             Value::Int(n) => {
                 if n < 0 {
-                    return Err(RuntimeError::IndexOutOfBounds(n as usize));
+                    return Err(RuntimeError::NegativeIndex(n));
                 }
                 n as usize
             }
@@ -578,11 +596,13 @@ impl Interpreter {
                 .get(idx)
                 .cloned()
                 .ok_or(RuntimeError::IndexOutOfBounds(idx)),
-            Value::String(s) => s
-                .chars()
-                .nth(idx)
-                .map(|c| Value::String(c.to_string()))
-                .ok_or(RuntimeError::IndexOutOfBounds(idx)),
+            Value::String(s) => {
+                // Use chars().nth() for proper UTF-8 character indexing
+                s.chars()
+                    .nth(idx)
+                    .map(|c| Value::String(c.to_string()))
+                    .ok_or(RuntimeError::IndexOutOfBounds(idx))
+            }
             _ => Err(RuntimeError::TypeError(
                 "Cannot index this type".into(),
             )),
@@ -609,7 +629,8 @@ impl Interpreter {
                     });
                 }
                 match &args[0] {
-                    Value::String(s) => Ok(Some(Value::Int(s.len() as i64))),
+                    // Use chars().count() for proper UTF-8 character count
+                    Value::String(s) => Ok(Some(Value::Int(s.chars().count() as i64))),
                     Value::Array(a) => Ok(Some(Value::Int(a.len() as i64))),
                     _ => Err(RuntimeError::TypeError("len() requires string or array".into())),
                 }
@@ -690,10 +711,18 @@ impl Interpreter {
     }
 
     fn call_function(&mut self, name: &str, args: Vec<Value>) -> Result<Value> {
+        // Check recursion depth limit
+        if self.recursion_depth >= MAX_RECURSION_DEPTH {
+            return Err(RuntimeError::RecursionLimitExceeded);
+        }
+        self.recursion_depth += 1;
+
         // First, check if name refers to a variable holding a closure
         if let Some(value) = self.env.get(name).cloned() {
             if let Value::Function(closure) = value {
-                return self.call_closure(&closure, args);
+                let result = self.call_closure(&closure, args);
+                self.recursion_depth -= 1;
+                return result;
             }
         }
 
@@ -702,9 +731,13 @@ impl Interpreter {
             .functions
             .get(name)
             .cloned()
-            .ok_or_else(|| RuntimeError::UndefinedFunction(name.to_string()))?;
+            .ok_or_else(|| {
+                self.recursion_depth -= 1;
+                RuntimeError::UndefinedFunction(name.to_string())
+            })?;
 
         if func.params.len() != args.len() {
+            self.recursion_depth -= 1;
             return Err(RuntimeError::ArityMismatch {
                 expected: func.params.len(),
                 got: args.len(),
@@ -737,6 +770,7 @@ impl Interpreter {
         }
 
         self.env.pop_scope();
+        self.recursion_depth -= 1;
 
         // Print goodbye message
         if let Some(goodbye) = &func.goodbye {
