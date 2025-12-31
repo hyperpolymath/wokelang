@@ -401,6 +401,7 @@ impl Interpreter {
             Literal::Float(n) => Value::Float(*n),
             Literal::String(s) => Value::String(s.clone()),
             Literal::Bool(b) => Value::Bool(*b),
+            Literal::Unit => Value::Unit,
         }
     }
 

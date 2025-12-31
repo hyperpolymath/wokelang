@@ -18,6 +18,8 @@ path = "src/main.rs"
 logos = "0.14"
 thiserror = "1.0"
 miette = { version = "7.0", features = ["fancy"] }
+rustyline = { version = "14.0", features = ["derive"] }
+dirs = "5.0"
 
 [dev-dependencies]
 pretty_assertions = "1.4"

@@ -1,7 +1,7 @@
 use miette::Result;
 use std::env;
 use std::fs;
-use wokelang::{Interpreter, Lexer, Parser};
+use wokelang::{Interpreter, Lexer, Parser, Repl, TypeChecker};
 
 fn main() -> Result<()> {
     let args: Vec<String> = env::args().collect();
@@ -10,14 +10,24 @@ fn main() -> Result<()> {
         println!("WokeLang v0.1.0 - A human-centered, consent-driven programming language");
         println!();
         println!("Usage: woke <file.woke>           Run a WokeLang program");
+        println!("       woke repl                  Start interactive REPL");
         println!("       woke --tokenize <file>     Show lexer tokens");
         println!("       woke --parse <file>        Show parsed AST");
+        println!("       woke --typecheck <file>    Type-check without running");
+        return Ok(());
+    }
+
+    // Check for REPL mode first
+    if args.get(1).map(|s| s.as_str()) == Some("repl") {
+        let mut repl = Repl::new().expect("Failed to create REPL");
+        repl.run().expect("REPL error");
         return Ok(());
     }
 
     let (mode, file_path) = match args.get(1).map(|s| s.as_str()) {
         Some("--tokenize") => ("tokenize", args.get(2)),
         Some("--parse") => ("parse", args.get(2)),
+        Some("--typecheck") => ("typecheck", args.get(2)),
         Some(_) => ("run", Some(&args[1])),
         None => {
             eprintln!("Expected file path");
@@ -63,10 +73,38 @@ fn main() -> Result<()> {
                 }
             }
         }
+        "typecheck" => {
+            let mut parser = Parser::new(tokens, &source);
+            match parser.parse() {
+                Ok(program) => {
+                    let mut typechecker = TypeChecker::new();
+                    match typechecker.check_program(&program) {
+                        Ok(()) => {
+                            println!("Type check passed!");
+                        }
+                        Err(e) => {
+                            eprintln!("Type error: {}", e);
+                        }
+                    }
+                }
+                Err(e) => {
+                    eprintln!("{:?}", miette::Report::new(e));
+                }
+            }
+        }
         "run" => {
             let mut parser = Parser::new(tokens, &source);
             match parser.parse() {
                 Ok(program) => {
+                    // Type check first
+                    let mut typechecker = TypeChecker::new();
+                    if let Err(e) = typechecker.check_program(&program) {
+                        eprintln!("Type error: {}", e);
+                        eprintln!("\nType checking failed. Not running.");
+                        return Ok(());
+                    }
+
+                    // Run the program
                     let mut interpreter = Interpreter::new();
                     if let Err(e) = interpreter.run(&program) {
                         eprintln!("Runtime error: {}", e);

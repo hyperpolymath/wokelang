@@ -52,11 +52,19 @@ pub struct QualifiedName {
     pub span: Span,
 }
 
+/// Generic type parameter: `<T: Trait>` or just `<T>`
+#[derive(Debug, Clone)]
+pub struct TypeParam {
+    pub name: String,
+    pub bounds: Vec<String>, // Trait bounds (future use)
+}
+
 /// Function definition
 #[derive(Debug, Clone)]
 pub struct FunctionDef {
     pub emote: Option<EmoteTag>,
     pub name: String,
+    pub type_params: Vec<TypeParam>, // Generic type parameters: <T, U>
     pub params: Vec<Parameter>,
     pub return_type: Option<Type>,
     pub hello: Option<String>,
@@ -290,6 +298,24 @@ pub enum Literal {
     Float(f64),
     String(String),
     Bool(bool),
+    Unit, // The () value
+}
+
+/// Lambda expression body
+#[derive(Debug, Clone)]
+pub enum LambdaBody {
+    /// Expression body: `|x| -> x + 1`
+    Expr(Box<Spanned<Expr>>),
+    /// Block body: `|x| { give back x + 1; }`
+    Block(Vec<Statement>),
+}
+
+/// Lambda/closure expression: `|x, y| -> expr` or `|x, y| { ... }`
+#[derive(Debug, Clone)]
+pub struct LambdaExpr {
+    pub params: Vec<Parameter>,
+    pub return_type: Option<Type>,
+    pub body: LambdaBody,
 }
 
 /// Lambda expression body
@@ -384,6 +410,10 @@ pub enum Type {
     Reference(Box<Type>),
     /// Function type: (T1, T2) -> R
     Function(Vec<Type>, Box<Type>),
+    /// Generic/parameterized type: Result<T, E>, Map<K, V>
+    Generic(String, Vec<Type>),
+    /// Type parameter reference: T (used inside generic functions)
+    TypeVar(String),
 }
 
 /// Type definition: `type Name = ...;`
