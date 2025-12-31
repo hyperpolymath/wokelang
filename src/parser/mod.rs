@@ -1192,6 +1192,12 @@ impl<'src> Parser<'src> {
             }
             Some(Token::LParen) => {
                 self.advance();
+                // Check for Unit literal: ()
+                if self.check(&Token::RParen) {
+                    self.advance();
+                    let end = self.previous_span().end;
+                    return Ok(Spanned::new(Expr::Literal(Literal::Unit), start..end));
+                }
                 let expr = self.parse_expression()?;
                 self.expect(Token::RParen)?;
                 Ok(expr)

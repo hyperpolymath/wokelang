@@ -613,6 +613,7 @@ impl TypeChecker {
                 Literal::Float(_) => InferredType::Float,
                 Literal::String(_) => InferredType::String,
                 Literal::Bool(_) => InferredType::Bool,
+                Literal::Unit => InferredType::Unit,
             }),
 
             Expr::Identifier(name) => self
