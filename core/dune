@@ -1,0 +1,17 @@
+; SPDX-License-Identifier: AGPL-3.0-or-later
+; SPDX-FileCopyrightText: 2026 Hyperpolymath
+
+(library
+ (name wokelang_core)
+ (public_name wokelang.core)
+ (libraries str))
+
+(ocamllex lexer)
+
+(menhir
+ (modules parser))
+
+(executable
+ (name main)
+ (public_name wokelang)
+ (libraries wokelang_core))
