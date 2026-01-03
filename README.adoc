@@ -1,6 +1,9 @@
 = WokeLang
 
-image:https://img.shields.io/badge/license-AGPL--3.0-blue.svg[AGPL-3.0,link="https://www.gnu.org/licenses/agpl-3.0"] image:https://img.shields.io/badge/philosophy-Palimpsest-purple.svg[Palimpsest,link="https://github.com/hyperpolymath/palimpsest-licence"]
+image:https://img.shields.io/badge/License-MPL_2.0-blue.svg[MPL-2.0,link="https://opensource.org/licenses/MPL-2.0"]
+image:https://img.shields.io/badge/Philosophy-Palimpsest-purple.svg[Palimpsest,link="https://github.com/hyperpolymath/palimpsest-licence"]
+
+
 :toc: macro
 :toclevels: 2
 :icons: font
@@ -8,20 +11,16 @@ image:https://img.shields.io/badge/license-AGPL--3.0-blue.svg[AGPL-3.0,link="htt
 
 WokeLang: A Human-Centered Programming Language
 
-
 [![Build Status](https://github.com/hyperpolymath/wokelang/actions/workflows/ci.yml/badge.svg)](https://github.com/hyperpolymath/wokelang/actions)
 [![OCaml](https://img.shields.io/badge/OCaml-5.0-blue)](https://ocaml.org)
 [![Rust](https://img.shields.io/badge/Rust-1.70-red)](https://rust-lang.org)
 [![Vyper](https://img.shields.io/badge/Vyper-0.3.10-green)](https://vyper.readthedocs.io)
-[![License: MIT](https://img.shields.io/badge/License-MIT-green)](LICENSE)
 
 WokeLang is a programming language designed for **human collaboration**, **empathy**, and **safety**—without sacrificing power or performance. It combines:
 
 - **Python’s readability** with **Rust’s performance**.
 - **OCaml’s type safety** with **JavaScript’s expressiveness**.
 - **Unique features** like `thanks to`, `only if okay`, and `measured in` for **ethical, self-documenting code**.
-
-
 
 ## Table of Contents
 - [🚀 Quick Start](#-quick-start)
@@ -32,8 +31,6 @@ WokeLang is a programming language designed for **human collaboration**, **empat
 - [🎯 Next Steps](#-next-steps)
 - [🤝 Community](#-community)
 
-
-
 ## 🚀 Quick Start
 
 ### 1. Install
@@ -42,12 +39,9 @@ git clone https://github.com/hyperpolymath/wokelang.git
 cd wokelang
 ./scripts/setup.sh
 
-
 2. Run the REPL
 
-
 dune utop
-
 
 Example REPL Session:
 
@@ -56,9 +50,7 @@ Example REPL Session:
 > what is x + 3 measured in km?
 8 measured in km
 
-
 3. Run Examples
-
 
 # Hello World
 dune exec ./examples/hello_world.wl
@@ -69,18 +61,13 @@ dune exec ./examples/fibonacci.wl
 # Gratitude Tracker (Blockchain)
 dune exec ./examples/gratitude_blockchain.wl
 
-
 4. Build for Vyper/WASM
-
 
 # Vyper FFI
 cd src/ffi/vyper && vyper contracts/gratitude.vy
 
 # WASM
 cd src/ffi/wasm && wasm-pack build --target web
-
-
-
 
 ```markdown
 ## 🌟 Key Features
@@ -95,8 +82,6 @@ cd src/ffi/wasm && wasm-pack build --target web
 | **Pipelines**         | `data then clean then analyze`           | Intuitive data transformations.          |
 | **Vyper FFI**         | `vyper call "gratitude.add_entry"`      | Immutable, auditable blockchain ops.      |
 | **WASM Target**       | Compile to run in browsers/Node.js.      | Portable and fast.                       |
-
-
 
 ## 📦 Project Structure
 
@@ -131,8 +116,6 @@ wokelang/
 ├── dune-project
 └── README.md           # This file
 
-
-
 ## 🛠 Development
 
 ### Dev Container
@@ -152,12 +135,9 @@ WORKDIR /workspace
 COPY . .
 RUN dune build
 
-
-
 🛠️ Development
 
 Dev Container
-
 
 FROM ocaml/opam:ubuntu-22.04
 
