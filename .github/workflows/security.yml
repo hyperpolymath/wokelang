@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: MPL-2.0
+# SPDX-License-Identifier: PMPL-1.0
 # RSR-compliant security workflow with SHA-pinned actions
 
 name: "Security"
