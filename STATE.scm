@@ -1,34 +1,24 @@
 ;; SPDX-License-Identifier: PMPL-1.0
-;; STATE.scm - Current project state
+;; STATE.scm - Project state for wokelang
 
-(define project-state
-  `((metadata
-      ((version . "1.0.0")
-       (schema-version . "1")
-       (created . "2026-01-10T13:51:53+00:00")
-       (updated . "2026-01-10T13:51:53+00:00")
-       (project . "wokelang")
-       (repo . "wokelang")))
+(state
+  (metadata
+    (version "0.1.0")
+    (schema-version "1.0")
+    (created "2024-06-01")
+    (updated "2025-01-17")
+    (project "wokelang")
+    (repo "hyperpolymath/wokelang"))
 
-    (current-position
-      ((phase . "Active Development")
-       (overall-completion . 50)
-       (working-features . ())))
+  (project-context
+    (name "WokeLang")
+    (tagline "Human-centered programming language for collaboration, empathy, and safety")
+    (tech-stack ("ocaml" "rust" "vyper")))
 
-    (route-to-mvp
-      ((milestones
-        ((v1.0 . ((items . ("Initial setup" "Core functionality"))
-                  (status . "in-progress")))))))
-
-    (blockers-and-issues
-      ((critical . ())
-       (high . ())
-       (medium . ())
-       (low . ())))
-
-    (critical-next-actions
-      ((immediate . ())
-       (this-week . ())
-       (this-month . ())))
-
-    (session-history . ())))
+  (current-position
+    (phase "specification")
+    (overall-completion 15)
+    (working-features
+      ("Language specification"
+       "OCaml parser prototype"
+       "Rust runtime design"))))
