@@ -4,8 +4,7 @@
 # Rust toolchain
 rust 1.84.0
 
-# For ReScript frontend (site/)
-nodejs 22.12.0
+# Deno (NO Node.js/npm per language policy)
 deno 2.1.4
 
 # Optional: Idris2 for ABI work
