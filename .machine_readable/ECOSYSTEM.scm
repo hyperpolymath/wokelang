@@ -1,4 +1,4 @@
-;; SPDX-License-Identifier: AGPL-3.0-or-later
+;; SPDX-License-Identifier: PMPL-1.0-or-later
 ;; ECOSYSTEM.scm - Ecosystem position for wokelang
 ;; Media-Type: application/vnd.ecosystem+scm
 
@@ -22,7 +22,7 @@
     (project "affinescript"
       (relationship "sibling-standard")
       (description "OCaml-based language compiler framework"))
-    (project "palimpsest-licence"
+    (project "palimpsest-license"
       (relationship "philosophical-foundation")
       (description "Ethical licensing framework that WokeLang adopts"))
     (project "python"

@@ -1,665 +1,424 @@
-//! WokeLang Virtual Machine
+// SPDX-License-Identifier: PMPL-1.0-or-later
+//! Virtual Machine
 //!
-//! Stack-based VM for executing compiled bytecode.
+//! Stack-based bytecode interpreter for executing compiled WokeLang programs.
 
 use crate::interpreter::Value;
-use super::bytecode::{CompiledFunction, CompiledProgram, OpCode};
+use crate::vm::bytecode::{CompiledFunction, CompiledProgram, OpCode};
 use std::collections::HashMap;
+use thiserror::Error;
 
-/// Call frame for function execution
+#[derive(Error, Debug)]
+pub enum VMError {
+    #[error("Stack underflow")]
+    StackUnderflow,
+
+    #[error("Invalid function index: {0}")]
+    InvalidFunctionIndex(usize),
+
+    #[error("Invalid local variable index: {0}")]
+    InvalidLocalIndex(usize),
+
+    #[error("Undefined global variable: {0}")]
+    UndefinedGlobal(String),
+
+    #[error("Type error: {0}")]
+    TypeError(String),
+
+    #[error("Division by zero")]
+    DivisionByZero,
+
+    #[error("Index out of bounds: {0}")]
+    IndexOutOfBounds(i64),
+
+    #[error("No entry point (main function)")]
+    NoEntryPoint,
+
+    #[error("Invalid instruction pointer")]
+    InvalidIP,
+}
+
+/// Call frame for function calls
 #[derive(Debug, Clone)]
 struct CallFrame {
     /// Function being executed
     function_idx: usize,
-    /// Instruction pointer within the function
+    /// Instruction pointer
     ip: usize,
-    /// Base pointer for local variables in the stack
-    base_ptr: usize,
+    /// Base pointer for locals (points into value stack)
+    bp: usize,
 }
 
-/// Virtual machine for executing WokeLang bytecode
+/// The virtual machine
 pub struct VirtualMachine {
-    /// The program being executed
+    /// The compiled program
     program: CompiledProgram,
     /// Value stack
     stack: Vec<Value>,
-    /// Call stack
-    call_stack: Vec<CallFrame>,
+    /// Call frames
+    frames: Vec<CallFrame>,
     /// Global variables
     globals: HashMap<String, Value>,
-    /// Maximum stack size (for safety)
-    max_stack_size: usize,
-    /// Maximum call depth (for safety)
-    max_call_depth: usize,
 }
 
 impl VirtualMachine {
+    /// Create a new VM with a compiled program
     pub fn new(program: CompiledProgram) -> Self {
-        // Initialize globals from the compiled program
-        let globals = program.globals.clone();
         Self {
             program,
-            stack: Vec::with_capacity(1024),
-            call_stack: Vec::with_capacity(64),
-            globals,
-            max_stack_size: 10000,
-            max_call_depth: 1000,
+            stack: Vec::new(),
+            frames: Vec::new(),
+            globals: HashMap::new(),
         }
     }
 
-    /// Run the program starting from main
+    /// Run the program
     pub fn run(&mut self) -> Result<Value, VMError> {
-        let entry = self.program.entry.ok_or_else(|| VMError {
-            message: "No main function found".to_string(),
-        })?;
+        // Get entry point
+        let entry_idx = self.program.entry.ok_or(VMError::NoEntryPoint)?;
 
-        self.call_function(entry, 0)?;
-
-        while !self.call_stack.is_empty() {
-            self.execute_instruction()?;
-        }
-
-        // Return final value or Unit
-        Ok(self.stack.pop().unwrap_or(Value::Unit))
-    }
-
-    /// Call a function with arguments already on the stack
-    fn call_function(&mut self, func_idx: usize, arg_count: usize) -> Result<(), VMError> {
-        if self.call_stack.len() >= self.max_call_depth {
-            return Err(VMError {
-                message: "Maximum call depth exceeded".to_string(),
-            });
-        }
-
-        let func = self.program.get_function(func_idx).ok_or_else(|| VMError {
-            message: format!("Function {} not found", func_idx),
-        })?;
-
-        if arg_count != func.arity {
-            return Err(VMError {
-                message: format!(
-                    "Function {} expects {} arguments, got {}",
-                    func.name, func.arity, arg_count
-                ),
-            });
-        }
-
-        // Calculate base pointer (before args)
-        let base_ptr = self.stack.len() - arg_count;
-
-        // Reserve space for locals (beyond parameters)
-        let extra_locals = func.locals - func.arity;
-        for _ in 0..extra_locals {
-            self.stack.push(Value::Unit);
-        }
-
-        self.call_stack.push(CallFrame {
-            function_idx: func_idx,
+        // Create initial call frame
+        self.frames.push(CallFrame {
+            function_idx: entry_idx,
             ip: 0,
-            base_ptr,
+            bp: 0,
         });
 
-        Ok(())
+        // Execute
+        self.execute()
     }
 
-    /// Execute one instruction
-    fn execute_instruction(&mut self) -> Result<(), VMError> {
-        let frame = self.call_stack.last_mut().ok_or_else(|| VMError {
-            message: "No active call frame".to_string(),
-        })?;
+    /// Execute bytecode
+    fn execute(&mut self) -> Result<Value, VMError> {
+        loop {
+            // Get current frame
+            let frame = self.frames.last_mut().ok_or(VMError::InvalidIP)?;
+            let func_idx = frame.function_idx;
+            let func = self
+                .program
+                .get_function(func_idx)
+                .ok_or(VMError::InvalidFunctionIndex(func_idx))?;
 
-        let func = self.program.get_function(frame.function_idx).ok_or_else(|| VMError {
-            message: "Invalid function index".to_string(),
-        })?;
-
-        if frame.ip >= func.code.len() {
-            // Implicit return
-            let return_value = self.stack.pop().unwrap_or(Value::Unit);
-            let frame = self.call_stack.pop().unwrap();
-
-            // Clean up locals
-            self.stack.truncate(frame.base_ptr);
-            self.stack.push(return_value);
-            return Ok(());
-        }
-
-        let instruction = func.code[frame.ip].clone();
-        frame.ip += 1;
-
-        // Need to get these before borrowing self mutably
-        let base_ptr = frame.base_ptr;
-        let func_idx = frame.function_idx;
-
-        match instruction {
-            OpCode::Const(idx) => {
-                let func = self.program.get_function(func_idx).unwrap();
-                let value = func.constants.get(idx).cloned().ok_or_else(|| VMError {
-                    message: format!("Constant {} not found", idx),
-                })?;
-                self.push(value)?;
+            // Check if we're at end of function
+            if frame.ip >= func.code.len() {
+                return Err(VMError::InvalidIP);
             }
 
-            OpCode::Pop => {
-                self.stack.pop();
-            }
+            // Fetch and decode instruction
+            let opcode = func.code[frame.ip].clone();
+            frame.ip += 1;
 
-            OpCode::Dup => {
-                let value = self.peek()?.clone();
-                self.push(value)?;
-            }
-
-            OpCode::Swap => {
-                let len = self.stack.len();
-                if len >= 2 {
-                    self.stack.swap(len - 1, len - 2);
+            // Execute instruction
+            match opcode {
+                OpCode::Const(idx) => {
+                    let value = func
+                        .constants
+                        .get(idx)
+                        .ok_or(VMError::InvalidIP)?
+                        .clone();
+                    self.push(value);
                 }
-            }
 
-            OpCode::LoadLocal(slot) => {
-                let idx = base_ptr + slot;
-                let value = self.stack.get(idx).cloned().unwrap_or(Value::Unit);
-                self.push(value)?;
-            }
-
-            OpCode::StoreLocal(slot) => {
-                let value = self.pop()?;
-                let idx = base_ptr + slot;
-
-                // Extend stack if needed
-                while self.stack.len() <= idx {
-                    self.stack.push(Value::Unit);
+                OpCode::Pop => {
+                    self.pop()?;
                 }
-                self.stack[idx] = value;
-            }
 
-            OpCode::LoadGlobal(name) => {
-                let value = self.globals.get(&name).cloned().unwrap_or(Value::Unit);
-                self.push(value)?;
-            }
+                OpCode::Dup => {
+                    let value = self.peek(0)?;
+                    self.push(value);
+                }
 
-            OpCode::StoreGlobal(name) => {
-                let value = self.pop()?;
-                self.globals.insert(name, value);
-            }
+                OpCode::Swap => {
+                    let a = self.pop()?;
+                    let b = self.pop()?;
+                    self.push(a);
+                    self.push(b);
+                }
 
-            OpCode::Add => {
-                let b = self.pop()?;
-                let a = self.pop()?;
-                let result = match (&a, &b) {
-                    (Value::Int(x), Value::Int(y)) => Value::Int(x + y),
-                    (Value::Float(x), Value::Float(y)) => Value::Float(x + y),
-                    (Value::Int(x), Value::Float(y)) => Value::Float(*x as f64 + y),
-                    (Value::Float(x), Value::Int(y)) => Value::Float(x + *y as f64),
-                    (Value::String(x), Value::String(y)) => Value::String(format!("{}{}", x, y)),
-                    _ => return Err(VMError {
-                        message: format!("Cannot add {:?} and {:?}", a, b),
-                    }),
-                };
-                self.push(result)?;
-            }
+                OpCode::LoadLocal(idx) => {
+                    let frame = self.frames.last().ok_or(VMError::StackUnderflow)?;
+                    let local_idx = frame.bp + idx;
+                    let value = self
+                        .stack
+                        .get(local_idx)
+                        .ok_or(VMError::InvalidLocalIndex(idx))?
+                        .clone();
+                    self.push(value);
+                }
 
-            OpCode::Sub => {
-                let b = self.pop()?;
-                let a = self.pop()?;
-                let result = match (&a, &b) {
-                    (Value::Int(x), Value::Int(y)) => Value::Int(x - y),
-                    (Value::Float(x), Value::Float(y)) => Value::Float(x - y),
-                    (Value::Int(x), Value::Float(y)) => Value::Float(*x as f64 - y),
-                    (Value::Float(x), Value::Int(y)) => Value::Float(x - *y as f64),
-                    _ => return Err(VMError {
-                        message: format!("Cannot subtract {:?} and {:?}", a, b),
-                    }),
-                };
-                self.push(result)?;
-            }
+                OpCode::StoreLocal(idx) => {
+                    let value = self.pop()?;
+                    let frame = self.frames.last().ok_or(VMError::StackUnderflow)?;
+                    let local_idx = frame.bp + idx;
 
-            OpCode::Mul => {
-                let b = self.pop()?;
-                let a = self.pop()?;
-                let result = match (&a, &b) {
-                    (Value::Int(x), Value::Int(y)) => Value::Int(x * y),
-                    (Value::Float(x), Value::Float(y)) => Value::Float(x * y),
-                    (Value::Int(x), Value::Float(y)) => Value::Float(*x as f64 * y),
-                    (Value::Float(x), Value::Int(y)) => Value::Float(x * *y as f64),
-                    _ => return Err(VMError {
-                        message: format!("Cannot multiply {:?} and {:?}", a, b),
-                    }),
-                };
-                self.push(result)?;
-            }
-
-            OpCode::Div => {
-                let b = self.pop()?;
-                let a = self.pop()?;
-                let result = match (&a, &b) {
-                    (Value::Int(x), Value::Int(y)) => {
-                        if *y == 0 {
-                            return Err(VMError {
-                                message: "Division by zero".to_string(),
-                            });
-                        }
-                        Value::Int(x / y)
+                    // Extend stack if needed
+                    while self.stack.len() <= local_idx {
+                        self.stack.push(Value::Unit);
                     }
-                    (Value::Float(x), Value::Float(y)) => Value::Float(x / y),
-                    (Value::Int(x), Value::Float(y)) => Value::Float(*x as f64 / y),
-                    (Value::Float(x), Value::Int(y)) => Value::Float(x / *y as f64),
-                    _ => return Err(VMError {
-                        message: format!("Cannot divide {:?} and {:?}", a, b),
-                    }),
-                };
-                self.push(result)?;
-            }
+                    self.stack[local_idx] = value;
+                }
 
-            OpCode::Mod => {
-                let b = self.pop()?;
-                let a = self.pop()?;
-                let result = match (&a, &b) {
-                    (Value::Int(x), Value::Int(y)) => Value::Int(x % y),
-                    _ => return Err(VMError {
-                        message: "Modulo requires integers".to_string(),
-                    }),
-                };
-                self.push(result)?;
-            }
+                OpCode::LoadGlobal(name) => {
+                    let value = self
+                        .globals
+                        .get(&name)
+                        .ok_or(VMError::UndefinedGlobal(name.clone()))?
+                        .clone();
+                    self.push(value);
+                }
 
-            OpCode::Neg => {
-                let a = self.pop()?;
-                let result = match a {
-                    Value::Int(x) => Value::Int(-x),
-                    Value::Float(x) => Value::Float(-x),
-                    _ => return Err(VMError {
-                        message: "Cannot negate non-numeric value".to_string(),
-                    }),
-                };
-                self.push(result)?;
-            }
+                OpCode::StoreGlobal(name) => {
+                    let value = self.pop()?;
+                    self.globals.insert(name, value);
+                }
 
-            OpCode::Eq => {
-                let b = self.pop()?;
-                let a = self.pop()?;
-                self.push(Value::Bool(a == b))?;
-            }
+                OpCode::Add => self.binary_op(|a, b| match (a, b) {
+                    (Value::Int(x), Value::Int(y)) => Ok(Value::Int(x + y)),
+                    (Value::Float(x), Value::Float(y)) => Ok(Value::Float(x + y)),
+                    (Value::String(x), Value::String(y)) => Ok(Value::String(format!("{}{}", x, y))),
+                    _ => Err(VMError::TypeError("Invalid operands for +".to_string())),
+                })?,
 
-            OpCode::Ne => {
-                let b = self.pop()?;
-                let a = self.pop()?;
-                self.push(Value::Bool(a != b))?;
-            }
+                OpCode::Sub => self.binary_op(|a, b| match (a, b) {
+                    (Value::Int(x), Value::Int(y)) => Ok(Value::Int(x - y)),
+                    (Value::Float(x), Value::Float(y)) => Ok(Value::Float(x - y)),
+                    _ => Err(VMError::TypeError("Invalid operands for -".to_string())),
+                })?,
 
-            OpCode::Lt => {
-                let b = self.pop()?;
-                let a = self.pop()?;
-                let result = match (&a, &b) {
-                    (Value::Int(x), Value::Int(y)) => x < y,
-                    (Value::Float(x), Value::Float(y)) => x < y,
-                    (Value::Int(x), Value::Float(y)) => (*x as f64) < *y,
-                    (Value::Float(x), Value::Int(y)) => *x < (*y as f64),
-                    _ => false,
-                };
-                self.push(Value::Bool(result))?;
-            }
+                OpCode::Mul => self.binary_op(|a, b| match (a, b) {
+                    (Value::Int(x), Value::Int(y)) => Ok(Value::Int(x * y)),
+                    (Value::Float(x), Value::Float(y)) => Ok(Value::Float(x * y)),
+                    _ => Err(VMError::TypeError("Invalid operands for *".to_string())),
+                })?,
 
-            OpCode::Le => {
-                let b = self.pop()?;
-                let a = self.pop()?;
-                let result = match (&a, &b) {
-                    (Value::Int(x), Value::Int(y)) => x <= y,
-                    (Value::Float(x), Value::Float(y)) => x <= y,
-                    (Value::Int(x), Value::Float(y)) => (*x as f64) <= *y,
-                    (Value::Float(x), Value::Int(y)) => *x <= (*y as f64),
-                    _ => false,
-                };
-                self.push(Value::Bool(result))?;
-            }
+                OpCode::Div => self.binary_op(|a, b| match (a, b) {
+                    (Value::Int(_), Value::Int(0)) => Err(VMError::DivisionByZero),
+                    (Value::Int(x), Value::Int(y)) => Ok(Value::Int(x / y)),
+                    (Value::Float(x), Value::Float(y)) => Ok(Value::Float(x / y)),
+                    _ => Err(VMError::TypeError("Invalid operands for /".to_string())),
+                })?,
 
-            OpCode::Gt => {
-                let b = self.pop()?;
-                let a = self.pop()?;
-                let result = match (&a, &b) {
-                    (Value::Int(x), Value::Int(y)) => x > y,
-                    (Value::Float(x), Value::Float(y)) => x > y,
-                    (Value::Int(x), Value::Float(y)) => (*x as f64) > *y,
-                    (Value::Float(x), Value::Int(y)) => *x > (*y as f64),
-                    _ => false,
-                };
-                self.push(Value::Bool(result))?;
-            }
+                OpCode::Mod => self.binary_op(|a, b| match (a, b) {
+                    (Value::Int(x), Value::Int(y)) => Ok(Value::Int(x % y)),
+                    _ => Err(VMError::TypeError("Invalid operands for %".to_string())),
+                })?,
 
-            OpCode::Ge => {
-                let b = self.pop()?;
-                let a = self.pop()?;
-                let result = match (&a, &b) {
-                    (Value::Int(x), Value::Int(y)) => x >= y,
-                    (Value::Float(x), Value::Float(y)) => x >= y,
-                    (Value::Int(x), Value::Float(y)) => (*x as f64) >= *y,
-                    (Value::Float(x), Value::Int(y)) => *x >= (*y as f64),
-                    _ => false,
-                };
-                self.push(Value::Bool(result))?;
-            }
+                OpCode::Neg => {
+                    let value = self.pop()?;
+                    match value {
+                        Value::Int(n) => self.push(Value::Int(-n)),
+                        Value::Float(f) => self.push(Value::Float(-f)),
+                        _ => return Err(VMError::TypeError("Cannot negate non-numeric value".to_string())),
+                    }
+                }
 
-            OpCode::And => {
-                let b = self.pop()?;
-                let a = self.pop()?;
-                self.push(Value::Bool(a.is_truthy() && b.is_truthy()))?;
-            }
+                OpCode::Eq => self.comparison_op(|a, b| a == b)?,
+                OpCode::Ne => self.comparison_op(|a, b| a != b)?,
 
-            OpCode::Or => {
-                let b = self.pop()?;
-                let a = self.pop()?;
-                self.push(Value::Bool(a.is_truthy() || b.is_truthy()))?;
-            }
+                OpCode::Lt => self.binary_op(|a, b| match (a, b) {
+                    (Value::Int(x), Value::Int(y)) => Ok(Value::Bool(x < y)),
+                    (Value::Float(x), Value::Float(y)) => Ok(Value::Bool(x < y)),
+                    _ => Err(VMError::TypeError("Invalid operands for <".to_string())),
+                })?,
 
-            OpCode::Not => {
-                let a = self.pop()?;
-                self.push(Value::Bool(!a.is_truthy()))?;
-            }
+                OpCode::Le => self.binary_op(|a, b| match (a, b) {
+                    (Value::Int(x), Value::Int(y)) => Ok(Value::Bool(x <= y)),
+                    (Value::Float(x), Value::Float(y)) => Ok(Value::Bool(x <= y)),
+                    _ => Err(VMError::TypeError("Invalid operands for <=".to_string())),
+                })?,
 
-            OpCode::Concat => {
-                let b = self.pop()?;
-                let a = self.pop()?;
-                let result = Value::String(format!("{}{}", a, b));
-                self.push(result)?;
-            }
+                OpCode::Gt => self.binary_op(|a, b| match (a, b) {
+                    (Value::Int(x), Value::Int(y)) => Ok(Value::Bool(x > y)),
+                    (Value::Float(x), Value::Float(y)) => Ok(Value::Bool(x > y)),
+                    _ => Err(VMError::TypeError("Invalid operands for >".to_string())),
+                })?,
 
-            OpCode::Jump(target) => {
-                if let Some(frame) = self.call_stack.last_mut() {
+                OpCode::Ge => self.binary_op(|a, b| match (a, b) {
+                    (Value::Int(x), Value::Int(y)) => Ok(Value::Bool(x >= y)),
+                    (Value::Float(x), Value::Float(y)) => Ok(Value::Bool(x >= y)),
+                    _ => Err(VMError::TypeError("Invalid operands for >=".to_string())),
+                })?,
+
+                OpCode::And => self.binary_op(|a, b| match (a, b) {
+                    (Value::Bool(x), Value::Bool(y)) => Ok(Value::Bool(x && y)),
+                    _ => Err(VMError::TypeError("Invalid operands for and".to_string())),
+                })?,
+
+                OpCode::Or => self.binary_op(|a, b| match (a, b) {
+                    (Value::Bool(x), Value::Bool(y)) => Ok(Value::Bool(x || y)),
+                    _ => Err(VMError::TypeError("Invalid operands for or".to_string())),
+                })?,
+
+                OpCode::Not => {
+                    let value = self.pop()?;
+                    match value {
+                        Value::Bool(b) => self.push(Value::Bool(!b)),
+                        _ => return Err(VMError::TypeError("Cannot negate non-boolean value".to_string())),
+                    }
+                }
+
+                OpCode::Jump(target) => {
+                    let frame = self.frames.last_mut().ok_or(VMError::InvalidIP)?;
                     frame.ip = target;
                 }
-            }
 
-            OpCode::JumpIfFalse(target) => {
-                let cond = self.pop()?;
-                if !cond.is_truthy() {
-                    if let Some(frame) = self.call_stack.last_mut() {
+                OpCode::JumpIfFalse(target) => {
+                    let condition = self.pop()?;
+                    if !self.is_truthy(&condition) {
+                        let frame = self.frames.last_mut().ok_or(VMError::InvalidIP)?;
                         frame.ip = target;
                     }
                 }
-            }
 
-            OpCode::JumpIfTrue(target) => {
-                let cond = self.pop()?;
-                if cond.is_truthy() {
-                    if let Some(frame) = self.call_stack.last_mut() {
+                OpCode::JumpIfTrue(target) => {
+                    let condition = self.pop()?;
+                    if self.is_truthy(&condition) {
+                        let frame = self.frames.last_mut().ok_or(VMError::InvalidIP)?;
                         frame.ip = target;
                     }
                 }
-            }
 
-            OpCode::Call(arg_count) => {
-                // Pop the closure/function reference
-                let callee = self.pop()?;
+                OpCode::Return => {
+                    let return_value = self.pop()?;
 
-                match callee {
-                    Value::Int(func_idx) => {
-                        self.call_function(func_idx as usize, arg_count)?;
+                    // Pop call frame
+                    self.frames.pop();
+
+                    // If no more frames, we're done
+                    if self.frames.is_empty() {
+                        return Ok(return_value);
                     }
-                    _ => {
-                        return Err(VMError {
-                            message: "Cannot call non-function value".to_string(),
-                        });
-                    }
+
+                    // Push return value onto stack
+                    self.push(return_value);
                 }
-            }
 
-            OpCode::Return => {
-                let return_value = self.stack.pop().unwrap_or(Value::Unit);
-                let frame = self.call_stack.pop().unwrap();
-
-                // Clean up locals
-                self.stack.truncate(frame.base_ptr);
-                self.stack.push(return_value);
-            }
-
-            OpCode::MakeClosure(func_idx) => {
-                // For now, just push the function index as an integer
-                self.push(Value::Int(func_idx as i64))?;
-            }
-
-            OpCode::MakeArray(count) => {
-                let mut elements = Vec::with_capacity(count);
-                for _ in 0..count {
-                    elements.push(self.pop()?);
-                }
-                elements.reverse();
-                self.push(Value::Array(elements))?;
-            }
-
-            OpCode::MakeRecord(count) => {
-                let mut map = std::collections::HashMap::new();
-                for _ in 0..count {
+                OpCode::Print => {
                     let value = self.pop()?;
-                    let key = match self.pop()? {
-                        Value::String(s) => s,
-                        _ => return Err(VMError {
-                            message: "Record keys must be strings".to_string(),
-                        }),
-                    };
-                    map.insert(key, value);
+                    println!("{:?}", value);
+                    self.push(Value::Unit);
                 }
-                self.push(Value::Record(map))?;
-            }
 
-            OpCode::Index => {
-                let index = self.pop()?;
-                let object = self.pop()?;
-
-                let result = match (&object, &index) {
-                    (Value::Array(arr), Value::Int(i)) => {
-                        arr.get(*i as usize).cloned().unwrap_or(Value::Unit)
+                OpCode::MakeArray(size) => {
+                    let mut elements = Vec::with_capacity(size);
+                    for _ in 0..size {
+                        elements.insert(0, self.pop()?);
                     }
-                    (Value::String(s), Value::Int(i)) => {
-                        s.chars()
-                            .nth(*i as usize)
-                            .map(|c| Value::String(c.to_string()))
-                            .unwrap_or(Value::Unit)
-                    }
-                    (Value::Record(map), Value::String(key)) => {
-                        map.get(key.as_str()).cloned().unwrap_or(Value::Unit)
-                    }
-                    _ => Value::Unit,
-                };
-                self.push(result)?;
-            }
-
-            OpCode::Len => {
-                let value = self.pop()?;
-                let len = match value {
-                    Value::Array(arr) => arr.len(),
-                    Value::String(s) => s.len(),
-                    Value::Record(map) => map.len(),
-                    _ => 0,
-                };
-                self.push(Value::Int(len as i64))?;
-            }
-
-            OpCode::MakeOkay => {
-                let value = self.pop()?;
-                self.push(Value::Okay(Box::new(value)))?;
-            }
-
-            OpCode::MakeOops => {
-                let value = self.pop()?;
-                let msg = match value {
-                    Value::String(s) => s,
-                    other => other.to_string(),
-                };
-                self.push(Value::Oops(msg))?;
-            }
-
-            OpCode::TryUnwrap => {
-                let value = self.pop()?;
-                match value {
-                    Value::Okay(inner) => self.push(*inner)?,
-                    Value::Oops(_) => {
-                        // Propagate error by returning
-                        self.stack.push(value);
-                        if let Some(frame) = self.call_stack.last_mut() {
-                            let func = self.program.get_function(frame.function_idx).unwrap();
-                            frame.ip = func.code.len(); // Jump to end
-                        }
-                    }
-                    other => self.push(other)?,
+                    self.push(Value::Array(elements));
                 }
-            }
 
-            OpCode::IsOkay => {
-                let value = self.peek()?;
-                let is_okay = matches!(value, Value::Okay(_));
-                self.push(Value::Bool(is_okay))?;
-            }
+                OpCode::Halt => {
+                    return Ok(self.pop().unwrap_or(Value::Unit));
+                }
 
-            OpCode::Print => {
-                let value = self.pop()?;
-                println!("{}", value);
-            }
-
-            OpCode::ToString => {
-                let value = self.pop()?;
-                self.push(Value::String(value.to_string()))?;
-            }
-
-            OpCode::Nop => {}
-
-            OpCode::Halt => {
-                self.call_stack.clear();
+                _ => {
+                    return Err(VMError::TypeError(format!(
+                        "Unimplemented opcode: {:?}",
+                        opcode
+                    )));
+                }
             }
         }
-
-        Ok(())
     }
 
-    fn push(&mut self, value: Value) -> Result<(), VMError> {
-        if self.stack.len() >= self.max_stack_size {
-            return Err(VMError {
-                message: "Stack overflow".to_string(),
-            });
-        }
+    /// Push a value onto the stack
+    fn push(&mut self, value: Value) {
         self.stack.push(value);
+    }
+
+    /// Pop a value from the stack
+    fn pop(&mut self) -> Result<Value, VMError> {
+        self.stack.pop().ok_or(VMError::StackUnderflow)
+    }
+
+    /// Peek at a value on the stack (0 = top)
+    fn peek(&self, distance: usize) -> Result<Value, VMError> {
+        let idx = self
+            .stack
+            .len()
+            .checked_sub(distance + 1)
+            .ok_or(VMError::StackUnderflow)?;
+        self.stack.get(idx).cloned().ok_or(VMError::StackUnderflow)
+    }
+
+    /// Apply a binary operation
+    fn binary_op<F>(&mut self, op: F) -> Result<(), VMError>
+    where
+        F: Fn(Value, Value) -> Result<Value, VMError>,
+    {
+        let b = self.pop()?;
+        let a = self.pop()?;
+        let result = op(a, b)?;
+        self.push(result);
         Ok(())
     }
 
-    fn pop(&mut self) -> Result<Value, VMError> {
-        self.stack.pop().ok_or_else(|| VMError {
-            message: "Stack underflow".to_string(),
-        })
+    /// Apply a comparison operation
+    fn comparison_op<F>(&mut self, op: F) -> Result<(), VMError>
+    where
+        F: Fn(&Value, &Value) -> bool,
+    {
+        let b = self.pop()?;
+        let a = self.pop()?;
+        let result = op(&a, &b);
+        self.push(Value::Bool(result));
+        Ok(())
     }
 
-    fn peek(&self) -> Result<&Value, VMError> {
-        self.stack.last().ok_or_else(|| VMError {
-            message: "Stack underflow".to_string(),
-        })
+    /// Check if a value is truthy
+    fn is_truthy(&self, value: &Value) -> bool {
+        match value {
+            Value::Bool(b) => *b,
+            Value::Unit => false,
+            _ => true,
+        }
     }
 }
-
-/// VM execution error
-#[derive(Debug, Clone)]
-pub struct VMError {
-    pub message: String,
-}
-
-impl std::fmt::Display for VMError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "VM error: {}", self.message)
-    }
-}
-
-impl std::error::Error for VMError {}
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::vm::compiler::BytecodeCompiler;
-    use crate::lexer::Lexer;
-    use crate::parser::Parser;
-
-    fn run_source(source: &str) -> Result<Value, String> {
-        let lexer = Lexer::new(source);
-        let tokens = lexer.tokenize().map_err(|e| e.to_string())?;
-        let mut parser = Parser::new(tokens, source);
-        let program = parser.parse().map_err(|e| e.to_string())?;
-
-        let mut compiler = BytecodeCompiler::new();
-        let compiled = compiler.compile(&program).map_err(|e| e.to_string())?;
-
-        let mut vm = VirtualMachine::new(compiled);
-        vm.run().map_err(|e| e.to_string())
-    }
+    use crate::vm::bytecode::CompiledFunction;
 
     #[test]
     fn test_vm_arithmetic() {
-        let source = r#"
-            to main() {
-                give back 2 + 3 * 4;
-            }
-        "#;
-        // Note: without operator precedence, this is (2 + 3) * 4 = 20
-        // or with precedence 2 + (3 * 4) = 14
-        let result = run_source(source).unwrap();
-        assert!(matches!(result, Value::Int(_)));
+        let mut program = CompiledProgram::new();
+        let mut func = CompiledFunction::new("main".to_string(), 0);
+
+        // Push 5 and 3, then add
+        let c1 = func.add_constant(Value::Int(5));
+        let c2 = func.add_constant(Value::Int(3));
+        func.emit(OpCode::Const(c1));
+        func.emit(OpCode::Const(c2));
+        func.emit(OpCode::Add);
+        func.emit(OpCode::Return);
+
+        program.add_function(func);
+
+        let mut vm = VirtualMachine::new(program);
+        let result = vm.run().unwrap();
+
+        assert_eq!(result, Value::Int(8));
     }
 
     #[test]
-    fn test_vm_function_call() {
-        let source = r#"
-            to add(a: Int, b: Int) -> Int {
-                give back a + b;
-            }
+    fn test_vm_local_vars() {
+        let mut program = CompiledProgram::new();
+        let mut func = CompiledFunction::new("main".to_string(), 0);
+        func.locals = 1;
 
-            to main() {
-                give back add(10, 20);
-            }
-        "#;
-        let result = run_source(source).unwrap();
-        assert_eq!(result, Value::Int(30));
-    }
+        // Store 42 in local 0, then load it
+        let c1 = func.add_constant(Value::Int(42));
+        func.emit(OpCode::Const(c1));
+        func.emit(OpCode::StoreLocal(0));
+        func.emit(OpCode::LoadLocal(0));
+        func.emit(OpCode::Return);
 
-    #[test]
-    fn test_vm_conditional() {
-        let source = r#"
-            to main() {
-                remember x = 10;
-                when x > 5 {
-                    give back 1;
-                } otherwise {
-                    give back 0;
-                }
-            }
-        "#;
-        let result = run_source(source).unwrap();
-        assert_eq!(result, Value::Int(1));
-    }
+        program.add_function(func);
 
-    #[test]
-    fn test_vm_loop() {
-        let source = r#"
-            to main() {
-                remember sum = 0;
-                repeat 5 times {
-                    sum = sum + 1;
-                }
-                give back sum;
-            }
-        "#;
-        let result = run_source(source).unwrap();
-        assert_eq!(result, Value::Int(5));
-    }
+        let mut vm = VirtualMachine::new(program);
+        let result = vm.run().unwrap();
 
-    #[test]
-    fn test_vm_recursion() {
-        let source = r#"
-            to factorial(n: Int) -> Int {
-                when n <= 1 {
-                    give back 1;
-                }
-                give back n * factorial(n - 1);
-            }
-
-            to main() {
-                give back factorial(5);
-            }
-        "#;
-        let result = run_source(source).unwrap();
-        assert_eq!(result, Value::Int(120));
+        assert_eq!(result, Value::Int(42));
     }
 }

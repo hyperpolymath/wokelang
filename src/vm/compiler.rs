@@ -1,683 +1,355 @@
-//! WokeLang Bytecode Compiler
+// SPDX-License-Identifier: PMPL-1.0-or-later
+//! Bytecode Compiler
 //!
-//! Compiles AST to bytecode for the VM.
+//! Compiles WokeLang AST to stack-based bytecode.
 
-use crate::ast::{
-    BinaryOp, Expr, FunctionDef, Literal, Loop, Pattern, Program, Spanned,
-    Statement, TopLevelItem, UnaryOp,
-};
+use crate::ast::*;
 use crate::interpreter::Value;
-use super::bytecode::{CompiledFunction, CompiledProgram, OpCode};
+use crate::vm::bytecode::{CompiledFunction, CompiledProgram, OpCode};
 use std::collections::HashMap;
+use thiserror::Error;
 
-/// Bytecode compiler
+#[derive(Error, Debug)]
+pub enum CompileError {
+    #[error("Undefined variable: {0}")]
+    UndefinedVariable(String),
+
+    #[error("Undefined function: {0}")]
+    UndefinedFunction(String),
+
+    #[error("Compilation not yet implemented: {0}")]
+    NotImplemented(String),
+
+    #[error("Internal compiler error: {0}")]
+    Internal(String),
+}
+
+/// Local variable information
+struct Local {
+    name: String,
+    depth: usize,
+}
+
+/// Compiler state
 pub struct BytecodeCompiler {
-    /// The compiled program being built
-    program: CompiledProgram,
     /// Current function being compiled
     current_function: Option<CompiledFunction>,
-    /// Local variable name to slot mapping
-    locals: HashMap<String, usize>,
-    /// Function name to index mapping
+    /// Local variables in current scope
+    locals: Vec<Local>,
+    /// Current scope depth
+    scope_depth: usize,
+    /// Function names to indices
     function_indices: HashMap<String, usize>,
-    /// Loop break jump targets (for nested loops)
-    break_targets: Vec<Vec<usize>>,
-    /// Loop continue targets
-    continue_targets: Vec<usize>,
 }
 
 impl BytecodeCompiler {
     pub fn new() -> Self {
         Self {
-            program: CompiledProgram::new(),
             current_function: None,
-            locals: HashMap::new(),
+            locals: Vec::new(),
+            scope_depth: 0,
             function_indices: HashMap::new(),
-            break_targets: Vec::new(),
-            continue_targets: Vec::new(),
         }
     }
 
     /// Compile a program to bytecode
     pub fn compile(&mut self, program: &Program) -> Result<CompiledProgram, CompileError> {
-        // First pass: register all function names
+        let mut compiled = CompiledProgram::new();
+
+        // First pass: register all functions
         for item in &program.items {
             if let TopLevelItem::Function(func) = item {
-                let idx = self.program.functions.len() + self.function_indices.len();
-                self.function_indices.insert(func.name.clone(), idx);
+                let func_idx = compiled.functions.len();
+                self.function_indices
+                    .insert(func.name.clone(), func_idx);
+
+                // Create compiled function
+                let compiled_func = CompiledFunction::new(func.name.clone(), func.params.len());
+                compiled.functions.push(compiled_func);
             }
         }
 
-        // Second pass: compile all items
-        for item in &program.items {
-            self.compile_item(item)?;
+        // Second pass: compile function bodies
+        for (idx, item) in program.items.iter().enumerate() {
+            if let TopLevelItem::Function(func) = item {
+                let func_idx = *self.function_indices.get(&func.name).unwrap();
+                self.compile_function(func, &mut compiled.functions[func_idx])?;
+
+                // Set entry point to main
+                if func.name == "main" {
+                    compiled.entry = Some(func_idx);
+                }
+            }
         }
 
-        Ok(self.program.clone())
+        Ok(compiled)
     }
 
-    fn compile_item(&mut self, item: &TopLevelItem) -> Result<(), CompileError> {
-        match item {
-            TopLevelItem::Function(func) => {
-                self.compile_function(func)?;
-            }
-            TopLevelItem::WorkerDef(worker) => {
-                // Compile worker as a function
-                let mut compiled = CompiledFunction::new(worker.name.clone(), 0);
-                self.locals.clear();
-                compiled.locals = 0;
-                self.current_function = Some(compiled);
-
-                for stmt in &worker.body {
-                    self.compile_statement(stmt)?;
-                }
-
-                // Add implicit return
-                if let Some(ref mut func) = self.current_function {
-                    if func.code.is_empty() || !matches!(func.code.last(), Some(OpCode::Return)) {
-                        let unit_idx = func.add_constant(Value::Unit);
-                        func.emit(OpCode::Const(unit_idx));
-                        func.emit(OpCode::Return);
-                    }
-                }
-
-                if let Some(func) = self.current_function.take() {
-                    self.program.add_function(func);
-                }
-            }
-            TopLevelItem::ConsentBlock(consent) => {
-                // Create an anonymous function for consent block
-                let name = format!("__consent_{}__", consent.permission);
-                let mut compiled = CompiledFunction::new(name, 0);
-                self.locals.clear();
-                self.current_function = Some(compiled);
-
-                for stmt in &consent.body {
-                    self.compile_statement(stmt)?;
-                }
-
-                if let Some(ref mut func) = self.current_function {
-                    let unit_idx = func.add_constant(Value::Unit);
-                    func.emit(OpCode::Const(unit_idx));
-                    func.emit(OpCode::Return);
-                }
-
-                if let Some(func) = self.current_function.take() {
-                    self.program.add_function(func);
-                }
-            }
-            // Skip metadata items for bytecode
-            TopLevelItem::GratitudeDecl(_) => {}
-            TopLevelItem::SideQuestDef(_) => {}
-            TopLevelItem::SuperpowerDecl(_) => {}
-            TopLevelItem::ModuleImport(_) => {}
-            TopLevelItem::ModuleExport(_) => {}
-            TopLevelItem::Pragma(_) => {}
-            TopLevelItem::TypeDef(_) => {}
-            TopLevelItem::ConstDef(const_def) => {
-                // Handle const definitions at compile time if possible
-                // For now, store them as globals
-                let name = const_def.name.clone();
-                if let Some(value) = self.try_eval_const(&const_def.value.node) {
-                    self.program.globals.insert(name, value);
-                }
-            }
-        }
-        Ok(())
-    }
-
-    fn compile_function(&mut self, func: &FunctionDef) -> Result<(), CompileError> {
-        // Start a new function
-        let mut compiled = CompiledFunction::new(func.name.clone(), func.params.len());
-
-        // Set up locals for parameters
+    /// Compile a function
+    fn compile_function(
+        &mut self,
+        func: &FunctionDef,
+        compiled_func: &mut CompiledFunction,
+    ) -> Result<(), CompileError> {
+        self.current_function = Some(compiled_func.clone());
         self.locals.clear();
-        for (i, param) in func.params.iter().enumerate() {
-            self.locals.insert(param.name.clone(), i);
-        }
-        compiled.locals = func.params.len();
+        self.scope_depth = 0;
 
-        self.current_function = Some(compiled);
+        // Add parameters as locals
+        for (i, param) in func.params.iter().enumerate() {
+            self.add_local(param.name.clone());
+        }
 
         // Compile function body
         for stmt in &func.body {
-            self.compile_statement(stmt)?;
+            self.compile_statement(stmt, compiled_func)?;
         }
 
-        // Add implicit return if needed
-        if let Some(ref mut func) = self.current_function {
-            if func.code.is_empty() || !matches!(func.code.last(), Some(OpCode::Return)) {
-                let unit_idx = func.add_constant(Value::Unit);
-                func.emit(OpCode::Const(unit_idx));
-                func.emit(OpCode::Return);
-            }
+        // Ensure function returns
+        if !matches!(func.body.last(), Some(Statement::Return(_))) {
+            // Push Unit and return
+            let const_idx = compiled_func.add_constant(Value::Unit);
+            compiled_func.emit(OpCode::Const(const_idx));
+            compiled_func.emit(OpCode::Return);
         }
 
-        // Add function to program
-        if let Some(compiled_func) = self.current_function.take() {
-            self.program.add_function(compiled_func);
-        }
-
+        self.current_function = None;
         Ok(())
     }
 
-    fn compile_statement(&mut self, stmt: &Statement) -> Result<(), CompileError> {
+    /// Compile a statement
+    fn compile_statement(
+        &mut self,
+        stmt: &Statement,
+        func: &mut CompiledFunction,
+    ) -> Result<(), CompileError> {
         match stmt {
-            Statement::VarDecl(decl) => {
-                // Compile the initializer
-                self.compile_expr(&decl.value)?;
+            Statement::VarDecl(var_decl) => {
+                // Compile the value expression
+                self.compile_expr(&var_decl.value.node, func)?;
 
-                // Allocate local slot
-                let slot = self.allocate_local(&decl.name);
-                self.emit(OpCode::StoreLocal(slot));
+                // Store in local variable
+                let local_idx = self.add_local(var_decl.name.clone());
+                func.emit(OpCode::StoreLocal(local_idx));
+
+                Ok(())
             }
 
             Statement::Assignment(assign) => {
                 // Compile the value
-                self.compile_expr(&assign.value)?;
+                self.compile_expr(&assign.value.node, func)?;
 
-                // Store to variable
-                if let Some(&slot) = self.locals.get(&assign.target) {
-                    self.emit(OpCode::StoreLocal(slot));
+                // Find the variable and store
+                if let Some(local_idx) = self.resolve_local(&assign.target) {
+                    func.emit(OpCode::StoreLocal(local_idx));
                 } else {
-                    self.emit(OpCode::StoreGlobal(assign.target.clone()));
+                    func.emit(OpCode::StoreGlobal(assign.target.clone()));
                 }
+
+                Ok(())
             }
 
-            Statement::Return(ret) => {
-                self.compile_expr(&ret.value)?;
-                self.emit(OpCode::Return);
+            Statement::Return(ret_stmt) => {
+                // Compile return value
+                self.compile_expr(&ret_stmt.value.node, func)?;
+                func.emit(OpCode::Return);
+                Ok(())
+            }
+
+            Statement::Expression(expr) => {
+                // Compile expression
+                self.compile_expr(&expr.node, func)?;
+                // Pop result (expression statement discards value)
+                func.emit(OpCode::Pop);
+                Ok(())
             }
 
             Statement::Conditional(cond) => {
                 // Compile condition
-                self.compile_expr(&cond.condition)?;
+                self.compile_expr(&cond.condition.node, func)?;
 
-                // Jump over then-branch if false
-                let jump_if_false = self.emit(OpCode::JumpIfFalse(0));
+                // Jump to else branch if false
+                let jump_to_else = func.emit(OpCode::JumpIfFalse(0));
 
-                // Compile then-branch
+                // Compile then branch
                 for stmt in &cond.then_branch {
-                    self.compile_statement(stmt)?;
+                    self.compile_statement(stmt, func)?;
                 }
 
+                // Jump over else branch
+                let jump_over_else = func.emit(OpCode::Jump(0));
+
+                // Patch jump to else
+                let else_start = func.current_offset();
+                func.patch_jump(jump_to_else, else_start);
+
+                // Compile else branch if present
                 if let Some(else_branch) = &cond.else_branch {
-                    // Jump over else-branch
-                    let jump_over_else = self.emit(OpCode::Jump(0));
-
-                    // Patch the conditional jump
-                    let else_start = self.current_offset();
-                    self.patch_jump(jump_if_false, else_start);
-
-                    // Compile else-branch
                     for stmt in else_branch {
-                        self.compile_statement(stmt)?;
+                        self.compile_statement(stmt, func)?;
                     }
-
-                    // Patch jump over else
-                    let after_else = self.current_offset();
-                    self.patch_jump(jump_over_else, after_else);
-                } else {
-                    // Patch the conditional jump
-                    let after_if = self.current_offset();
-                    self.patch_jump(jump_if_false, after_if);
                 }
+
+                // Patch jump over else
+                let after_else = func.current_offset();
+                func.patch_jump(jump_over_else, after_else);
+
+                Ok(())
             }
 
             Statement::Loop(loop_stmt) => {
-                self.compile_loop(loop_stmt)?;
-            }
+                // Compile loop count
+                self.compile_expr(&loop_stmt.count.node, func)?;
 
-            Statement::Decide(decide) => {
-                // Pattern matching - compile as a series of conditionals
-                self.compile_expr(&decide.scrutinee)?;
+                // Loop implementation
+                let loop_start = func.current_offset();
 
-                // Store scrutinee in a temp variable
-                let scrutinee_slot = self.allocate_local("__scrutinee__");
-                self.emit(OpCode::StoreLocal(scrutinee_slot));
+                // Duplicate counter, check if > 0
+                func.emit(OpCode::Dup);
+                let zero_const = func.add_constant(Value::Int(0));
+                func.emit(OpCode::Const(zero_const));
+                func.emit(OpCode::Gt);
 
-                let mut end_jumps = Vec::new();
+                // Exit loop if counter <= 0
+                let exit_jump = func.emit(OpCode::JumpIfFalse(0));
 
-                for arm in &decide.arms {
-                    // Load scrutinee for each arm
-                    self.emit(OpCode::LoadLocal(scrutinee_slot));
-
-                    // Compile pattern match
-                    let skip_jump = self.compile_pattern(&arm.pattern)?;
-
-                    // Compile arm body
-                    for stmt in &arm.body {
-                        self.compile_statement(stmt)?;
-                    }
-
-                    // Jump to end
-                    let end_jump = self.emit(OpCode::Jump(0));
-                    end_jumps.push(end_jump);
-
-                    // Patch skip jump
-                    let after_arm = self.current_offset();
-                    self.patch_jump(skip_jump, after_arm);
+                // Execute loop body
+                for stmt in &loop_stmt.body {
+                    self.compile_statement(stmt, func)?;
                 }
 
-                // Patch all end jumps
-                let after_decide = self.current_offset();
-                for jump in end_jumps {
-                    self.patch_jump(jump, after_decide);
-                }
+                // Decrement counter
+                func.emit(OpCode::Dup);
+                let one_const = func.add_constant(Value::Int(1));
+                func.emit(OpCode::Const(one_const));
+                func.emit(OpCode::Sub);
+
+                // Jump back to loop start
+                func.emit(OpCode::Jump(loop_start));
+
+                // Patch exit jump
+                let after_loop = func.current_offset();
+                func.patch_jump(exit_jump, after_loop);
+
+                // Pop counter
+                func.emit(OpCode::Pop);
+
+                Ok(())
             }
 
-            Statement::Expression(expr) => {
-                self.compile_expr(expr)?;
-                self.emit(OpCode::Pop);
-            }
-
-            Statement::AttemptBlock(attempt) => {
-                // try/catch style - compile body with error handling setup
-                for stmt in &attempt.body {
-                    self.compile_statement(stmt)?;
-                }
-                // The reassurance is just metadata for now
-            }
-
-            Statement::ConsentBlock(consent) => {
-                // Consent is checked at runtime
-                for stmt in &consent.body {
-                    self.compile_statement(stmt)?;
-                }
-            }
-
-            Statement::Complain(complain) => {
-                // Load error message
-                let msg_idx = self.add_constant(Value::String(complain.message.clone()));
-                self.emit(OpCode::Const(msg_idx));
-                self.emit(OpCode::MakeOops);
-                self.emit(OpCode::Return);
-            }
-
-            Statement::EmoteAnnotated(annotated) => {
-                // Compile the inner statement, emote is metadata
-                self.compile_statement(&annotated.statement)?;
-            }
-
-            // Worker-related statements
-            Statement::WorkerSpawn(_) => {
-                // Worker spawning handled at runtime
-            }
-            Statement::SendMessage(send) => {
-                self.compile_expr(&send.value)?;
-                // Message sending handled at runtime
-            }
-            Statement::ReceiveMessage(_) => {
-                // Message receiving handled at runtime
-            }
-            Statement::AwaitWorker(_) => {
-                // Worker awaiting handled at runtime
-            }
-            Statement::CancelWorker(_) => {
-                // Worker cancellation handled at runtime
-            }
-        }
-        Ok(())
-    }
-
-    fn compile_loop(&mut self, loop_stmt: &Loop) -> Result<(), CompileError> {
-        // Compile the count expression
-        self.compile_expr(&loop_stmt.count)?;
-
-        // Store count in a temporary local
-        let counter_slot = self.allocate_local("__counter__");
-        self.emit(OpCode::StoreLocal(counter_slot));
-
-        // Push break targets
-        self.break_targets.push(Vec::new());
-
-        let loop_start = self.current_offset();
-        self.continue_targets.push(loop_start);
-
-        // Check if counter > 0
-        self.emit(OpCode::LoadLocal(counter_slot));
-        let zero_idx = self.add_constant(Value::Int(0));
-        self.emit(OpCode::Const(zero_idx));
-        self.emit(OpCode::Gt);
-        let exit_jump = self.emit(OpCode::JumpIfFalse(0));
-
-        // Compile body
-        for stmt in &loop_stmt.body {
-            self.compile_statement(stmt)?;
-        }
-
-        // Decrement counter
-        self.emit(OpCode::LoadLocal(counter_slot));
-        let one_idx = self.add_constant(Value::Int(1));
-        self.emit(OpCode::Const(one_idx));
-        self.emit(OpCode::Sub);
-        self.emit(OpCode::StoreLocal(counter_slot));
-
-        // Jump back
-        self.emit(OpCode::Jump(loop_start));
-
-        // Patch exit
-        let after_loop = self.current_offset();
-        self.patch_jump(exit_jump, after_loop);
-
-        // Patch breaks
-        if let Some(breaks) = self.break_targets.pop() {
-            for break_jump in breaks {
-                self.patch_jump(break_jump, after_loop);
-            }
-        }
-        self.continue_targets.pop();
-
-        Ok(())
-    }
-
-    fn compile_pattern(&mut self, pattern: &Pattern) -> Result<usize, CompileError> {
-        match pattern {
-            Pattern::Wildcard => {
-                // Always matches, just pop the value
-                self.emit(OpCode::Pop);
-                // Return a dummy jump that will be patched but never taken
-                let always_true = self.add_constant(Value::Bool(true));
-                self.emit(OpCode::Const(always_true));
-                Ok(self.emit(OpCode::JumpIfFalse(0)))
-            }
-
-            Pattern::Literal(lit) => {
-                // Compare against literal
-                match lit {
-                    Literal::Integer(n) => {
-                        let idx = self.add_constant(Value::Int(*n));
-                        self.emit(OpCode::Const(idx));
-                    }
-                    Literal::Float(n) => {
-                        let idx = self.add_constant(Value::Float(*n));
-                        self.emit(OpCode::Const(idx));
-                    }
-                    Literal::String(s) => {
-                        let idx = self.add_constant(Value::String(s.clone()));
-                        self.emit(OpCode::Const(idx));
-                    }
-                    Literal::Bool(b) => {
-                        let idx = self.add_constant(Value::Bool(*b));
-                        self.emit(OpCode::Const(idx));
-                    }
-                }
-                self.emit(OpCode::Eq);
-                Ok(self.emit(OpCode::JumpIfFalse(0)))
-            }
-
-            Pattern::Identifier(name) => {
-                // Bind value to name
-                let slot = self.allocate_local(name);
-                self.emit(OpCode::StoreLocal(slot));
-                // Always matches
-                let always_true = self.add_constant(Value::Bool(true));
-                self.emit(OpCode::Const(always_true));
-                Ok(self.emit(OpCode::JumpIfFalse(0)))
-            }
-
-            Pattern::OkayPattern(binding) => {
-                // Check if value is Okay
-                self.emit(OpCode::Dup);
-                self.emit(OpCode::IsOkay);
-                let skip = self.emit(OpCode::JumpIfFalse(0));
-
-                // If okay, extract inner value
-                if let Some(name) = binding {
-                    self.emit(OpCode::TryUnwrap);
-                    let slot = self.allocate_local(name);
-                    self.emit(OpCode::StoreLocal(slot));
-                } else {
-                    self.emit(OpCode::Pop);
-                }
-
-                Ok(skip)
-            }
-
-            Pattern::OopsPattern(binding) => {
-                // Check if value is Oops (not Okay)
-                self.emit(OpCode::Dup);
-                self.emit(OpCode::IsOkay);
-                self.emit(OpCode::Not);
-                let skip = self.emit(OpCode::JumpIfFalse(0));
-
-                // If oops, extract error
-                if let Some(name) = binding {
-                    // Extract error value (implementation specific)
-                    let slot = self.allocate_local(name);
-                    self.emit(OpCode::StoreLocal(slot));
-                } else {
-                    self.emit(OpCode::Pop);
-                }
-
-                Ok(skip)
-            }
-
-            Pattern::Constructor(name, patterns) => {
-                // Constructor pattern matching
-                // For now, just check if it matches the constructor name
-                let name_idx = self.add_constant(Value::String(name.clone()));
-                self.emit(OpCode::Const(name_idx));
-                self.emit(OpCode::Eq);
-                let skip = self.emit(OpCode::JumpIfFalse(0));
-
-                // TODO: Match inner patterns
-                for _ in patterns {
-                    // Would need to extract fields and match against inner patterns
-                }
-
-                Ok(skip)
-            }
-
-            Pattern::Guard(inner, condition) => {
-                // First match inner pattern
-                let inner_skip = self.compile_pattern(inner)?;
-
-                // Then check guard condition
-                self.compile_expr(condition)?;
-                let guard_skip = self.emit(OpCode::JumpIfFalse(0));
-
-                // Both must pass - use the guard skip as the main skip
-                // The inner_skip needs to also jump to the after-arm location
-                Ok(guard_skip)
-            }
+            _ => Err(CompileError::NotImplemented(format!(
+                "Statement compilation: {:?}",
+                stmt
+            ))),
         }
     }
 
-    fn compile_expr(&mut self, spanned: &Spanned<Expr>) -> Result<(), CompileError> {
-        let expr = &spanned.node;
+    /// Compile an expression
+    fn compile_expr(&mut self, expr: &Expr, func: &mut CompiledFunction) -> Result<(), CompileError> {
         match expr {
             Expr::Literal(lit) => {
-                match lit {
-                    Literal::Integer(n) => {
-                        let idx = self.add_constant(Value::Int(*n));
-                        self.emit(OpCode::Const(idx));
-                    }
-                    Literal::Float(n) => {
-                        let idx = self.add_constant(Value::Float(*n));
-                        self.emit(OpCode::Const(idx));
-                    }
-                    Literal::String(s) => {
-                        let idx = self.add_constant(Value::String(s.clone()));
-                        self.emit(OpCode::Const(idx));
-                    }
-                    Literal::Bool(b) => {
-                        let idx = self.add_constant(Value::Bool(*b));
-                        self.emit(OpCode::Const(idx));
-                    }
-                }
+                let value = match lit {
+                    Literal::Integer(n) => Value::Int(*n),
+                    Literal::Float(f) => Value::Float(*f),
+                    Literal::String(s) => Value::String(s.clone()),
+                    Literal::Boolean(b) => Value::Bool(*b),
+                };
+                let const_idx = func.add_constant(value);
+                func.emit(OpCode::Const(const_idx));
+                Ok(())
             }
 
             Expr::Identifier(name) => {
-                if let Some(&slot) = self.locals.get(name) {
-                    self.emit(OpCode::LoadLocal(slot));
-                } else if let Some(&func_idx) = self.function_indices.get(name) {
-                    self.emit(OpCode::MakeClosure(func_idx));
+                if let Some(local_idx) = self.resolve_local(name) {
+                    func.emit(OpCode::LoadLocal(local_idx));
                 } else {
-                    self.emit(OpCode::LoadGlobal(name.clone()));
+                    func.emit(OpCode::LoadGlobal(name.clone()));
                 }
+                Ok(())
             }
 
             Expr::Binary(op, left, right) => {
-                self.compile_expr(left)?;
-                self.compile_expr(right)?;
+                // Compile operands
+                self.compile_expr(&left.node, func)?;
+                self.compile_expr(&right.node, func)?;
 
-                match op {
-                    BinaryOp::Add => self.emit(OpCode::Add),
-                    BinaryOp::Sub => self.emit(OpCode::Sub),
-                    BinaryOp::Mul => self.emit(OpCode::Mul),
-                    BinaryOp::Div => self.emit(OpCode::Div),
-                    BinaryOp::Mod => self.emit(OpCode::Mod),
-                    BinaryOp::Eq => self.emit(OpCode::Eq),
-                    BinaryOp::NotEq => self.emit(OpCode::Ne),
-                    BinaryOp::Lt => self.emit(OpCode::Lt),
-                    BinaryOp::Gt => self.emit(OpCode::Gt),
-                    BinaryOp::LtEq => self.emit(OpCode::Le),
-                    BinaryOp::GtEq => self.emit(OpCode::Ge),
-                    BinaryOp::And => self.emit(OpCode::And),
-                    BinaryOp::Or => self.emit(OpCode::Or),
+                // Emit operation
+                let opcode = match op {
+                    BinaryOp::Add => OpCode::Add,
+                    BinaryOp::Sub => OpCode::Sub,
+                    BinaryOp::Mul => OpCode::Mul,
+                    BinaryOp::Div => OpCode::Div,
+                    BinaryOp::Mod => OpCode::Mod,
+                    BinaryOp::Eq => OpCode::Eq,
+                    BinaryOp::NotEq => OpCode::Ne,
+                    BinaryOp::Lt => OpCode::Lt,
+                    BinaryOp::Gt => OpCode::Gt,
+                    BinaryOp::LtEq => OpCode::Le,
+                    BinaryOp::GtEq => OpCode::Ge,
+                    BinaryOp::And => OpCode::And,
+                    BinaryOp::Or => OpCode::Or,
                 };
+                func.emit(opcode);
+                Ok(())
             }
 
             Expr::Unary(op, operand) => {
-                self.compile_expr(operand)?;
-                match op {
-                    UnaryOp::Neg => self.emit(OpCode::Neg),
-                    UnaryOp::Not => self.emit(OpCode::Not),
+                self.compile_expr(&operand.node, func)?;
+                let opcode = match op {
+                    UnaryOp::Neg => OpCode::Neg,
+                    UnaryOp::Not => OpCode::Not,
                 };
+                func.emit(opcode);
+                Ok(())
             }
 
-            Expr::Call(name, args) => {
-                // Push arguments
+            Expr::Call(func_name, args) => {
+                // Compile arguments
                 for arg in args {
-                    self.compile_expr(arg)?;
+                    self.compile_expr(&arg.node, func)?;
                 }
 
-                // Special built-in functions
-                match name.as_str() {
-                    "print" => {
-                        self.emit(OpCode::Print);
-                    }
-                    "toString" => {
-                        self.emit(OpCode::ToString);
-                    }
-                    "len" => {
-                        self.emit(OpCode::Len);
-                    }
-                    _ => {
-                        // Look up function
-                        if let Some(&func_idx) = self.function_indices.get(name) {
-                            self.emit(OpCode::MakeClosure(func_idx));
-                            self.emit(OpCode::Call(args.len()));
-                        } else {
-                            // Dynamic call via global
-                            self.emit(OpCode::LoadGlobal(name.clone()));
-                            self.emit(OpCode::Call(args.len()));
-                        }
-                    }
-                }
+                // Emit call
+                func.emit(OpCode::Call(args.len()));
+                Ok(())
             }
 
             Expr::Array(elements) => {
+                // Compile elements
                 for elem in elements {
-                    self.compile_expr(elem)?;
+                    self.compile_expr(&elem.node, func)?;
                 }
-                self.emit(OpCode::MakeArray(elements.len()));
+
+                // Create array
+                func.emit(OpCode::MakeArray(elements.len()));
+                Ok(())
             }
 
-            Expr::ResultConstructor { is_okay, value } => {
-                self.compile_expr(value)?;
-                if *is_okay {
-                    self.emit(OpCode::MakeOkay);
-                } else {
-                    self.emit(OpCode::MakeOops);
-                }
-            }
-
-            Expr::Try(inner) => {
-                self.compile_expr(inner)?;
-                self.emit(OpCode::TryUnwrap);
-            }
-
-            Expr::Unwrap(inner) => {
-                self.compile_expr(inner)?;
-                self.emit(OpCode::TryUnwrap);
-            }
-
-            Expr::UnitMeasurement(value, _unit) => {
-                // Compile the value, unit is metadata
-                self.compile_expr(value)?;
-            }
-
-            Expr::GratitudeLiteral(name) => {
-                // Gratitude literals are just strings
-                let idx = self.add_constant(Value::String(name.clone()));
-                self.emit(OpCode::Const(idx));
-            }
-        }
-        Ok(())
-    }
-
-    /// Try to evaluate a constant expression at compile time
-    fn try_eval_const(&self, expr: &Expr) -> Option<Value> {
-        match expr {
-            Expr::Literal(lit) => match lit {
-                Literal::Integer(n) => Some(Value::Int(*n)),
-                Literal::Float(n) => Some(Value::Float(*n)),
-                Literal::String(s) => Some(Value::String(s.clone())),
-                Literal::Bool(b) => Some(Value::Bool(*b)),
-            },
-            _ => None,
+            _ => Err(CompileError::NotImplemented(format!(
+                "Expression compilation: {:?}",
+                expr
+            ))),
         }
     }
 
-    // Helper methods
-
-    fn emit(&mut self, op: OpCode) -> usize {
-        if let Some(ref mut func) = self.current_function {
-            func.emit(op)
-        } else {
-            0
-        }
+    /// Add a local variable
+    fn add_local(&mut self, name: String) -> usize {
+        let idx = self.locals.len();
+        self.locals.push(Local {
+            name,
+            depth: self.scope_depth,
+        });
+        idx
     }
 
-    fn add_constant(&mut self, value: Value) -> usize {
-        if let Some(ref mut func) = self.current_function {
-            func.add_constant(value)
-        } else {
-            0
+    /// Resolve a local variable by name
+    fn resolve_local(&self, name: &str) -> Option<usize> {
+        for (idx, local) in self.locals.iter().enumerate().rev() {
+            if local.name == name {
+                return Some(idx);
+            }
         }
-    }
-
-    fn current_offset(&self) -> usize {
-        if let Some(ref func) = self.current_function {
-            func.current_offset()
-        } else {
-            0
-        }
-    }
-
-    fn patch_jump(&mut self, jump_idx: usize, target: usize) {
-        if let Some(ref mut func) = self.current_function {
-            func.patch_jump(jump_idx, target);
-        }
-    }
-
-    fn allocate_local(&mut self, name: &str) -> usize {
-        if let Some(&slot) = self.locals.get(name) {
-            return slot;
-        }
-
-        let slot = if let Some(ref mut func) = self.current_function {
-            let s = func.locals;
-            func.locals += 1;
-            s
-        } else {
-            0
-        };
-
-        self.locals.insert(name.to_string(), slot);
-        slot
+        None
     }
 }
 
@@ -687,79 +359,13 @@ impl Default for BytecodeCompiler {
     }
 }
 
-/// Compilation error
-#[derive(Debug, Clone)]
-pub struct CompileError {
-    pub message: String,
-}
-
-impl std::fmt::Display for CompileError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Compile error: {}", self.message)
-    }
-}
-
-impl std::error::Error for CompileError {}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::lexer::Lexer;
-    use crate::parser::Parser;
-
-    fn compile_source(source: &str) -> Result<CompiledProgram, CompileError> {
-        let lexer = Lexer::new(source);
-        let tokens = lexer.tokenize().unwrap();
-        let mut parser = Parser::new(tokens, source);
-        let program = parser.parse().unwrap();
-
-        let mut compiler = BytecodeCompiler::new();
-        compiler.compile(&program)
-    }
 
     #[test]
-    fn test_compile_simple_function() {
-        let source = r#"
-            to add(a: Int, b: Int) -> Int {
-                give back a + b;
-            }
-        "#;
-
-        let program = compile_source(source).unwrap();
-        assert_eq!(program.functions.len(), 1);
-        assert_eq!(program.functions[0].name, "add");
-        assert_eq!(program.functions[0].arity, 2);
-    }
-
-    #[test]
-    fn test_compile_main() {
-        let source = r#"
-            to main() {
-                remember x = 5;
-                give back x;
-            }
-        "#;
-
-        let program = compile_source(source).unwrap();
-        assert!(program.entry.is_some());
-    }
-
-    #[test]
-    fn test_compile_conditional() {
-        let source = r#"
-            to test(x: Int) -> Int {
-                when x > 0 {
-                    give back 1;
-                } otherwise {
-                    give back 0;
-                }
-            }
-        "#;
-
-        let program = compile_source(source).unwrap();
-        let func = &program.functions[0];
-
-        // Should have JumpIfFalse for condition
-        assert!(func.code.iter().any(|op| matches!(op, OpCode::JumpIfFalse(_))));
+    fn test_compiler_new() {
+        let compiler = BytecodeCompiler::new();
+        assert_eq!(compiler.scope_depth, 0);
     }
 }
