@@ -1,0 +1,23 @@
+#verbose on;
+
+worker BackgroundTask {
+    print("Worker: Starting background task...");
+    remember count = 0;
+    print("Worker: Processing...");
+    print("Worker: Task complete!");
+}
+
+to main() {
+    print("Main: Starting program");
+
+    spawn worker BackgroundTask;
+
+    print("Main: Worker spawned");
+    print("Main: Continuing main execution");
+
+    remember x = 42;
+    print("Main: x value calculated");
+
+    print("Main: Program ending");
+    give back 0;
+}

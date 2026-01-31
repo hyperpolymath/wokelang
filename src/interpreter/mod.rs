@@ -89,11 +89,35 @@ enum ControlFlow {
     Return(Value),
 }
 
+/// Pragma settings for interpreter behavior
+#[derive(Debug, Clone)]
+pub struct PragmaSettings {
+    /// Enable/disable consent system checking (#care on/off)
+    pub care: bool,
+    /// Enable/disable strict mode (#strict on/off)
+    pub strict: bool,
+    /// Enable/disable verbose output (#verbose on/off)
+    pub verbose: bool,
+}
+
+impl Default for PragmaSettings {
+    fn default() -> Self {
+        Self {
+            care: true,      // Consent checking on by default
+            strict: false,   // Lenient mode by default
+            verbose: false,  // Quiet by default
+        }
+    }
+}
+
 /// The interpreter
 pub struct Interpreter {
     environment: Rc<RefCell<Environment>>,
     functions: HashMap<String, FunctionDef>,
     control_flow: ControlFlow,
+    capabilities: crate::security::CapabilityRegistry,
+    pragmas: PragmaSettings,
+    worker_defs: HashMap<String, Vec<Statement>>,
 }
 
 impl Interpreter {
@@ -102,15 +126,51 @@ impl Interpreter {
             environment: Rc::new(RefCell::new(Environment::new())),
             functions: HashMap::new(),
             control_flow: ControlFlow::None,
+            capabilities: crate::security::CapabilityRegistry::new(),
+            pragmas: PragmaSettings::default(),
+            worker_defs: HashMap::new(),
         }
     }
 
     /// Run a program
     pub fn run(&mut self, program: &Program) -> Result<Value, RuntimeError> {
-        // Collect all functions
+        // Process pragmas and collect functions
         for item in &program.items {
-            if let TopLevelItem::Function(func) = item {
-                self.functions.insert(func.name.clone(), func.clone());
+            match item {
+                TopLevelItem::Pragma(pragma) => {
+                    // Update pragma settings
+                    match pragma.directive {
+                        crate::ast::PragmaDirective::Care => {
+                            self.pragmas.care = pragma.enabled;
+                            if self.pragmas.verbose {
+                                println!("[pragma] consent checking: {}", if pragma.enabled { "ON" } else { "OFF" });
+                            }
+                        }
+                        crate::ast::PragmaDirective::Strict => {
+                            self.pragmas.strict = pragma.enabled;
+                            if self.pragmas.verbose {
+                                println!("[pragma] strict mode: {}", if pragma.enabled { "ON" } else { "OFF" });
+                            }
+                        }
+                        crate::ast::PragmaDirective::Verbose => {
+                            self.pragmas.verbose = pragma.enabled;
+                            println!("[pragma] verbose output: {}", if pragma.enabled { "ON" } else { "OFF" });
+                        }
+                    }
+                }
+                TopLevelItem::Function(func) => {
+                    self.functions.insert(func.name.clone(), func.clone());
+                }
+                TopLevelItem::WorkerDef(worker) => {
+                    // Store worker definition for later spawning
+                    self.worker_defs.insert(worker.name.clone(), worker.body.clone());
+                    if self.pragmas.verbose {
+                        println!("[worker] Registered worker: {}", worker.name);
+                    }
+                }
+                _ => {
+                    // Other top-level items will be handled as needed
+                }
             }
         }
 
@@ -271,24 +331,95 @@ impl Interpreter {
             }
 
             Statement::ConsentBlock(consent) => {
-                // For now, execute unconditionally
-                // TODO: Add actual consent checking with capabilities
-                let mut result = Value::Unit;
-                for stmt in &consent.body {
-                    result = self.execute_statement(stmt)?;
-                    if !matches!(self.control_flow, ControlFlow::None) {
-                        return Ok(result);
+                // Parse permission string into capability
+                let capability = self.parse_capability(&consent.permission);
+
+                // Check if capability is granted (or request it if #care is enabled)
+                let has_permission = if self.pragmas.care {
+                    // Care mode: check capability
+                    match self.capabilities.request("main", &capability) {
+                        Ok(()) => true,
+                        Err(e) => {
+                            if self.pragmas.verbose {
+                                println!("[consent] Permission denied: {}", e);
+                            }
+                            false
+                        }
                     }
+                } else {
+                    // Care mode off: auto-grant
+                    if self.pragmas.verbose {
+                        println!("[consent] Care mode off, auto-granting: {}", capability);
+                    }
+                    self.capabilities.grant("main", capability.clone(), "auto");
+                    true
+                };
+
+                if has_permission {
+                    let mut result = Value::Unit;
+                    for stmt in &consent.body {
+                        result = self.execute_statement(stmt)?;
+                        if !matches!(self.control_flow, ControlFlow::None) {
+                            return Ok(result);
+                        }
+                    }
+                    Ok(result)
+                } else {
+                    // Permission denied - skip block
+                    if self.pragmas.verbose {
+                        println!("[consent] Skipping block due to denied permission");
+                    }
+                    Ok(Value::Unit)
                 }
-                Ok(result)
             }
 
             Statement::Expression(expr) => {
                 self.eval_expr(expr)
             }
 
-            Statement::WorkerSpawn(_worker) => {
-                // Stub: Worker support not yet implemented
+            Statement::WorkerSpawn(worker_spawn) => {
+                let worker_name = &worker_spawn.worker_name;
+
+                // Get worker definition
+                let worker_body = self.worker_defs.get(worker_name)
+                    .ok_or_else(|| RuntimeError {
+                        message: format!("Undefined worker: {}", worker_name),
+                    })?
+                    .clone();
+
+                if self.pragmas.verbose {
+                    println!("[worker] Spawning worker: {}", worker_name);
+                }
+
+                // Spawn worker in background thread (simplified - no message passing for now)
+                let worker_name_clone = worker_name.clone();
+                let verbose = self.pragmas.verbose;
+
+                std::thread::spawn(move || {
+                    // Create new interpreter for this worker
+                    let mut worker_interp = Interpreter::new();
+                    worker_interp.pragmas.verbose = verbose;
+
+                    if verbose {
+                        println!("[worker {}] Started", worker_name_clone);
+                    }
+
+                    // Execute worker body statements
+                    for stmt in &worker_body {
+                        match worker_interp.execute_statement(stmt) {
+                            Ok(_) => {},
+                            Err(e) => {
+                                eprintln!("[worker {}] Error: {}", worker_name_clone, e.message);
+                                return;
+                            }
+                        }
+                    }
+
+                    if verbose {
+                        println!("[worker {}] Finished", worker_name_clone);
+                    }
+                });
+
                 Ok(Value::Unit)
             }
 
@@ -351,6 +482,58 @@ impl Interpreter {
                 let arg_vals: Result<Vec<_>, _> = args.iter().map(|arg| self.eval_expr(arg)).collect();
                 let arg_vals = arg_vals?;
 
+                // Check for built-in functions first
+                match func_name.as_str() {
+                    "print" => {
+                        if arg_vals.len() != 1 {
+                            return Err(RuntimeError {
+                                message: format!("print expects 1 argument, got {}", arg_vals.len()),
+                            });
+                        }
+                        println!("{}", self.value_to_string(&arg_vals[0]));
+                        return Ok(Value::Unit);
+                    }
+                    "printInline" => {
+                        if arg_vals.len() != 1 {
+                            return Err(RuntimeError {
+                                message: format!("printInline expects 1 argument, got {}", arg_vals.len()),
+                            });
+                        }
+                        print!("{}", self.value_to_string(&arg_vals[0]));
+                        use std::io::Write;
+                        std::io::stdout().flush().ok();
+                        return Ok(Value::Unit);
+                    }
+                    "toString" => {
+                        if arg_vals.len() != 1 {
+                            return Err(RuntimeError {
+                                message: format!("toString expects 1 argument, got {}", arg_vals.len()),
+                            });
+                        }
+                        return Ok(Value::String(self.value_to_string(&arg_vals[0])));
+                    }
+                    "Okay" => {
+                        if arg_vals.len() != 1 {
+                            return Err(RuntimeError {
+                                message: format!("Okay expects 1 argument, got {}", arg_vals.len()),
+                            });
+                        }
+                        return Ok(Value::Okay(Box::new(arg_vals[0].clone())));
+                    }
+                    "Oops" => {
+                        if arg_vals.len() != 1 {
+                            return Err(RuntimeError {
+                                message: format!("Oops expects 1 argument, got {}", arg_vals.len()),
+                            });
+                        }
+                        // Oops takes a String error message
+                        let msg = self.value_to_string(&arg_vals[0]);
+                        return Ok(Value::Oops(msg));
+                    }
+                    _ => {}
+                }
+
+                // Check user-defined functions
                 if let Some(func) = self.functions.get(func_name).cloned() {
                     self.execute_function(&func, arg_vals)
                 } else {
@@ -639,6 +822,55 @@ impl Interpreter {
                     _ => Ok(false),
                 }
             }
+        }
+    }
+
+    fn parse_capability(&self, permission: &str) -> crate::security::Capability {
+        use crate::security::Capability;
+        use std::path::PathBuf;
+
+        let parts: Vec<&str> = permission.split(':').collect();
+        let action_part = parts[0];
+        let target = parts.get(1).map(|s| s.to_string());
+
+        let action_parts: Vec<&str> = action_part.split('.').collect();
+
+        match action_parts.as_slice() {
+            ["file", "read"] => Capability::FileRead(target.map(PathBuf::from)),
+            ["file", "write"] => Capability::FileWrite(target.map(PathBuf::from)),
+            ["network", "connect"] | ["network", "http"] => Capability::Network(target),
+            ["exec" | "execute", _] => Capability::Execute(target),
+            ["env" | "environment", _] => Capability::Environment(target),
+            ["process"] => Capability::Process,
+            ["system"] | ["system", "info"] => Capability::SystemInfo,
+            ["crypto"] => Capability::Crypto,
+            ["clipboard"] => Capability::Clipboard,
+            ["notify"] => Capability::Notify,
+            _ => Capability::Custom(permission.to_string()),
+        }
+    }
+
+    fn value_to_string(&self, value: &Value) -> String {
+        match value {
+            Value::Int(n) => n.to_string(),
+            Value::Float(f) => f.to_string(),
+            Value::String(s) => s.clone(),
+            Value::Bool(b) => b.to_string(),
+            Value::Unit => "()".to_string(),
+            Value::Array(arr) => {
+                let items: Vec<String> = arr.iter().map(|v| self.value_to_string(v)).collect();
+                format!("[{}]", items.join(", "))
+            }
+            Value::Record(map) => {
+                let items: Vec<String> = map.iter()
+                    .map(|(k, v)| format!("{}: {}", k, self.value_to_string(v)))
+                    .collect();
+                format!("{{{}}}", items.join(", "))
+            }
+            Value::Function(_) => "<function>".to_string(),
+            Value::Okay(inner) => format!("Okay({})", self.value_to_string(inner)),
+            Value::Oops(msg) => format!("Oops({})", msg),
+            Value::Channel(_) => "<channel>".to_string(),
         }
     }
 }

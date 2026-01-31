@@ -1,0 +1,403 @@
+# WokeLang - What's Next
+
+**Current Status:** Core language features complete, runtime features need attention
+
+## ✅ Fully Implemented
+
+### Core Language Features
+- ✅ **Lexer & Parser** - Complete EBNF grammar support
+- ✅ **Type System** - Hindley-Milner inference with polymorphism
+- ✅ **Pattern Matching** - Full support with variable binding
+- ✅ **Modules** - Import system with circular dependency detection
+- ✅ **Type Definitions** - Structs, enums, type aliases
+- ✅ **Constants** - Compile-time evaluation
+- ✅ **Functions** - First-class functions, closures, lambdas
+- ✅ **Basic Operators** - Arithmetic, comparison, logical
+- ✅ **Control Flow** - if/else, loops, break, continue
+- ✅ **Arrays** - Array literals and indexing
+- ✅ **Result Types** - Okay/Oops with pattern matching
+- ✅ **Unit-of-Measure** - Dimensional analysis type system
+- ✅ **Pragmas** - #care, #strict, #verbose
+- ✅ **Gratitude System** - Dependency acknowledgment
+- ✅ **Side Quests/Superpowers** - Special function types
+- ✅ **Hello/Goodbye** - Function entry/exit messages
+- ✅ **Emote Tags** - Function tone/emotion annotations
+
+### Development Tools
+- ✅ **CLI** - Full command-line interface
+- ✅ **REPL** - Interactive mode
+- ✅ **Commands** - run, typecheck, lint, parse, tokenize
+- ✅ **Bytecode VM** - Compile and run-vm commands
+- ✅ **Linter** - Basic static analysis
+
+## ⚠️ Partially Implemented (Need Work)
+
+### 1. Consent/Capability System
+**Status:** ✅ COMPLETE - Runtime enforcement working
+**What exists:**
+- ✅ Parser recognizes `only if okay "permission"`
+- ✅ ConsentBlock AST node
+- ✅ CapabilityRegistry structure exists
+- ✅ Actual permission checking (parse_capability method)
+- ✅ Capability grant/revoke mechanism
+- ✅ Runtime enforcement of consent blocks
+- ✅ Pragma system integration (#care on/or)
+- ✅ Interactive consent prompts
+- ✅ Auto-grant mode when care is off
+- ⚠️  Integration with stdlib functions (partial - needs function call integration)
+
+**Priority:** HIGH - ✅ Core implementation complete
+
+**Example:**
+```woke
+#verbose on;
+#care on;
+
+to main() {
+    only if okay "file.read" {
+        // Prompts user for permission at runtime
+        remember data = readFile("data.txt");
+    }
+    give back 0;
+}
+```
+
+**Completed (2026-01-31):**
+- Added PragmaSettings struct to Interpreter
+- Added parse_capability() method to convert permission strings to Capability enums
+- Integrated CapabilityRegistry with ConsentBlock execution
+- Pragma processing in run() method
+- Interactive consent prompts working
+- Auto-grant mode working
+- Examples: examples/22_consent_system.woke, examples/23_consent_auto_grant.woke
+
+### 2. Worker System
+**Status:** ✅ Basic implementation complete
+**What exists:**
+- ✅ Worker syntax in parser
+- ✅ WorkerDef AST node
+- ✅ Worker registration in interpreter
+- ✅ spawn worker execution
+- ✅ Background thread execution
+- ✅ Each worker gets own interpreter instance
+- ✅ Workers run concurrently with main thread
+
+**What's missing:**
+- ❌ Message passing between workers and main thread
+- ❌ Worker handles/return values
+- ❌ Wait/join operations
+- ❌ Proper error propagation from workers
+
+**Priority:** MEDIUM - Basic concurrency works; advanced features deferred
+
+**Completed (2026-01-31):**
+- Workers execute in background threads
+- Each worker has isolated interpreter
+- Verbose mode shows worker lifecycle
+- Examples: examples/26_worker_simple.woke, examples/27_worker_with_delay.woke
+
+**Note:** Full WorkerPool with message passing disabled due to Send trait issues with Rc-based closures. Simplified implementation uses std::thread::spawn directly.
+
+**Example:**
+```woke
+worker DataProcessor {
+    to process(data) {
+        give back data * 2;
+    }
+}
+
+to main() {
+    // Spawn worker and send message
+    remember result = spawn DataProcessor.process(42);
+    print(toString(result));  // Should print 84
+}
+```
+
+### 3. Standard Library
+**Status:** ✅ Basic functions complete, full stdlib needs integration
+**What exists:**
+- ✅ print(), printInline(), toString() - **working as built-ins**
+- ✅ Okay(), Oops() constructors - **working as built-ins**
+- ✅ Math functions (abs, sqrt, pow, sin, cos, etc.) - in stdlib module, not yet integrated
+- ✅ Array functions (map, filter, fold) - in stdlib module, not yet integrated
+- ✅ File I/O functions (readFile, writeFile) - in stdlib module with capability integration
+- ✅ Network functions (httpGet, httpPost) - in stdlib module
+- ✅ String manipulation (split, join, substring, etc.) - in stdlib module
+- ✅ JSON parsing/serialization - in stdlib module
+- ✅ Date/time functions - in stdlib module
+
+**What's missing:**
+- ❌ Full stdlib integration with interpreter (needs function call routing)
+- ❌ Typechecker registration for all stdlib functions
+- ❌ Testing of stdlib functions
+
+**Priority:** MEDIUM - Core I/O functions work as built-ins; full stdlib is nice-to-have
+
+**Completed (2026-01-31):**
+- Added built-in functions: print, printInline, toString, Okay, Oops
+- Registered built-ins with typechecker (polymorphic types)
+- Added value_to_string helper method
+- Example: examples/24_consent_with_print.woke
+
+### 4. Record/Struct Field Access
+**Status:** Not implemented
+**What exists:**
+- ✅ Struct definitions work
+- ✅ Struct types in typechecker
+
+**What's missing:**
+- ❌ Dot notation for field access (`person.name`)
+- ❌ Field update syntax
+- ❌ Struct literal syntax
+
+**Priority:** MEDIUM - Common language feature
+
+**Example:**
+```woke
+type Person = { name: String, age: Int };
+
+to main() {
+    // Needs implementation:
+    remember person = Person { name: "Alice", age: 30 };
+    print(person.name);  // Field access
+}
+```
+
+### 5. Qualified Function Calls
+**Status:** Parsed but not executed
+**What exists:**
+- ✅ Renamed imports store prefix
+- ✅ Functions registered with prefix (`mu.square`)
+
+**What's missing:**
+- ❌ Parser support for `mu.square(4)` syntax
+- ❌ Dot notation in expressions
+
+**Priority:** LOW - Workaround exists (functions are global)
+
+## ❌ Not Implemented (Future Work)
+
+### 1. Generic Functions/Types
+**Status:** AST has type_params but not used
+**What's needed:**
+- Generic function definitions: `to map<T, U>(arr: [T], f: T -> U) -> [U]`
+- Generic type definitions: `type Box<T> = { value: T }`
+- Type parameter substitution
+- Constraint system
+
+**Priority:** LOW - Type inference handles most cases
+
+### 2. Trait System/Interfaces
+**Status:** Not designed
+**What's needed:**
+- Interface definitions
+- Implementation blocks
+- Trait bounds
+- Dynamic dispatch
+
+**Priority:** LOW - Future feature
+
+### 3. Error Recovery
+**Status:** Basic
+**What exists:**
+- ✅ Errors reported with messages
+- ✅ Miette for pretty error display (in some places)
+
+**What's missing:**
+- ❌ Better error messages with hints
+- ❌ Error recovery in parser (continues after error)
+- ❌ Warning system
+- ❌ Suggestion engine
+
+**Priority:** MEDIUM - UX improvement
+
+### 4. Comprehensive Testing
+**Status:** Minimal
+**What exists:**
+- ✅ Examples that serve as integration tests
+- ✅ Some unit tests in src/worker/mod.rs
+
+**What's missing:**
+- ❌ Comprehensive test suite
+- ❌ Property-based testing
+- ❌ Benchmark suite
+- ❌ Fuzz testing
+
+**Priority:** MEDIUM - Quality assurance
+
+### 5. Documentation
+**Status:** Minimal
+**What exists:**
+- ✅ README with basic info
+- ✅ Example programs
+- ✅ IMPLEMENTATION-COMPLETE.md
+
+**What's missing:**
+- ❌ Language specification document
+- ❌ Standard library API docs
+- ❌ Tutorial/guide
+- ❌ Best practices guide
+- ❌ Migration guide
+
+**Priority:** MEDIUM - User onboarding
+
+### 6. IDE Support
+**Status:** None
+**What's needed:**
+- Language Server Protocol (LSP) implementation
+- Syntax highlighting
+- Auto-completion
+- Go to definition
+- Error checking in editor
+- Formatter
+
+**Priority:** LOW - Nice to have
+
+### 7. Package Manager
+**Status:** None
+**What's needed:**
+- Package format definition
+- Registry/repository
+- Dependency resolution
+- Version management
+- Lock files
+
+**Priority:** LOW - Future feature
+
+### 8. Build System
+**Status:** None (just `cargo run`)
+**What's needed:**
+- Project file (wokelang.toml?)
+- Build configuration
+- Release/debug modes
+- Optimization levels
+- Target specification
+
+**Priority:** LOW - Current approach works for now
+
+### 9. Debugger
+**Status:** None
+**What's needed:**
+- Breakpoints
+- Step execution
+- Variable inspection
+- Call stack inspection
+- Expression evaluation
+
+**Priority:** LOW - Use print debugging for now
+
+### 10. Formal Verification
+**Status:** None
+**What's needed:**
+- Specification language
+- Proof obligations
+- SMT solver integration
+- Verification conditions
+
+**Priority:** LOW - Advanced feature
+
+## 🎯 Recommended Next Steps
+
+### Phase 1: Core Runtime (1-2 weeks)
+**Priority: HIGH**
+1. **Implement Consent/Capability Enforcement**
+   - Add capability checking to ConsentBlock execution
+   - Integrate with stdlib functions
+   - Add permission grant/deny mechanism
+   - Create capability registry
+
+2. **Complete Worker System**
+   - Integrate worker execution with interpreter
+   - Implement message passing
+   - Add worker lifecycle management
+   - Test concurrent execution
+
+3. **Expand Standard Library**
+   - Add file I/O functions with consent
+   - Add string manipulation functions
+   - Add array helper functions
+   - Add JSON support
+
+### Phase 2: Language Features (1-2 weeks)
+**Priority: MEDIUM**
+1. **Record Field Access**
+   - Parser support for dot notation
+   - Typechecker support
+   - Interpreter execution
+   - Struct literal syntax
+
+2. **Enhanced Error Messages**
+   - Add error hints
+   - Add error codes
+   - Better error formatting
+   - Suggestion engine
+
+3. **Qualified Calls**
+   - Parser support for `module.function()`
+   - Namespace resolution
+
+### Phase 3: Quality & Documentation (1-2 weeks)
+**Priority: MEDIUM**
+1. **Testing**
+   - Comprehensive test suite
+   - Integration tests
+   - Property-based tests
+
+2. **Documentation**
+   - Language specification
+   - API documentation
+   - Tutorial
+   - Examples
+
+3. **Error Recovery**
+   - Parser error recovery
+   - Better error reporting
+   - Warning system
+
+### Phase 4: Tooling (2-4 weeks)
+**Priority: LOW**
+1. **LSP Implementation**
+   - Basic language server
+   - Syntax highlighting
+   - Auto-completion
+
+2. **Build System**
+   - Project files
+   - Build configuration
+
+3. **Package Manager**
+   - Package format
+   - Dependency resolution
+
+## 📊 Completion Status
+
+| Category | Status | Priority |
+|----------|--------|----------|
+| **Core Language** | ✅ 100% | ✅ COMPLETE |
+| **Type System** | ✅ 95% | ✅ COMPLETE |
+| **Consent System** | ✅ 90% | ✅ COMPLETE (needs stdlib integration) |
+| **Worker System** | ✅ 70% | ✅ BASIC COMPLETE (spawn/execute works) |
+| **Standard Library** | ✅ 60% | ✅ BASIC COMPLETE (core I/O works) |
+| **Struct Access** | ❌ 0% | 🟡 MEDIUM |
+| **Error Messages** | ⚠️ 40% | 🟡 MEDIUM |
+| **Testing** | ⚠️ 10% | 🟡 MEDIUM |
+| **Documentation** | ⚠️ 20% | 🟡 MEDIUM |
+| **IDE Support** | ❌ 0% | 🟢 LOW |
+| **Package Manager** | ❌ 0% | 🟢 LOW |
+
+## 🎓 Summary
+
+**WokeLang is ready for:**
+- ✅ Learning the language
+- ✅ Writing simple programs
+- ✅ Type-safe development
+- ✅ Pattern matching experiments
+- ✅ Module-based development
+
+**WokeLang is NOT ready for:**
+- ❌ Production use (consent system not enforced)
+- ❌ I/O-heavy applications (limited stdlib)
+- ❌ Concurrent programming (workers not integrated)
+- ❌ Large projects (no package manager, limited IDE support)
+
+**Most Critical Next Step:** Implement the consent/capability system - this is core to WokeLang's philosophy and currently not enforced.

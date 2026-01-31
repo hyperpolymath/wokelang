@@ -406,9 +406,46 @@ pub struct TypeChecker {
 
 impl TypeChecker {
     pub fn new() -> Self {
-        Self {
-            env: TypeEnv::new(),
-        }
+        let mut env = TypeEnv::new();
+
+        // Register built-in functions
+        // print: a -> Unit
+        env.define("print".to_string(), TypeInfo::Function(
+            vec![TypeInfo::Var(0)],  // Takes any type
+            Box::new(TypeInfo::Unit)
+        ));
+
+        // printInline: a -> Unit
+        env.define("printInline".to_string(), TypeInfo::Function(
+            vec![TypeInfo::Var(0)],
+            Box::new(TypeInfo::Unit)
+        ));
+
+        // toString: a -> String
+        env.define("toString".to_string(), TypeInfo::Function(
+            vec![TypeInfo::Var(0)],
+            Box::new(TypeInfo::String)
+        ));
+
+        // Okay: a -> Result a b
+        env.define("Okay".to_string(), TypeInfo::Function(
+            vec![TypeInfo::Var(0)],
+            Box::new(TypeInfo::Result(
+                Box::new(TypeInfo::Var(0)),
+                Box::new(TypeInfo::Var(1))
+            ))
+        ));
+
+        // Oops: b -> Result a b
+        env.define("Oops".to_string(), TypeInfo::Function(
+            vec![TypeInfo::Var(1)],
+            Box::new(TypeInfo::Result(
+                Box::new(TypeInfo::Var(0)),
+                Box::new(TypeInfo::Var(1))
+            ))
+        ));
+
+        Self { env }
     }
 
     /// Type check a complete program
