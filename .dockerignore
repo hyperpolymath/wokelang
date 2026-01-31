@@ -1,0 +1,50 @@
+# SPDX-License-Identifier: PMPL-1.0-or-later
+# Docker ignore file for WokeLang
+
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Build artifacts
+target/
+*.o
+*.so
+*.dylib
+*.dll
+*.exe
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Documentation
+*.md
+*.adoc
+docs/
+!README.md
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+
+# Test files
+test/
+tests/
+benches/
+examples/
+
+# Cache
+.cache/
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Dependencies
+Cargo.lock
+!Cargo.toml
