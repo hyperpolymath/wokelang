@@ -76,9 +76,34 @@ impl Repl {
 
         // Interpret
         match self.interpreter.run(&program) {
-            Ok(_value) => {
-                // TODO: Print the result value
-                // println!("{}", value);
+            Ok(value) => {
+                // Print non-unit values
+                match value {
+                    crate::interpreter::Value::Unit => {},  // Don't print unit
+                    crate::interpreter::Value::Int(n) => println!("{}", n),
+                    crate::interpreter::Value::Float(f) => println!("{}", f),
+                    crate::interpreter::Value::String(s) => println!("\"{}\"", s),
+                    crate::interpreter::Value::Bool(b) => println!("{}", b),
+                    crate::interpreter::Value::Array(arr) => {
+                        print!("[");
+                        for (i, val) in arr.iter().enumerate() {
+                            if i > 0 { print!(", "); }
+                            print!("{:?}", val);
+                        }
+                        println!("]");
+                    }
+                    crate::interpreter::Value::Record(map) => {
+                        println!("{{");
+                        for (k, v) in map.iter() {
+                            println!("  {}: {:?}", k, v);
+                        }
+                        println!("}}");
+                    }
+                    crate::interpreter::Value::Okay(v) => println!("Okay({:?})", v),
+                    crate::interpreter::Value::Oops(msg) => println!("Oops(\"{}\")", msg),
+                    crate::interpreter::Value::Function(_) => println!("<function>"),
+                    crate::interpreter::Value::Channel(_) => println!("<channel>"),
+                }
             }
             Err(e) => {
                 eprintln!("Runtime error: {}", e);
