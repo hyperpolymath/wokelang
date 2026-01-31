@@ -445,6 +445,182 @@ impl TypeChecker {
             ))
         ));
 
+        // === aLib (aggregate-library) Functions ===
+
+        // Arithmetic (5)
+        let num_to_num = TypeInfo::Function(
+            vec![TypeInfo::Var(0), TypeInfo::Var(0)],
+            Box::new(TypeInfo::Var(0))
+        );
+        env.define("std.alib.add".to_string(), num_to_num.clone());
+        env.define("std.alib.subtract".to_string(), num_to_num.clone());
+        env.define("std.alib.multiply".to_string(), num_to_num.clone());
+        env.define("std.alib.divide".to_string(), num_to_num.clone());
+        env.define("std.alib.modulo".to_string(), num_to_num);
+
+        // Comparison (6)
+        let compare = TypeInfo::Function(
+            vec![TypeInfo::Var(0), TypeInfo::Var(0)],
+            Box::new(TypeInfo::Bool)
+        );
+        env.define("std.alib.equal".to_string(), compare.clone());
+        env.define("std.alib.notEqual".to_string(), compare.clone());
+        env.define("std.alib.lessThan".to_string(), compare.clone());
+        env.define("std.alib.lessEqual".to_string(), compare.clone());
+        env.define("std.alib.greaterThan".to_string(), compare.clone());
+        env.define("std.alib.greaterEqual".to_string(), compare);
+
+        // Logical (3)
+        let bool_to_bool = TypeInfo::Function(
+            vec![TypeInfo::Bool, TypeInfo::Bool],
+            Box::new(TypeInfo::Bool)
+        );
+        env.define("std.alib.and".to_string(), bool_to_bool.clone());
+        env.define("std.alib.or".to_string(), bool_to_bool);
+        env.define("std.alib.not".to_string(), TypeInfo::Function(
+            vec![TypeInfo::Bool],
+            Box::new(TypeInfo::Bool)
+        ));
+
+        // Collection (4) - simplified types
+        env.define("std.alib.map".to_string(), TypeInfo::Function(
+            vec![TypeInfo::Var(0), TypeInfo::Var(1)],
+            Box::new(TypeInfo::Var(2))
+        ));
+        env.define("std.alib.filter".to_string(), TypeInfo::Function(
+            vec![TypeInfo::Var(0), TypeInfo::Var(1)],
+            Box::new(TypeInfo::Var(0))
+        ));
+        env.define("std.alib.fold".to_string(), TypeInfo::Function(
+            vec![TypeInfo::Var(0), TypeInfo::Var(1), TypeInfo::Var(2)],
+            Box::new(TypeInfo::Var(1))
+        ));
+        env.define("std.alib.contains".to_string(), TypeInfo::Function(
+            vec![TypeInfo::Var(0), TypeInfo::Var(1)],
+            Box::new(TypeInfo::Bool)
+        ));
+
+        // String (3)
+        env.define("std.alib.concat".to_string(), TypeInfo::Function(
+            vec![TypeInfo::String, TypeInfo::String],
+            Box::new(TypeInfo::String)
+        ));
+        env.define("std.alib.length".to_string(), TypeInfo::Function(
+            vec![TypeInfo::String],
+            Box::new(TypeInfo::Int)
+        ));
+        env.define("std.alib.substring".to_string(), TypeInfo::Function(
+            vec![TypeInfo::String, TypeInfo::Int, TypeInfo::Int],
+            Box::new(TypeInfo::String)
+        ));
+
+        // Conditional (1)
+        env.define("std.alib.ifThenElse".to_string(), TypeInfo::Function(
+            vec![TypeInfo::Bool, TypeInfo::Var(0), TypeInfo::Var(0)],
+            Box::new(TypeInfo::Var(0))
+        ));
+
+        // === Math Functions ===
+        env.define("std.math.abs".to_string(), TypeInfo::Function(
+            vec![TypeInfo::Var(0)],
+            Box::new(TypeInfo::Var(0))
+        ));
+        env.define("std.math.sqrt".to_string(), TypeInfo::Function(
+            vec![TypeInfo::Float],
+            Box::new(TypeInfo::Float)
+        ));
+        env.define("std.math.pow".to_string(), TypeInfo::Function(
+            vec![TypeInfo::Float, TypeInfo::Float],
+            Box::new(TypeInfo::Float)
+        ));
+        env.define("std.math.sin".to_string(), TypeInfo::Function(
+            vec![TypeInfo::Float],
+            Box::new(TypeInfo::Float)
+        ));
+        env.define("std.math.cos".to_string(), TypeInfo::Function(
+            vec![TypeInfo::Float],
+            Box::new(TypeInfo::Float)
+        ));
+        env.define("std.math.tan".to_string(), TypeInfo::Function(
+            vec![TypeInfo::Float],
+            Box::new(TypeInfo::Float)
+        ));
+
+        // === String Functions ===
+        env.define("std.string.upper".to_string(), TypeInfo::Function(
+            vec![TypeInfo::String],
+            Box::new(TypeInfo::String)
+        ));
+        env.define("std.string.lower".to_string(), TypeInfo::Function(
+            vec![TypeInfo::String],
+            Box::new(TypeInfo::String)
+        ));
+        env.define("std.string.trim".to_string(), TypeInfo::Function(
+            vec![TypeInfo::String],
+            Box::new(TypeInfo::String)
+        ));
+
+        // === Short aliases (same types as above) ===
+        // Reuse the type definitions
+        let num_to_num2 = TypeInfo::Function(
+            vec![TypeInfo::Var(0), TypeInfo::Var(0)],
+            Box::new(TypeInfo::Var(0))
+        );
+        env.define("add".to_string(), num_to_num2.clone());
+        env.define("subtract".to_string(), num_to_num2.clone());
+        env.define("multiply".to_string(), num_to_num2.clone());
+        env.define("divide".to_string(), num_to_num2.clone());
+        env.define("modulo".to_string(), num_to_num2);
+
+        let compare2 = TypeInfo::Function(
+            vec![TypeInfo::Var(0), TypeInfo::Var(0)],
+            Box::new(TypeInfo::Bool)
+        );
+        env.define("equal".to_string(), compare2.clone());
+        env.define("notEqual".to_string(), compare2.clone());
+        env.define("lessThan".to_string(), compare2.clone());
+        env.define("lessEqual".to_string(), compare2.clone());
+        env.define("greaterThan".to_string(), compare2.clone());
+        env.define("greaterEqual".to_string(), compare2);
+
+        let bool_op = TypeInfo::Function(
+            vec![TypeInfo::Bool, TypeInfo::Bool],
+            Box::new(TypeInfo::Bool)
+        );
+        env.define("and".to_string(), bool_op.clone());
+        env.define("or".to_string(), bool_op);
+        env.define("not".to_string(), TypeInfo::Function(
+            vec![TypeInfo::Bool],
+            Box::new(TypeInfo::Bool)
+        ));
+
+        env.define("concat".to_string(), TypeInfo::Function(
+            vec![TypeInfo::String, TypeInfo::String],
+            Box::new(TypeInfo::String)
+        ));
+        env.define("strLength".to_string(), TypeInfo::Function(
+            vec![TypeInfo::String],
+            Box::new(TypeInfo::Int)
+        ));
+
+        env.define("abs".to_string(), TypeInfo::Function(
+            vec![TypeInfo::Var(0)],
+            Box::new(TypeInfo::Var(0))
+        ));
+        env.define("sqrt".to_string(), TypeInfo::Function(
+            vec![TypeInfo::Float],
+            Box::new(TypeInfo::Float)
+        ));
+
+        env.define("upper".to_string(), TypeInfo::Function(
+            vec![TypeInfo::String],
+            Box::new(TypeInfo::String)
+        ));
+        env.define("lower".to_string(), TypeInfo::Function(
+            vec![TypeInfo::String],
+            Box::new(TypeInfo::String)
+        ));
+
         Self { env }
     }
 

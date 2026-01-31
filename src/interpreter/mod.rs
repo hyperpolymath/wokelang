@@ -118,6 +118,7 @@ pub struct Interpreter {
     capabilities: crate::security::CapabilityRegistry,
     pragmas: PragmaSettings,
     worker_defs: HashMap<String, Vec<Statement>>,
+    stdlib: crate::stdlib::StdlibRegistry,
 }
 
 impl Interpreter {
@@ -129,6 +130,7 @@ impl Interpreter {
             capabilities: crate::security::CapabilityRegistry::new(),
             pragmas: PragmaSettings::default(),
             worker_defs: HashMap::new(),
+            stdlib: crate::stdlib::StdlibRegistry::new(),
         }
     }
 
@@ -531,6 +533,14 @@ impl Interpreter {
                         return Ok(Value::Oops(msg));
                     }
                     _ => {}
+                }
+
+                // Check stdlib functions
+                if self.stdlib.has(func_name) {
+                    return self.stdlib.call(func_name, &arg_vals, &mut self.capabilities)
+                        .map_err(|e| RuntimeError {
+                            message: format!("Stdlib error: {}", e),
+                        });
                 }
 
                 // Check user-defined functions

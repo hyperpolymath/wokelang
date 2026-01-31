@@ -203,6 +203,61 @@ impl StdlibRegistry {
 
         // Conditional (1)
         self.register("std.alib.ifThenElse", alib::if_then_else);
+
+        // === Short aliases (for use without qualified calls) ===
+        // aLib arithmetic
+        self.register("add", alib::add);
+        self.register("subtract", alib::subtract);
+        self.register("multiply", alib::multiply);
+        self.register("divide", alib::divide);
+        self.register("modulo", alib::modulo);
+
+        // aLib comparison
+        self.register("equal", alib::equal);
+        self.register("notEqual", alib::not_equal);
+        self.register("lessThan", alib::less_than);
+        self.register("lessEqual", alib::less_equal);
+        self.register("greaterThan", alib::greater_than);
+        self.register("greaterEqual", alib::greater_equal);
+
+        // aLib logical
+        self.register("and", alib::and);
+        self.register("or", alib::or);
+        self.register("not", alib::not);
+
+        // aLib collection
+        self.register("map", alib::map);
+        self.register("filter", alib::filter);
+        self.register("fold", alib::fold);
+        self.register("contains", alib::contains);
+
+        // aLib string
+        self.register("concat", alib::concat);
+        self.register("strLength", alib::str_length);
+        self.register("substring", alib::substring);
+
+        // aLib conditional
+        self.register("ifThenElse", alib::if_then_else);
+
+        // Math
+        self.register("abs", math::abs);
+        self.register("sqrt", math::sqrt);
+        self.register("pow", math::pow);
+        self.register("sin", math::sin);
+        self.register("cos", math::cos);
+        self.register("tan", math::tan);
+
+        // String
+        self.register("upper", string::upper);
+        self.register("lower", string::lower);
+        self.register("trim", string::trim);
+        self.register("split", string::split);
+        self.register("join", string::join);
+
+        // I/O (with consent)
+        self.register("readFile", io::read_file);
+        self.register("writeFile", io::write_file);
+        self.register("readLine", io::read_line);
     }
 
     /// Register a function
