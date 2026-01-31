@@ -1,0 +1,19 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+#verbose on;
+
+to main() {
+    // Test math stdlib functions
+    remember x = abs(-5);
+    print("abs(-5) = ");
+    print(toString(x));
+
+    remember root = sqrt(16.0);
+    print("sqrt(16) = ");
+    print(toString(root));
+
+    remember power = pow(2.0, 3.0);
+    print("pow(2, 3) = ");
+    print(toString(power));
+
+    give back 0;
+}

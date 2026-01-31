@@ -622,6 +622,13 @@ impl TypeChecker {
             "sqrt".to_string(),
             TypeInfo::Function(vec![TypeInfo::Float], Box::new(TypeInfo::Float)),
         );
+        env.define(
+            "pow".to_string(),
+            TypeInfo::Function(
+                vec![TypeInfo::Float, TypeInfo::Float],
+                Box::new(TypeInfo::Float),
+            ),
+        );
 
         env.define(
             "upper".to_string(),
@@ -1125,9 +1132,45 @@ impl TypeChecker {
     }
 
     /// Instantiate a type scheme (for polymorphic types)
-    /// For now, just clone the type (full polymorphism is future work)
+    /// Replaces all type variables with fresh ones to allow polymorphic reuse
     fn instantiate(&mut self, ty: &TypeInfo) -> TypeInfo {
-        ty.clone()
+        use std::collections::HashMap;
+
+        fn instantiate_helper(
+            ty: &TypeInfo,
+            env: &mut TypeEnv,
+            var_map: &mut HashMap<usize, TypeInfo>,
+        ) -> TypeInfo {
+            match ty {
+                TypeInfo::Var(id) => {
+                    // Replace type variable with fresh one (memoized)
+                    var_map
+                        .entry(*id)
+                        .or_insert_with(|| env.fresh_var())
+                        .clone()
+                }
+                TypeInfo::Function(params, ret) => {
+                    let new_params = params
+                        .iter()
+                        .map(|p| instantiate_helper(p, env, var_map))
+                        .collect();
+                    let new_ret = Box::new(instantiate_helper(ret, env, var_map));
+                    TypeInfo::Function(new_params, new_ret)
+                }
+                TypeInfo::Array(elem) => {
+                    TypeInfo::Array(Box::new(instantiate_helper(elem, env, var_map)))
+                }
+                TypeInfo::Result(ok, err) => TypeInfo::Result(
+                    Box::new(instantiate_helper(ok, env, var_map)),
+                    Box::new(instantiate_helper(err, env, var_map)),
+                ),
+                // Concrete types don't need instantiation
+                _ => ty.clone(),
+            }
+        }
+
+        let mut var_map = HashMap::new();
+        instantiate_helper(ty, &mut self.env, &mut var_map)
     }
 
     /// Parse a unit name into a Unit enum
