@@ -3,6 +3,7 @@
 //! This module provides the standard library for WokeLang, offering
 //! common functionality with consent-aware operations.
 
+pub mod alib;
 pub mod array;
 pub mod chan;
 pub mod io;
@@ -167,6 +168,41 @@ impl StdlibRegistry {
         self.register("std.array.flatten", array::flatten);
         self.register("std.array.unique", array::unique);
         self.register("std.array.zip", array::zip);
+
+        // aLib functions (aggregate-library compliance)
+        // Arithmetic (5)
+        self.register("std.alib.add", alib::add);
+        self.register("std.alib.subtract", alib::subtract);
+        self.register("std.alib.multiply", alib::multiply);
+        self.register("std.alib.divide", alib::divide);
+        self.register("std.alib.modulo", alib::modulo);
+
+        // Comparison (6)
+        self.register("std.alib.equal", alib::equal);
+        self.register("std.alib.notEqual", alib::not_equal);
+        self.register("std.alib.lessThan", alib::less_than);
+        self.register("std.alib.lessEqual", alib::less_equal);
+        self.register("std.alib.greaterThan", alib::greater_than);
+        self.register("std.alib.greaterEqual", alib::greater_equal);
+
+        // Logical (3)
+        self.register("std.alib.and", alib::and);
+        self.register("std.alib.or", alib::or);
+        self.register("std.alib.not", alib::not);
+
+        // Collection (4)
+        self.register("std.alib.map", alib::map);
+        self.register("std.alib.filter", alib::filter);
+        self.register("std.alib.fold", alib::fold);
+        self.register("std.alib.contains", alib::contains);
+
+        // String (3)
+        self.register("std.alib.concat", alib::concat);
+        self.register("std.alib.length", alib::str_length);
+        self.register("std.alib.substring", alib::substring);
+
+        // Conditional (1)
+        self.register("std.alib.ifThenElse", alib::if_then_else);
     }
 
     /// Register a function
