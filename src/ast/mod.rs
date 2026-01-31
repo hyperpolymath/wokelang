@@ -133,6 +133,26 @@ pub enum Statement {
     Decide(DecideStmt),
 }
 
+impl Statement {
+    /// Get the span of this statement
+    pub fn span(&self) -> Span {
+        match self {
+            Statement::VarDecl(v) => v.span.clone(),
+            Statement::Assignment(a) => a.span.clone(),
+            Statement::Return(r) => r.span.clone(),
+            Statement::Conditional(c) => c.span.clone(),
+            Statement::Loop(l) => l.span.clone(),
+            Statement::AttemptBlock(a) => a.span.clone(),
+            Statement::ConsentBlock(c) => c.span.clone(),
+            Statement::Expression(e) => e.span.clone(),
+            Statement::WorkerSpawn(w) => w.span.clone(),
+            Statement::Complain(c) => c.span.clone(),
+            Statement::EmoteAnnotated(e) => e.span.clone(),
+            Statement::Decide(d) => d.span.clone(),
+        }
+    }
+}
+
 /// Variable declaration: `remember x = expr measured in unit;`
 #[derive(Debug, Clone)]
 pub struct VarDecl {
