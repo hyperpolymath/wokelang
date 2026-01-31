@@ -2,8 +2,9 @@
 name = "wokelang"
 version = "0.1.0"
 edition = "2021"
+authors = ["Jonathan D.A. Jewell <jonathan.jewell@open.ac.uk>"]
 description = "A human-centered, consent-driven programming language"
-license = "MIT OR AGPL-3.0-or-later"
+license = "PMPL-1.0-or-later"
 repository = "https://github.com/hyperpolymath/wokelang"
 
 [lib]

@@ -46,9 +46,9 @@ pub enum WokeValueType {
 /// Create a new WokeLang interpreter
 ///
 /// Returns a pointer to the interpreter, or null on failure.
-/// The caller is responsible for freeing with `woke_interpreter_free`.
+/// The caller is responsible for freeing with `rust_woke_interpreter_free`.
 #[no_mangle]
-pub extern "C" fn woke_interpreter_new() -> *mut WokeInterpreter {
+pub extern "C" fn rust_woke_interpreter_new() -> *mut WokeInterpreter {
     Box::into_raw(Box::new(WokeInterpreter {
         inner: Interpreter::new(),
     }))
@@ -59,7 +59,7 @@ pub extern "C" fn woke_interpreter_new() -> *mut WokeInterpreter {
 /// # Safety
 /// The pointer must be valid and not null.
 #[no_mangle]
-pub unsafe extern "C" fn woke_interpreter_free(interp: *mut WokeInterpreter) {
+pub unsafe extern "C" fn rust_woke_interpreter_free(interp: *mut WokeInterpreter) {
     if !interp.is_null() {
         drop(Box::from_raw(interp));
     }
@@ -68,10 +68,10 @@ pub unsafe extern "C" fn woke_interpreter_free(interp: *mut WokeInterpreter) {
 /// Execute WokeLang source code
 ///
 /// # Safety
-/// - `interp` must be a valid pointer from `woke_interpreter_new`
+/// - `interp` must be a valid pointer from `rust_woke_interpreter_new`
 /// - `source` must be a valid null-terminated C string
 #[no_mangle]
-pub unsafe extern "C" fn woke_exec(interp: *mut WokeInterpreter, source: *const c_char) -> WokeResult {
+pub unsafe extern "C" fn rust_woke_exec(interp: *mut WokeInterpreter, source: *const c_char) -> WokeResult {
     if interp.is_null() || source.is_null() {
         return WokeResult::NullPointer;
     }
@@ -104,9 +104,9 @@ pub unsafe extern "C" fn woke_exec(interp: *mut WokeInterpreter, source: *const 
 ///
 /// # Safety
 /// - All pointers must be valid
-/// - The returned WokeValue must be freed with `woke_value_free`
+/// - The returned WokeValue must be freed with `rust_woke_value_free`
 #[no_mangle]
-pub unsafe extern "C" fn woke_eval(
+pub unsafe extern "C" fn rust_woke_eval(
     interp: *mut WokeInterpreter,
     source: *const c_char,
     out_value: *mut *mut WokeValue,
@@ -156,7 +156,7 @@ pub unsafe extern "C" fn woke_eval(
 /// # Safety
 /// The pointer must be valid and from a woke_* function.
 #[no_mangle]
-pub unsafe extern "C" fn woke_value_free(value: *mut WokeValue) {
+pub unsafe extern "C" fn rust_woke_value_free(value: *mut WokeValue) {
     if !value.is_null() {
         drop(Box::from_raw(value));
     }
@@ -164,7 +164,7 @@ pub unsafe extern "C" fn woke_value_free(value: *mut WokeValue) {
 
 /// Get the type of a WokeValue
 #[no_mangle]
-pub unsafe extern "C" fn woke_value_type(value: *const WokeValue) -> WokeValueType {
+pub unsafe extern "C" fn rust_woke_value_type(value: *const WokeValue) -> WokeValueType {
     if value.is_null() {
         return WokeValueType::Unit;
     }
@@ -181,7 +181,7 @@ pub unsafe extern "C" fn woke_value_type(value: *const WokeValue) -> WokeValueTy
 
 /// Get an integer from a WokeValue
 #[no_mangle]
-pub unsafe extern "C" fn woke_value_as_int(value: *const WokeValue, out: *mut c_longlong) -> WokeResult {
+pub unsafe extern "C" fn rust_woke_value_as_int(value: *const WokeValue, out: *mut c_longlong) -> WokeResult {
     if value.is_null() || out.is_null() {
         return WokeResult::NullPointer;
     }
@@ -197,7 +197,7 @@ pub unsafe extern "C" fn woke_value_as_int(value: *const WokeValue, out: *mut c_
 
 /// Get a float from a WokeValue
 #[no_mangle]
-pub unsafe extern "C" fn woke_value_as_float(value: *const WokeValue, out: *mut c_double) -> WokeResult {
+pub unsafe extern "C" fn rust_woke_value_as_float(value: *const WokeValue, out: *mut c_double) -> WokeResult {
     if value.is_null() || out.is_null() {
         return WokeResult::NullPointer;
     }
@@ -217,7 +217,7 @@ pub unsafe extern "C" fn woke_value_as_float(value: *const WokeValue, out: *mut 
 
 /// Get a boolean from a WokeValue
 #[no_mangle]
-pub unsafe extern "C" fn woke_value_as_bool(value: *const WokeValue, out: *mut c_int) -> WokeResult {
+pub unsafe extern "C" fn rust_woke_value_as_bool(value: *const WokeValue, out: *mut c_int) -> WokeResult {
     if value.is_null() || out.is_null() {
         return WokeResult::NullPointer;
     }
@@ -235,7 +235,7 @@ pub unsafe extern "C" fn woke_value_as_bool(value: *const WokeValue, out: *mut c
 ///
 /// The returned string must be freed with `woke_string_free`.
 #[no_mangle]
-pub unsafe extern "C" fn woke_value_as_string(value: *const WokeValue) -> *mut c_char {
+pub unsafe extern "C" fn rust_woke_value_as_string(value: *const WokeValue) -> *mut c_char {
     if value.is_null() {
         return ptr::null_mut();
     }
@@ -254,7 +254,7 @@ pub unsafe extern "C" fn woke_value_as_string(value: *const WokeValue) -> *mut c
 
 /// Free a string returned by woke_value_as_string
 #[no_mangle]
-pub unsafe extern "C" fn woke_string_free(s: *mut c_char) {
+pub unsafe extern "C" fn rust_woke_string_free(s: *mut c_char) {
     if !s.is_null() {
         drop(CString::from_raw(s));
     }
@@ -264,7 +264,7 @@ pub unsafe extern "C" fn woke_string_free(s: *mut c_char) {
 
 /// Create an integer WokeValue
 #[no_mangle]
-pub extern "C" fn woke_value_from_int(n: c_longlong) -> *mut WokeValue {
+pub extern "C" fn rust_woke_value_from_int(n: c_longlong) -> *mut WokeValue {
     Box::into_raw(Box::new(WokeValue {
         inner: Value::Int(n),
     }))
@@ -272,7 +272,7 @@ pub extern "C" fn woke_value_from_int(n: c_longlong) -> *mut WokeValue {
 
 /// Create a float WokeValue
 #[no_mangle]
-pub extern "C" fn woke_value_from_float(f: c_double) -> *mut WokeValue {
+pub extern "C" fn rust_woke_value_from_float(f: c_double) -> *mut WokeValue {
     Box::into_raw(Box::new(WokeValue {
         inner: Value::Float(f),
     }))
@@ -280,7 +280,7 @@ pub extern "C" fn woke_value_from_float(f: c_double) -> *mut WokeValue {
 
 /// Create a boolean WokeValue
 #[no_mangle]
-pub extern "C" fn woke_value_from_bool(b: c_int) -> *mut WokeValue {
+pub extern "C" fn rust_woke_value_from_bool(b: c_int) -> *mut WokeValue {
     Box::into_raw(Box::new(WokeValue {
         inner: Value::Bool(b != 0),
     }))
@@ -291,7 +291,7 @@ pub extern "C" fn woke_value_from_bool(b: c_int) -> *mut WokeValue {
 /// # Safety
 /// `s` must be a valid null-terminated C string.
 #[no_mangle]
-pub unsafe extern "C" fn woke_value_from_string(s: *const c_char) -> *mut WokeValue {
+pub unsafe extern "C" fn rust_woke_value_from_string(s: *const c_char) -> *mut WokeValue {
     if s.is_null() {
         return ptr::null_mut();
     }
@@ -308,7 +308,7 @@ pub unsafe extern "C" fn woke_value_from_string(s: *const c_char) -> *mut WokeVa
 
 /// Get the WokeLang version string
 #[no_mangle]
-pub extern "C" fn woke_version() -> *const c_char {
+pub extern "C" fn rust_woke_version() -> *const c_char {
     static VERSION: &[u8] = b"0.1.0\0";
     VERSION.as_ptr() as *const c_char
 }
@@ -317,7 +317,7 @@ pub extern "C" fn woke_version() -> *const c_char {
 ///
 /// Returns null if no error. The returned string is valid until the next woke_* call.
 #[no_mangle]
-pub extern "C" fn woke_last_error() -> *const c_char {
+pub extern "C" fn rust_woke_last_error() -> *const c_char {
     // TODO: Implement thread-local error storage
     ptr::null()
 }

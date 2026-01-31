@@ -1,4 +1,4 @@
-;; SPDX-License-Identifier: AGPL-3.0-or-later
+;; SPDX-License-Identifier: PMPL-1.0-or-later
 ;; STATE.scm - Project state for wokelang
 ;; Media-Type: application/vnd.state+scm
 
@@ -7,7 +7,7 @@
     (version "0.1.0")
     (schema-version "1.0")
     (created "2026-01-03")
-    (updated "2026-01-04")
+    (updated "2026-01-31")
     (project "wokelang")
     (repo "github.com/hyperpolymath/wokelang"))
 
@@ -51,7 +51,9 @@
 
   (blockers-and-issues
     (high "Type system design not finalized")
-    (medium "Worker implementation incomplete"))
+    (medium "Worker implementation incomplete")
+    (resolved "License updated to PMPL-1.0-or-later" "2026-01-31")
+    (resolved "ABI/FFI architecture migrated to Idris2+Zig standard" "2026-01-31"))
 
   (critical-next-actions
     (immediate "Complete bytecode VM" "Add unit tests")
@@ -59,4 +61,13 @@
     (this-month "Complete Phase 2"))
 
   (session-history
-    (session "2026-01-04" "Updated SCM files")))
+    (session "2026-01-04" "Updated SCM files")
+    (session "2026-01-31"
+      (accomplishments
+        "Fixed Cargo.toml license (PMPL-1.0-or-later)"
+        "Added author field to Cargo.toml"
+        "Created Idris2 ABI layer (src/abi/)"
+        "Created Zig FFI implementation (ffi/zig/)"
+        "Updated Rust FFI with rust_ prefix"
+        "Created ABI-FFI-README.md documentation"
+        "Migrated to universal ABI/FFI standard"))))
