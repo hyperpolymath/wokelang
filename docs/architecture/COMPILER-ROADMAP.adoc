@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
 # WokeLang Compiler Roadmap
 
 ## Current Status (2026-01-31)
@@ -311,10 +312,15 @@ See the task list above for areas that need work. The highest priority items are
 
 ## Resources
 
-- **ABI/FFI Documentation**: `ABI-FFI-README.md`
+- **ABI/FFI Documentation**: `docs/ABI-FFI-README.adoc`
 - **Bytecode Specification**: `src/vm/bytecode.rs`
 - **Example Programs**: `examples/`
 - **Language Specification**: `docs/` (TODO)
+- **proven Integration**: `docs/PROVEN.md`
+- **Project State**: `STATE.scm`
+- **Ecosystem**: `ECOSYSTEM.scm`
+- **Architecture Decisions**: `META.scm`
+- **Development Sessions**: `docs/sessions/`
 
 ## Estimated Timeline to v0.1
 
