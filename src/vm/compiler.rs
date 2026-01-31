@@ -40,6 +40,8 @@ pub struct BytecodeCompiler {
     scope_depth: usize,
     /// Function names to indices
     function_indices: HashMap<String, usize>,
+    /// Compiled program being built
+    program: CompiledProgram,
 }
 
 impl BytecodeCompiler {
@@ -49,40 +51,52 @@ impl BytecodeCompiler {
             locals: Vec::new(),
             scope_depth: 0,
             function_indices: HashMap::new(),
+            program: CompiledProgram::new(),
         }
     }
 
     /// Compile a program to bytecode
     pub fn compile(&mut self, program: &Program) -> Result<CompiledProgram, CompileError> {
-        let mut compiled = CompiledProgram::new();
+        // Reset program for fresh compilation
+        self.program = CompiledProgram::new();
 
         // First pass: register all functions
         for item in &program.items {
             if let TopLevelItem::Function(func) = item {
-                let func_idx = compiled.functions.len();
+                let func_idx = self.program.functions.len();
                 self.function_indices
                     .insert(func.name.clone(), func_idx);
 
                 // Create compiled function
                 let compiled_func = CompiledFunction::new(func.name.clone(), func.params.len());
-                compiled.functions.push(compiled_func);
+                self.program.functions.push(compiled_func);
             }
         }
 
         // Second pass: compile function bodies
-        for (idx, item) in program.items.iter().enumerate() {
+        for (_idx, item) in program.items.iter().enumerate() {
             if let TopLevelItem::Function(func) = item {
                 let func_idx = *self.function_indices.get(&func.name).unwrap();
-                self.compile_function(func, &mut compiled.functions[func_idx])?;
+
+                // Temporarily take the function out to avoid borrow issues
+                let mut compiled_func = std::mem::replace(
+                    &mut self.program.functions[func_idx],
+                    CompiledFunction::new(String::new(), 0)
+                );
+
+                self.compile_function(func, &mut compiled_func)?;
+
+                // Put it back
+                self.program.functions[func_idx] = compiled_func;
 
                 // Set entry point to main
                 if func.name == "main" {
-                    compiled.entry = Some(func_idx);
+                    self.program.entry = Some(func_idx);
                 }
             }
         }
 
-        Ok(compiled)
+        Ok(std::mem::take(&mut self.program))
     }
 
     /// Compile a function
@@ -237,6 +251,166 @@ impl BytecodeCompiler {
                 Ok(())
             }
 
+            Statement::AttemptBlock(attempt) => {
+                // Compile attempt body
+                // Note: Real implementation would need exception handling
+                // For now, just execute the body
+                for stmt in &attempt.body {
+                    self.compile_statement(stmt, func)?;
+                }
+
+                // TODO: Add proper Result error handling
+                // The reassurance message is in attempt.reassurance
+
+                Ok(())
+            }
+
+            Statement::ConsentBlock(consent) => {
+                // Runtime consent checking
+                // Push permission string as constant
+                let perm_const = func.add_constant(Value::String(consent.permission.clone()));
+                func.emit(OpCode::Const(perm_const));
+
+                // TODO: Add OpCode::CheckConsent when security system is integrated
+                // For now, assume consent is granted and execute body
+
+                // Pop permission string
+                func.emit(OpCode::Pop);
+
+                // Execute body
+                for stmt in &consent.body {
+                    self.compile_statement(stmt, func)?;
+                }
+
+                Ok(())
+            }
+
+            Statement::Decide(decide) => {
+                // Compile scrutinee (the value being matched)
+                self.compile_expr(&decide.scrutinee.node, func)?;
+
+                let mut arm_jumps = Vec::new();
+
+                for arm in &decide.arms {
+                    // For each pattern, check if it matches
+                    match &arm.pattern {
+                        Pattern::Literal(lit) => {
+                            // Duplicate scrutinee for comparison
+                            func.emit(OpCode::Dup);
+
+                            // Push literal
+                            let value = match lit {
+                                Literal::Integer(n) => Value::Int(*n),
+                                Literal::Float(f) => Value::Float(*f),
+                                Literal::String(s) => Value::String(s.clone()),
+                                Literal::Bool(b) => Value::Bool(*b),
+                                Literal::Unit => Value::Unit,
+                            };
+                            let const_idx = func.add_constant(value);
+                            func.emit(OpCode::Const(const_idx));
+
+                            // Compare
+                            func.emit(OpCode::Eq);
+
+                            // If matches, execute arm body
+                            let skip_arm = func.emit(OpCode::JumpIfFalse(0));
+
+                            // Execute arm body
+                            for stmt in &arm.body {
+                                self.compile_statement(stmt, func)?;
+                            }
+
+                            // Jump to end of match
+                            let to_end = func.emit(OpCode::Jump(0));
+                            arm_jumps.push(to_end);
+
+                            // Patch skip jump
+                            func.patch_jump(skip_arm, func.current_offset());
+                        }
+
+                        Pattern::Constructor(name, inner) => {
+                            // Handle Okay(x) / Oops(e) patterns
+                            if name == "Okay" || name == "Oops" {
+                                // Duplicate scrutinee
+                                func.emit(OpCode::Dup);
+
+                                // Check if it's the right constructor
+                                func.emit(OpCode::IsOkay);
+                                let is_okay_result = name == "Okay";
+
+                                if !is_okay_result {
+                                    // Negate for Oops pattern
+                                    func.emit(OpCode::Not);
+                                }
+
+                                let skip_arm = func.emit(OpCode::JumpIfFalse(0));
+
+                                // If inner pattern exists, bind the variable
+                                if let Some(Pattern::Identifier(var_name)) = inner.as_deref() {
+                                    // Unwrap the value (simplified - real impl would extract value)
+                                    func.emit(OpCode::Dup);
+                                    func.emit(OpCode::TryUnwrap);
+
+                                    // Bind to variable
+                                    let local_idx = self.add_local(var_name.clone());
+                                    func.emit(OpCode::StoreLocal(local_idx));
+                                }
+
+                                // Execute arm body
+                                for stmt in &arm.body {
+                                    self.compile_statement(stmt, func)?;
+                                }
+
+                                // Jump to end
+                                let to_end = func.emit(OpCode::Jump(0));
+                                arm_jumps.push(to_end);
+
+                                // Patch skip
+                                func.patch_jump(skip_arm, func.current_offset());
+                            }
+                        }
+
+                        Pattern::Identifier(name) => {
+                            // Bind scrutinee to variable and execute body
+                            func.emit(OpCode::Dup);
+                            let local_idx = self.add_local(name.clone());
+                            func.emit(OpCode::StoreLocal(local_idx));
+
+                            // Execute arm body
+                            for stmt in &arm.body {
+                                self.compile_statement(stmt, func)?;
+                            }
+
+                            // Jump to end
+                            let to_end = func.emit(OpCode::Jump(0));
+                            arm_jumps.push(to_end);
+                        }
+
+                        Pattern::Wildcard => {
+                            // Always matches - execute body
+                            for stmt in &arm.body {
+                                self.compile_statement(stmt, func)?;
+                            }
+
+                            // Jump to end
+                            let to_end = func.emit(OpCode::Jump(0));
+                            arm_jumps.push(to_end);
+                        }
+                    }
+                }
+
+                // Pop scrutinee
+                func.emit(OpCode::Pop);
+
+                // Patch all jumps to end
+                let end_offset = func.current_offset();
+                for jump_idx in arm_jumps {
+                    func.patch_jump(jump_idx, end_offset);
+                }
+
+                Ok(())
+            }
+
             _ => Err(CompileError::NotImplemented(format!(
                 "Statement compilation: {:?}",
                 stmt
@@ -323,6 +497,98 @@ impl BytecodeCompiler {
 
                 // Create array
                 func.emit(OpCode::MakeArray(elements.len()));
+                Ok(())
+            }
+
+            Expr::Index(array, index) => {
+                // Compile array/collection
+                self.compile_expr(&array.node, func)?;
+                // Compile index
+                self.compile_expr(&index.node, func)?;
+                // Emit index operation
+                func.emit(OpCode::Index);
+                Ok(())
+            }
+
+            Expr::Okay(value) => {
+                // Compile the wrapped value
+                self.compile_expr(&value.node, func)?;
+                // Wrap in Okay constructor
+                func.emit(OpCode::MakeOkay);
+                Ok(())
+            }
+
+            Expr::Oops(value) => {
+                // Compile the error value
+                self.compile_expr(&value.node, func)?;
+                // Wrap in Oops constructor
+                func.emit(OpCode::MakeOops);
+                Ok(())
+            }
+
+            Expr::Unwrap(value) => {
+                // Compile the Result value
+                self.compile_expr(&value.node, func)?;
+                // Try to unwrap (propagates Oops if error)
+                func.emit(OpCode::TryUnwrap);
+                Ok(())
+            }
+
+            Expr::CallExpr(callee, args) => {
+                // Compile the callee expression (should evaluate to a closure)
+                self.compile_expr(&callee.node, func)?;
+
+                // Compile arguments
+                for arg in args {
+                    self.compile_expr(&arg.node, func)?;
+                }
+
+                // Call the closure
+                func.emit(OpCode::Call(args.len()));
+                Ok(())
+            }
+
+            Expr::Lambda(lambda) => {
+                // Create a new function for the lambda
+                let lambda_name = format!("<lambda_{}>", self.scope_depth);
+                let mut lambda_func = CompiledFunction::new(lambda_name, lambda.params.len());
+
+                // Enter new scope for lambda
+                self.scope_depth += 1;
+                let old_locals = std::mem::take(&mut self.locals);
+
+                // Add parameters as locals
+                for param in &lambda.params {
+                    self.add_local(param.name.clone());
+                    lambda_func.locals += 1;
+                }
+
+                // Compile lambda body
+                match &lambda.body {
+                    LambdaBody::Expr(expr) => {
+                        self.compile_expr(&expr.node, &mut lambda_func)?;
+                        lambda_func.emit(OpCode::Return);
+                    }
+                    LambdaBody::Block(stmts) => {
+                        for stmt in stmts {
+                            self.compile_statement(stmt, &mut lambda_func)?;
+                        }
+                        // Implicit return of Unit if no explicit return
+                        let unit_const = lambda_func.add_constant(Value::Unit);
+                        lambda_func.emit(OpCode::Const(unit_const));
+                        lambda_func.emit(OpCode::Return);
+                    }
+                }
+
+                // Restore scope
+                self.scope_depth -= 1;
+                self.locals = old_locals;
+
+                // Add lambda function to program
+                let func_idx = self.program.add_function(lambda_func);
+
+                // Create closure from function
+                func.emit(OpCode::MakeClosure(func_idx));
                 Ok(())
             }
 
