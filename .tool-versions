@@ -1,0 +1,15 @@
+# SPDX-License-Identifier: PMPL-1.0-or-later
+# asdf tool versions for WokeLang development
+
+# Rust toolchain
+rust 1.84.0
+
+# For ReScript frontend (site/)
+nodejs 22.12.0
+deno 2.1.4
+
+# Optional: Idris2 for ABI work
+# idris2 0.7.0
+
+# Optional: Zig for FFI work
+# zig 0.13.0
