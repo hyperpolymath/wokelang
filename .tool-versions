@@ -7,8 +7,8 @@ rust 1.84.0
 # Deno (NO Node.js/npm per language policy)
 deno 2.1.4
 
-# Optional: Idris2 for ABI work
-# idris2 0.7.0
+# Idris2 for ABI with formal proofs
+idris2 0.7.0
 
-# Optional: Zig for FFI work
-# zig 0.13.0
+# Zig for FFI implementation
+zig 0.13.0
