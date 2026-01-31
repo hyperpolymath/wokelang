@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
 use logos::Logos;
 
 fn parse_string(lex: &mut logos::Lexer<Token>) -> Option<String> {

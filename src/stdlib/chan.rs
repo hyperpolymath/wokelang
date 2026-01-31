@@ -1,11 +1,12 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
 //! WokeLang Standard Library - Channel Module
 //!
 //! Go-style channels for concurrent communication.
 //! Channels are typed, thread-safe communication primitives.
 
+use super::{check_arity, check_arity_range, expect_int, StdlibError};
 use crate::interpreter::{ChannelHandle, Value};
 use crate::security::CapabilityRegistry;
-use super::{check_arity, check_arity_range, expect_int, StdlibError};
 
 /// Maximum channel buffer size
 const MAX_BUFFER_SIZE: usize = 10000;

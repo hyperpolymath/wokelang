@@ -1,10 +1,11 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
 //! WokeLang Standard Library - String Module
 //!
 //! String manipulation functions.
 
+use super::{check_arity, check_arity_range, expect_int, expect_string, StdlibError};
 use crate::interpreter::Value;
 use crate::security::CapabilityRegistry;
-use super::{check_arity, check_arity_range, expect_int, expect_string, StdlibError};
 
 /// Get the length of a string (in characters, not bytes)
 pub fn length(args: &[Value], _caps: &mut CapabilityRegistry) -> Result<Value, StdlibError> {
@@ -86,7 +87,10 @@ pub fn split(args: &[Value], _caps: &mut CapabilityRegistry) -> Result<Value, St
     check_arity(args, 2)?;
     let s = expect_string(&args[0], "string")?;
     let delimiter = expect_string(&args[1], "delimiter")?;
-    let parts: Vec<Value> = s.split(&delimiter).map(|p| Value::String(p.to_string())).collect();
+    let parts: Vec<Value> = s
+        .split(&delimiter)
+        .map(|p| Value::String(p.to_string()))
+        .collect();
     Ok(Value::Array(parts))
 }
 
@@ -177,11 +181,15 @@ pub fn repeat(args: &[Value], _caps: &mut CapabilityRegistry) -> Result<Value, S
     let n = expect_int(&args[1], "count")?;
 
     if n < 0 {
-        return Err(StdlibError::RuntimeError("repeat count cannot be negative".to_string()));
+        return Err(StdlibError::RuntimeError(
+            "repeat count cannot be negative".to_string(),
+        ));
     }
 
     if n > 10000 {
-        return Err(StdlibError::RuntimeError("repeat count too large (max 10000)".to_string()));
+        return Err(StdlibError::RuntimeError(
+            "repeat count too large (max 10000)".to_string(),
+        ));
     }
 
     Ok(Value::String(s.repeat(n as usize)))
@@ -211,7 +219,9 @@ pub fn pad_start(args: &[Value], _caps: &mut CapabilityRegistry) -> Result<Value
         return Ok(Value::String(s));
     }
 
-    let padding: String = std::iter::repeat(pad_char).take(target_len - current_len).collect();
+    let padding: String = std::iter::repeat(pad_char)
+        .take(target_len - current_len)
+        .collect();
     Ok(Value::String(format!("{}{}", padding, s)))
 }
 
@@ -232,7 +242,9 @@ pub fn pad_end(args: &[Value], _caps: &mut CapabilityRegistry) -> Result<Value, 
         return Ok(Value::String(s));
     }
 
-    let padding: String = std::iter::repeat(pad_char).take(target_len - current_len).collect();
+    let padding: String = std::iter::repeat(pad_char)
+        .take(target_len - current_len)
+        .collect();
     Ok(Value::String(format!("{}{}", s, padding)))
 }
 
@@ -300,7 +312,10 @@ mod tests {
         let mut caps = test_caps();
         assert_eq!(
             contains(
-                &[Value::String("hello world".to_string()), Value::String("world".to_string())],
+                &[
+                    Value::String("hello world".to_string()),
+                    Value::String("world".to_string())
+                ],
                 &mut caps
             )
             .unwrap(),
@@ -312,7 +327,10 @@ mod tests {
     fn test_split_join() {
         let mut caps = test_caps();
         let result = split(
-            &[Value::String("a,b,c".to_string()), Value::String(",".to_string())],
+            &[
+                Value::String("a,b,c".to_string()),
+                Value::String(",".to_string()),
+            ],
             &mut caps,
         )
         .unwrap();
@@ -326,11 +344,7 @@ mod tests {
             ])
         );
 
-        let joined = join(
-            &[result, Value::String("-".to_string())],
-            &mut caps,
-        )
-        .unwrap();
+        let joined = join(&[result, Value::String("-".to_string())], &mut caps).unwrap();
 
         assert_eq!(joined, Value::String("a-b-c".to_string()));
     }
@@ -340,7 +354,11 @@ mod tests {
         let mut caps = test_caps();
         assert_eq!(
             substring(
-                &[Value::String("hello".to_string()), Value::Int(1), Value::Int(4)],
+                &[
+                    Value::String("hello".to_string()),
+                    Value::Int(1),
+                    Value::Int(4)
+                ],
                 &mut caps
             )
             .unwrap(),

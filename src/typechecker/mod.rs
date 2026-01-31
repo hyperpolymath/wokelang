@@ -92,17 +92,25 @@ impl fmt::Display for Unit {
             Unit::Derived(derived) => {
                 if !derived.numerator.is_empty() {
                     for (i, (unit, power)) in derived.numerator.iter().enumerate() {
-                        if i > 0 { write!(f, "·")?; }
+                        if i > 0 {
+                            write!(f, "·")?;
+                        }
                         write!(f, "{}", unit)?;
-                        if *power != 1 { write!(f, "^{}", power)?; }
+                        if *power != 1 {
+                            write!(f, "^{}", power)?;
+                        }
                     }
                 }
                 if !derived.denominator.is_empty() {
                     write!(f, "/")?;
                     for (i, (unit, power)) in derived.denominator.iter().enumerate() {
-                        if i > 0 { write!(f, "·")?; }
+                        if i > 0 {
+                            write!(f, "·")?;
+                        }
                         write!(f, "{}", unit)?;
-                        if *power != 1 { write!(f, "^{}", power)?; }
+                        if *power != 1 {
+                            write!(f, "^{}", power)?;
+                        }
                     }
                 }
                 Ok(())
@@ -123,8 +131,8 @@ pub enum TypeInfo {
     Function(Vec<TypeInfo>, Box<TypeInfo>),
     /// Result type: Result<T, E>
     Result(Box<TypeInfo>, Box<TypeInfo>),
-    /// Record/struct type
-    Record(HashMap<String, TypeInfo>),
+    /// Record/struct type (name of the type)
+    Record(String),
     /// Type variable for inference
     Var(usize),
     /// Unknown type (for gradual typing)
@@ -153,18 +161,7 @@ impl fmt::Display for TypeInfo {
                 write!(f, ") -> {}", ret)
             }
             TypeInfo::Result(ok, err) => write!(f, "Result<{}, {}>", ok, err),
-            TypeInfo::Record(fields) => {
-                write!(f, "{{")?;
-                let mut first = true;
-                for (name, ty) in fields {
-                    if !first {
-                        write!(f, ", ")?;
-                    }
-                    write!(f, "{}: {}", name, ty)?;
-                    first = false;
-                }
-                write!(f, "}}")
-            }
+            TypeInfo::Record(name) => write!(f, "{}", name),
             TypeInfo::Var(id) => write!(f, "T{}", id),
             TypeInfo::Unknown => write!(f, "?"),
             TypeInfo::Quantity(base_type, unit) => write!(f, "{} measured in {}", base_type, unit),
@@ -210,13 +207,7 @@ impl Substitution {
             TypeInfo::Result(ok, err) => {
                 TypeInfo::Result(Box::new(self.apply(ok)), Box::new(self.apply(err)))
             }
-            TypeInfo::Record(fields) => {
-                let new_fields = fields
-                    .iter()
-                    .map(|(k, v)| (k.clone(), self.apply(v)))
-                    .collect();
-                TypeInfo::Record(new_fields)
-            }
+            TypeInfo::Record(name) => TypeInfo::Record(name.clone()),
             TypeInfo::Quantity(base_type, unit) => {
                 TypeInfo::Quantity(Box::new(self.apply(base_type)), unit.clone())
             }
@@ -336,39 +327,21 @@ pub fn unify(t1: &TypeInfo, t2: &TypeInfo) -> Result<Substitution, TypeError> {
         }
 
         // Record types
-        (TypeInfo::Record(fields1), TypeInfo::Record(fields2)) => {
-            if fields1.len() != fields2.len() {
-                return Err(TypeError {
-                    message: format!(
-                        "Record field count mismatch: {} vs {}",
-                        fields1.len(),
-                        fields2.len()
-                    ),
-                });
+        (TypeInfo::Record(name1), TypeInfo::Record(name2)) => {
+            if name1 == name2 {
+                Ok(Substitution::new())
+            } else {
+                Err(TypeError {
+                    message: format!("Type mismatch: {} vs {}", name1, name2),
+                })
             }
-
-            let mut sub = Substitution::new();
-            for (name, ty1) in fields1 {
-                if let Some(ty2) = fields2.get(name) {
-                    let s = unify(&sub.apply(ty1), &sub.apply(ty2))?;
-                    sub = sub.compose(&s);
-                } else {
-                    return Err(TypeError {
-                        message: format!("Record field '{}' not found in both types", name),
-                    });
-                }
-            }
-            Ok(sub)
         }
 
         // Quantity types - units must match exactly
         (TypeInfo::Quantity(base1, unit1), TypeInfo::Quantity(base2, unit2)) => {
             if unit1 != unit2 {
                 return Err(TypeError {
-                    message: format!(
-                        "Unit mismatch: cannot unify {} with {}",
-                        unit1, unit2
-                    ),
+                    message: format!("Unit mismatch: cannot unify {} with {}", unit1, unit2),
                 });
             }
             unify(base1, base2)
@@ -393,7 +366,7 @@ fn occurs_check(var: usize, ty: &TypeInfo) -> bool {
             params.iter().any(|p| occurs_check(var, p)) || occurs_check(var, ret)
         }
         TypeInfo::Result(ok, err) => occurs_check(var, ok) || occurs_check(var, err),
-        TypeInfo::Record(fields) => fields.values().any(|t| occurs_check(var, t)),
+        TypeInfo::Record(_name) => false, // Record types are nominal, no occurrence check needed
         TypeInfo::Quantity(base_type, _unit) => occurs_check(var, base_type),
         _ => false,
     }
@@ -402,55 +375,66 @@ fn occurs_check(var: usize, ty: &TypeInfo) -> bool {
 /// The type checker
 pub struct TypeChecker {
     env: TypeEnv,
+    type_defs: std::collections::HashMap<String, TypeVariant>,
 }
 
 impl TypeChecker {
     pub fn new() -> Self {
         let mut env = TypeEnv::new();
+        let type_defs = std::collections::HashMap::new();
 
         // Register built-in functions
         // print: a -> Unit
-        env.define("print".to_string(), TypeInfo::Function(
-            vec![TypeInfo::Var(0)],  // Takes any type
-            Box::new(TypeInfo::Unit)
-        ));
+        env.define(
+            "print".to_string(),
+            TypeInfo::Function(
+                vec![TypeInfo::Var(0)], // Takes any type
+                Box::new(TypeInfo::Unit),
+            ),
+        );
 
         // printInline: a -> Unit
-        env.define("printInline".to_string(), TypeInfo::Function(
-            vec![TypeInfo::Var(0)],
-            Box::new(TypeInfo::Unit)
-        ));
+        env.define(
+            "printInline".to_string(),
+            TypeInfo::Function(vec![TypeInfo::Var(0)], Box::new(TypeInfo::Unit)),
+        );
 
         // toString: a -> String
-        env.define("toString".to_string(), TypeInfo::Function(
-            vec![TypeInfo::Var(0)],
-            Box::new(TypeInfo::String)
-        ));
+        env.define(
+            "toString".to_string(),
+            TypeInfo::Function(vec![TypeInfo::Var(0)], Box::new(TypeInfo::String)),
+        );
 
         // Okay: a -> Result a b
-        env.define("Okay".to_string(), TypeInfo::Function(
-            vec![TypeInfo::Var(0)],
-            Box::new(TypeInfo::Result(
-                Box::new(TypeInfo::Var(0)),
-                Box::new(TypeInfo::Var(1))
-            ))
-        ));
+        env.define(
+            "Okay".to_string(),
+            TypeInfo::Function(
+                vec![TypeInfo::Var(0)],
+                Box::new(TypeInfo::Result(
+                    Box::new(TypeInfo::Var(0)),
+                    Box::new(TypeInfo::Var(1)),
+                )),
+            ),
+        );
 
         // Oops: b -> Result a b
-        env.define("Oops".to_string(), TypeInfo::Function(
-            vec![TypeInfo::Var(1)],
-            Box::new(TypeInfo::Result(
-                Box::new(TypeInfo::Var(0)),
-                Box::new(TypeInfo::Var(1))
-            ))
-        ));
+        env.define(
+            "Oops".to_string(),
+            TypeInfo::Function(
+                vec![TypeInfo::Var(1)],
+                Box::new(TypeInfo::Result(
+                    Box::new(TypeInfo::Var(0)),
+                    Box::new(TypeInfo::Var(1)),
+                )),
+            ),
+        );
 
         // === aLib (aggregate-library) Functions ===
 
         // Arithmetic (5)
         let num_to_num = TypeInfo::Function(
             vec![TypeInfo::Var(0), TypeInfo::Var(0)],
-            Box::new(TypeInfo::Var(0))
+            Box::new(TypeInfo::Var(0)),
         );
         env.define("std.alib.add".to_string(), num_to_num.clone());
         env.define("std.alib.subtract".to_string(), num_to_num.clone());
@@ -461,7 +445,7 @@ impl TypeChecker {
         // Comparison (6)
         let compare = TypeInfo::Function(
             vec![TypeInfo::Var(0), TypeInfo::Var(0)],
-            Box::new(TypeInfo::Bool)
+            Box::new(TypeInfo::Bool),
         );
         env.define("std.alib.equal".to_string(), compare.clone());
         env.define("std.alib.notEqual".to_string(), compare.clone());
@@ -473,98 +457,122 @@ impl TypeChecker {
         // Logical (3)
         let bool_to_bool = TypeInfo::Function(
             vec![TypeInfo::Bool, TypeInfo::Bool],
-            Box::new(TypeInfo::Bool)
+            Box::new(TypeInfo::Bool),
         );
         env.define("std.alib.and".to_string(), bool_to_bool.clone());
         env.define("std.alib.or".to_string(), bool_to_bool);
-        env.define("std.alib.not".to_string(), TypeInfo::Function(
-            vec![TypeInfo::Bool],
-            Box::new(TypeInfo::Bool)
-        ));
+        env.define(
+            "std.alib.not".to_string(),
+            TypeInfo::Function(vec![TypeInfo::Bool], Box::new(TypeInfo::Bool)),
+        );
 
         // Collection (4) - simplified types
-        env.define("std.alib.map".to_string(), TypeInfo::Function(
-            vec![TypeInfo::Var(0), TypeInfo::Var(1)],
-            Box::new(TypeInfo::Var(2))
-        ));
-        env.define("std.alib.filter".to_string(), TypeInfo::Function(
-            vec![TypeInfo::Var(0), TypeInfo::Var(1)],
-            Box::new(TypeInfo::Var(0))
-        ));
-        env.define("std.alib.fold".to_string(), TypeInfo::Function(
-            vec![TypeInfo::Var(0), TypeInfo::Var(1), TypeInfo::Var(2)],
-            Box::new(TypeInfo::Var(1))
-        ));
-        env.define("std.alib.contains".to_string(), TypeInfo::Function(
-            vec![TypeInfo::Var(0), TypeInfo::Var(1)],
-            Box::new(TypeInfo::Bool)
-        ));
+        env.define(
+            "std.alib.map".to_string(),
+            TypeInfo::Function(
+                vec![TypeInfo::Var(0), TypeInfo::Var(1)],
+                Box::new(TypeInfo::Var(2)),
+            ),
+        );
+        env.define(
+            "std.alib.filter".to_string(),
+            TypeInfo::Function(
+                vec![TypeInfo::Var(0), TypeInfo::Var(1)],
+                Box::new(TypeInfo::Var(0)),
+            ),
+        );
+        env.define(
+            "std.alib.fold".to_string(),
+            TypeInfo::Function(
+                vec![TypeInfo::Var(0), TypeInfo::Var(1), TypeInfo::Var(2)],
+                Box::new(TypeInfo::Var(1)),
+            ),
+        );
+        env.define(
+            "std.alib.contains".to_string(),
+            TypeInfo::Function(
+                vec![TypeInfo::Var(0), TypeInfo::Var(1)],
+                Box::new(TypeInfo::Bool),
+            ),
+        );
 
         // String (3)
-        env.define("std.alib.concat".to_string(), TypeInfo::Function(
-            vec![TypeInfo::String, TypeInfo::String],
-            Box::new(TypeInfo::String)
-        ));
-        env.define("std.alib.length".to_string(), TypeInfo::Function(
-            vec![TypeInfo::String],
-            Box::new(TypeInfo::Int)
-        ));
-        env.define("std.alib.substring".to_string(), TypeInfo::Function(
-            vec![TypeInfo::String, TypeInfo::Int, TypeInfo::Int],
-            Box::new(TypeInfo::String)
-        ));
+        env.define(
+            "std.alib.concat".to_string(),
+            TypeInfo::Function(
+                vec![TypeInfo::String, TypeInfo::String],
+                Box::new(TypeInfo::String),
+            ),
+        );
+        env.define(
+            "std.alib.length".to_string(),
+            TypeInfo::Function(vec![TypeInfo::String], Box::new(TypeInfo::Int)),
+        );
+        env.define(
+            "std.alib.substring".to_string(),
+            TypeInfo::Function(
+                vec![TypeInfo::String, TypeInfo::Int, TypeInfo::Int],
+                Box::new(TypeInfo::String),
+            ),
+        );
 
         // Conditional (1)
-        env.define("std.alib.ifThenElse".to_string(), TypeInfo::Function(
-            vec![TypeInfo::Bool, TypeInfo::Var(0), TypeInfo::Var(0)],
-            Box::new(TypeInfo::Var(0))
-        ));
+        env.define(
+            "std.alib.ifThenElse".to_string(),
+            TypeInfo::Function(
+                vec![TypeInfo::Bool, TypeInfo::Var(0), TypeInfo::Var(0)],
+                Box::new(TypeInfo::Var(0)),
+            ),
+        );
 
         // === Math Functions ===
-        env.define("std.math.abs".to_string(), TypeInfo::Function(
-            vec![TypeInfo::Var(0)],
-            Box::new(TypeInfo::Var(0))
-        ));
-        env.define("std.math.sqrt".to_string(), TypeInfo::Function(
-            vec![TypeInfo::Float],
-            Box::new(TypeInfo::Float)
-        ));
-        env.define("std.math.pow".to_string(), TypeInfo::Function(
-            vec![TypeInfo::Float, TypeInfo::Float],
-            Box::new(TypeInfo::Float)
-        ));
-        env.define("std.math.sin".to_string(), TypeInfo::Function(
-            vec![TypeInfo::Float],
-            Box::new(TypeInfo::Float)
-        ));
-        env.define("std.math.cos".to_string(), TypeInfo::Function(
-            vec![TypeInfo::Float],
-            Box::new(TypeInfo::Float)
-        ));
-        env.define("std.math.tan".to_string(), TypeInfo::Function(
-            vec![TypeInfo::Float],
-            Box::new(TypeInfo::Float)
-        ));
+        env.define(
+            "std.math.abs".to_string(),
+            TypeInfo::Function(vec![TypeInfo::Var(0)], Box::new(TypeInfo::Var(0))),
+        );
+        env.define(
+            "std.math.sqrt".to_string(),
+            TypeInfo::Function(vec![TypeInfo::Float], Box::new(TypeInfo::Float)),
+        );
+        env.define(
+            "std.math.pow".to_string(),
+            TypeInfo::Function(
+                vec![TypeInfo::Float, TypeInfo::Float],
+                Box::new(TypeInfo::Float),
+            ),
+        );
+        env.define(
+            "std.math.sin".to_string(),
+            TypeInfo::Function(vec![TypeInfo::Float], Box::new(TypeInfo::Float)),
+        );
+        env.define(
+            "std.math.cos".to_string(),
+            TypeInfo::Function(vec![TypeInfo::Float], Box::new(TypeInfo::Float)),
+        );
+        env.define(
+            "std.math.tan".to_string(),
+            TypeInfo::Function(vec![TypeInfo::Float], Box::new(TypeInfo::Float)),
+        );
 
         // === String Functions ===
-        env.define("std.string.upper".to_string(), TypeInfo::Function(
-            vec![TypeInfo::String],
-            Box::new(TypeInfo::String)
-        ));
-        env.define("std.string.lower".to_string(), TypeInfo::Function(
-            vec![TypeInfo::String],
-            Box::new(TypeInfo::String)
-        ));
-        env.define("std.string.trim".to_string(), TypeInfo::Function(
-            vec![TypeInfo::String],
-            Box::new(TypeInfo::String)
-        ));
+        env.define(
+            "std.string.upper".to_string(),
+            TypeInfo::Function(vec![TypeInfo::String], Box::new(TypeInfo::String)),
+        );
+        env.define(
+            "std.string.lower".to_string(),
+            TypeInfo::Function(vec![TypeInfo::String], Box::new(TypeInfo::String)),
+        );
+        env.define(
+            "std.string.trim".to_string(),
+            TypeInfo::Function(vec![TypeInfo::String], Box::new(TypeInfo::String)),
+        );
 
         // === Short aliases (same types as above) ===
         // Reuse the type definitions
         let num_to_num2 = TypeInfo::Function(
             vec![TypeInfo::Var(0), TypeInfo::Var(0)],
-            Box::new(TypeInfo::Var(0))
+            Box::new(TypeInfo::Var(0)),
         );
         env.define("add".to_string(), num_to_num2.clone());
         env.define("subtract".to_string(), num_to_num2.clone());
@@ -574,7 +582,7 @@ impl TypeChecker {
 
         let compare2 = TypeInfo::Function(
             vec![TypeInfo::Var(0), TypeInfo::Var(0)],
-            Box::new(TypeInfo::Bool)
+            Box::new(TypeInfo::Bool),
         );
         env.define("equal".to_string(), compare2.clone());
         env.define("notEqual".to_string(), compare2.clone());
@@ -585,50 +593,98 @@ impl TypeChecker {
 
         let bool_op = TypeInfo::Function(
             vec![TypeInfo::Bool, TypeInfo::Bool],
-            Box::new(TypeInfo::Bool)
+            Box::new(TypeInfo::Bool),
         );
         env.define("and".to_string(), bool_op.clone());
         env.define("or".to_string(), bool_op);
-        env.define("not".to_string(), TypeInfo::Function(
-            vec![TypeInfo::Bool],
-            Box::new(TypeInfo::Bool)
-        ));
+        env.define(
+            "not".to_string(),
+            TypeInfo::Function(vec![TypeInfo::Bool], Box::new(TypeInfo::Bool)),
+        );
 
-        env.define("concat".to_string(), TypeInfo::Function(
-            vec![TypeInfo::String, TypeInfo::String],
-            Box::new(TypeInfo::String)
-        ));
-        env.define("strLength".to_string(), TypeInfo::Function(
-            vec![TypeInfo::String],
-            Box::new(TypeInfo::Int)
-        ));
+        env.define(
+            "concat".to_string(),
+            TypeInfo::Function(
+                vec![TypeInfo::String, TypeInfo::String],
+                Box::new(TypeInfo::String),
+            ),
+        );
+        env.define(
+            "strLength".to_string(),
+            TypeInfo::Function(vec![TypeInfo::String], Box::new(TypeInfo::Int)),
+        );
 
-        env.define("abs".to_string(), TypeInfo::Function(
-            vec![TypeInfo::Var(0)],
-            Box::new(TypeInfo::Var(0))
-        ));
-        env.define("sqrt".to_string(), TypeInfo::Function(
-            vec![TypeInfo::Float],
-            Box::new(TypeInfo::Float)
-        ));
+        env.define(
+            "abs".to_string(),
+            TypeInfo::Function(vec![TypeInfo::Var(0)], Box::new(TypeInfo::Var(0))),
+        );
+        env.define(
+            "sqrt".to_string(),
+            TypeInfo::Function(vec![TypeInfo::Float], Box::new(TypeInfo::Float)),
+        );
 
-        env.define("upper".to_string(), TypeInfo::Function(
-            vec![TypeInfo::String],
-            Box::new(TypeInfo::String)
-        ));
-        env.define("lower".to_string(), TypeInfo::Function(
-            vec![TypeInfo::String],
-            Box::new(TypeInfo::String)
-        ));
+        env.define(
+            "upper".to_string(),
+            TypeInfo::Function(vec![TypeInfo::String], Box::new(TypeInfo::String)),
+        );
+        env.define(
+            "lower".to_string(),
+            TypeInfo::Function(vec![TypeInfo::String], Box::new(TypeInfo::String)),
+        );
 
-        Self { env }
+        Self { env, type_defs }
+    }
+
+    /// Convert AST Type to TypeInfo
+    fn type_from_ast(&self, ast_ty: &Type) -> TypeInfo {
+        match ast_ty {
+            Type::Basic(name) => match name.as_str() {
+                "Int" => TypeInfo::Int,
+                "Float" => TypeInfo::Float,
+                "String" => TypeInfo::String,
+                "Bool" => TypeInfo::Bool,
+                _ => TypeInfo::Record(name.clone()),
+            },
+            Type::Array(elem_ty) => TypeInfo::Array(Box::new(self.type_from_ast(elem_ty))),
+            Type::Optional(inner_ty) => {
+                // Represent Option as Result with Unit error
+                TypeInfo::Result(
+                    Box::new(self.type_from_ast(inner_ty)),
+                    Box::new(TypeInfo::Unit),
+                )
+            }
+            Type::Function(param_tys, return_ty) => {
+                let params = param_tys.iter().map(|t| self.type_from_ast(t)).collect();
+                TypeInfo::Function(params, Box::new(self.type_from_ast(return_ty)))
+            }
+            Type::Reference(inner_ty) => {
+                // For now, just use the inner type (references not fully supported)
+                self.type_from_ast(inner_ty)
+            }
+            Type::Generic(name, _args) => {
+                // For now, treat generics as basic types
+                TypeInfo::Record(name.clone())
+            }
+            Type::TypeVar(name) => {
+                // Type variable - use fresh var
+                TypeInfo::Var(0) // This is a simplification
+            }
+        }
     }
 
     /// Type check a complete program
     pub fn check_program(&mut self, program: &Program) -> Result<(), TypeError> {
         let sub = Substitution::new();
 
-        // First pass: collect function signatures
+        // First pass: collect type definitions
+        for item in &program.items {
+            if let TopLevelItem::TypeDef(type_def) = item {
+                self.type_defs
+                    .insert(type_def.name.clone(), type_def.definition.clone());
+            }
+        }
+
+        // Second pass: collect function signatures
         for item in &program.items {
             if let TopLevelItem::Function(func) = item {
                 // Create function type
@@ -744,7 +800,11 @@ impl TypeChecker {
                 let (right_ty, s2) = self.infer_expr(right, &s1)?;
 
                 let (expected_left, expected_right, result_ty) = match op {
-                    BinaryOp::Add | BinaryOp::Sub | BinaryOp::Mul | BinaryOp::Div | BinaryOp::Mod => {
+                    BinaryOp::Add
+                    | BinaryOp::Sub
+                    | BinaryOp::Mul
+                    | BinaryOp::Div
+                    | BinaryOp::Mod => {
                         // Arithmetic: numeric operands, numeric result
                         let num_var = self.env.fresh_var();
                         (num_var.clone(), num_var.clone(), num_var)
@@ -840,8 +900,7 @@ impl TypeChecker {
                 let result_ty = self.env.fresh_var();
 
                 // Unify with function type
-                let expected_func_ty =
-                    TypeInfo::Function(arg_types, Box::new(result_ty.clone()));
+                let expected_func_ty = TypeInfo::Function(arg_types, Box::new(result_ty.clone()));
                 let s_func = unify(&current_sub.apply(&func_ty), &expected_func_ty)?;
 
                 Ok((s_func.apply(&result_ty), current_sub.compose(&s_func)))
@@ -882,9 +941,10 @@ impl TypeChecker {
                 // Array type must be [T] or String
                 let elem_ty = self.env.fresh_var();
                 let s4 = match &s3.apply(&array_ty) {
-                    TypeInfo::Array(_) => {
-                        unify(&s3.apply(&array_ty), &TypeInfo::Array(Box::new(elem_ty.clone())))?
-                    }
+                    TypeInfo::Array(_) => unify(
+                        &s3.apply(&array_ty),
+                        &TypeInfo::Array(Box::new(elem_ty.clone())),
+                    )?,
                     TypeInfo::String => {
                         // String indexing returns String
                         unify(&elem_ty, &TypeInfo::String)?
@@ -896,7 +956,10 @@ impl TypeChecker {
                     }
                 };
 
-                Ok((s4.apply(&elem_ty), s1.compose(&s2).compose(&s3).compose(&s4)))
+                Ok((
+                    s4.apply(&elem_ty),
+                    s1.compose(&s2).compose(&s3).compose(&s4),
+                ))
             }
 
             // Result types
@@ -926,11 +989,8 @@ impl TypeChecker {
             // Lambda expressions
             Expr::Lambda(lambda) => {
                 // Create fresh type variables for parameters
-                let param_types: Vec<TypeInfo> = lambda
-                    .params
-                    .iter()
-                    .map(|_| self.env.fresh_var())
-                    .collect();
+                let param_types: Vec<TypeInfo> =
+                    lambda.params.iter().map(|_| self.env.fresh_var()).collect();
 
                 // Add parameters to environment
                 let old_env = self.env.bindings.clone();
@@ -970,6 +1030,93 @@ impl TypeChecker {
                 let quantity_type = TypeInfo::Quantity(Box::new(value_type), unit);
 
                 Ok((quantity_type, sub1))
+            }
+
+            // Field access: record.field
+            Expr::FieldAccess(record_expr, field_name) => {
+                let (record_ty, s1) = self.infer_expr(record_expr, sub)?;
+
+                // Look up the record type in type definitions
+                match &s1.apply(&record_ty) {
+                    TypeInfo::Record(name) => {
+                        // Look up struct definition to get field type
+                        if let Some(type_def) = self.type_defs.get(name) {
+                            if let TypeVariant::Struct(fields) = type_def {
+                                for field in fields {
+                                    if &field.name == field_name {
+                                        let field_ty = self.type_from_ast(&field.ty);
+                                        return Ok((field_ty, s1));
+                                    }
+                                }
+                                return Err(TypeError {
+                                    message: format!("Record {} has no field {}", name, field_name),
+                                });
+                            }
+                        }
+                        Err(TypeError {
+                            message: format!("Unknown record type: {}", name),
+                        })
+                    }
+                    _ => Err(TypeError {
+                        message: format!(
+                            "Cannot access field of non-record type: {}",
+                            s1.apply(&record_ty)
+                        ),
+                    }),
+                }
+            }
+
+            // Record literal: Type { field: value, ... }
+            Expr::RecordLiteral(type_name, fields) => {
+                // Look up struct definition and clone it to avoid borrow issues
+                let struct_fields = if let Some(type_def) = self.type_defs.get(type_name) {
+                    if let TypeVariant::Struct(fields) = type_def {
+                        fields.clone()
+                    } else {
+                        return Err(TypeError {
+                            message: format!("{} is not a struct type", type_name),
+                        });
+                    }
+                } else {
+                    return Err(TypeError {
+                        message: format!("Unknown type: {}", type_name),
+                    });
+                };
+
+                // Check all struct fields are present
+                let mut current_sub = sub.clone();
+                for struct_field in &struct_fields {
+                    let field_value = fields.iter().find(|(name, _)| name == &struct_field.name);
+
+                    if let Some((_, value_expr)) = field_value {
+                        // Infer value type and unify with expected field type
+                        let (value_ty, s1) = self.infer_expr(value_expr, &current_sub)?;
+                        let expected_ty = self.type_from_ast(&struct_field.ty);
+                        let s2 = unify(&s1.apply(&value_ty), &s1.apply(&expected_ty))?;
+                        current_sub = s1.compose(&s2);
+                    } else {
+                        return Err(TypeError {
+                            message: format!(
+                                "Missing field {} in {} literal",
+                                struct_field.name, type_name
+                            ),
+                        });
+                    }
+                }
+
+                // Check for extra fields
+                for (field_name, _) in fields {
+                    if !struct_fields.iter().any(|f| &f.name == field_name) {
+                        return Err(TypeError {
+                            message: format!(
+                                "Unknown field {} in {} literal",
+                                field_name, type_name
+                            ),
+                        });
+                    }
+                }
+
+                Ok((TypeInfo::Record(type_name.clone()), current_sub))
             }
 
             // Gratitude literal
@@ -1242,14 +1389,10 @@ mod tests {
     #[test]
     fn test_unify_function() {
         // (Int, Int) -> Bool should unify with itself
-        let func1 = TypeInfo::Function(
-            vec![TypeInfo::Int, TypeInfo::Int],
-            Box::new(TypeInfo::Bool),
-        );
-        let func2 = TypeInfo::Function(
-            vec![TypeInfo::Int, TypeInfo::Int],
-            Box::new(TypeInfo::Bool),
-        );
+        let func1 =
+            TypeInfo::Function(vec![TypeInfo::Int, TypeInfo::Int], Box::new(TypeInfo::Bool));
+        let func2 =
+            TypeInfo::Function(vec![TypeInfo::Int, TypeInfo::Int], Box::new(TypeInfo::Bool));
 
         let result = unify(&func1, &func2);
         assert!(result.is_ok());

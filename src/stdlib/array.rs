@@ -1,10 +1,11 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
 //! WokeLang Standard Library - Array Module
 //!
 //! Array manipulation functions.
 
+use super::{check_arity, check_arity_range, expect_int, StdlibError};
 use crate::interpreter::Value;
 use crate::security::CapabilityRegistry;
-use super::{check_arity, check_arity_range, expect_int, StdlibError};
 
 /// Get the length of an array
 pub fn length(args: &[Value], _caps: &mut CapabilityRegistry) -> Result<Value, StdlibError> {
@@ -226,14 +227,20 @@ pub fn repeat(args: &[Value], _caps: &mut CapabilityRegistry) -> Result<Value, S
     let count = expect_int(&args[1], "count")?;
 
     if count < 0 {
-        return Err(StdlibError::RuntimeError("repeat count cannot be negative".to_string()));
+        return Err(StdlibError::RuntimeError(
+            "repeat count cannot be negative".to_string(),
+        ));
     }
 
     if count > 10000 {
-        return Err(StdlibError::RuntimeError("repeat count too large (max 10000)".to_string()));
+        return Err(StdlibError::RuntimeError(
+            "repeat count too large (max 10000)".to_string(),
+        ));
     }
 
-    let arr: Vec<Value> = std::iter::repeat(args[0].clone()).take(count as usize).collect();
+    let arr: Vec<Value> = std::iter::repeat(args[0].clone())
+        .take(count as usize)
+        .collect();
     Ok(Value::Array(arr))
 }
 
@@ -244,7 +251,11 @@ pub fn range(args: &[Value], _caps: &mut CapabilityRegistry) -> Result<Value, St
     let (start, end, step) = if args.len() == 1 {
         (0, expect_int(&args[0], "end")?, 1)
     } else if args.len() == 2 {
-        (expect_int(&args[0], "start")?, expect_int(&args[1], "end")?, 1)
+        (
+            expect_int(&args[0], "start")?,
+            expect_int(&args[1], "end")?,
+            1,
+        )
     } else {
         (
             expect_int(&args[0], "start")?,
@@ -265,11 +276,16 @@ pub fn range(args: &[Value], _caps: &mut CapabilityRegistry) -> Result<Value, St
     };
 
     if estimated_size > 100000 {
-        return Err(StdlibError::RuntimeError("range too large (max 100000)".to_string()));
+        return Err(StdlibError::RuntimeError(
+            "range too large (max 100000)".to_string(),
+        ));
     }
 
     let arr: Vec<Value> = if step > 0 {
-        (start..end).step_by(step as usize).map(Value::Int).collect()
+        (start..end)
+            .step_by(step as usize)
+            .map(Value::Int)
+            .collect()
     } else {
         let mut result = Vec::new();
         let mut i = start;

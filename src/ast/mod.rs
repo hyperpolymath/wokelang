@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
 use std::ops::Range;
 
 /// Source span for error reporting
@@ -284,6 +285,10 @@ pub enum Expr {
     Unwrap(Box<Spanned<Expr>>),
     /// Lambda/closure: `|x, y| -> expr` or `|x, y| { ... }`
     Lambda(LambdaExpr),
+    /// Field access: `record.field`
+    FieldAccess(Box<Spanned<Expr>>, String),
+    /// Record literal: `Person { name: "Alice", age: 30 }`
+    RecordLiteral(String, Vec<(String, Spanned<Expr>)>),
 }
 
 /// Binary operators

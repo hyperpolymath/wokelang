@@ -64,8 +64,7 @@ impl BytecodeCompiler {
         for item in &program.items {
             if let TopLevelItem::Function(func) = item {
                 let func_idx = self.program.functions.len();
-                self.function_indices
-                    .insert(func.name.clone(), func_idx);
+                self.function_indices.insert(func.name.clone(), func_idx);
 
                 // Create compiled function
                 let compiled_func = CompiledFunction::new(func.name.clone(), func.params.len());
@@ -81,7 +80,7 @@ impl BytecodeCompiler {
                 // Temporarily take the function out to avoid borrow issues
                 let mut compiled_func = std::mem::replace(
                     &mut self.program.functions[func_idx],
-                    CompiledFunction::new(String::new(), 0)
+                    CompiledFunction::new(String::new(), 0),
                 );
 
                 self.compile_function(func, &mut compiled_func)?;
@@ -419,7 +418,11 @@ impl BytecodeCompiler {
     }
 
     /// Compile an expression
-    fn compile_expr(&mut self, expr: &Expr, func: &mut CompiledFunction) -> Result<(), CompileError> {
+    fn compile_expr(
+        &mut self,
+        expr: &Expr,
+        func: &mut CompiledFunction,
+    ) -> Result<(), CompileError> {
         match expr {
             Expr::Literal(lit) => {
                 let value = match lit {

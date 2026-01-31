@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
 //! Async Worker System for WokeLang
 //!
 //! This module provides true async workers with message passing capabilities.

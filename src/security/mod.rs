@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
 //! Capability-based Security System for WokeLang
 //!
 //! This module implements "superpowers" - a capability-based security model
@@ -223,7 +224,13 @@ impl CapabilityRegistry {
     }
 
     /// Grant a capability with expiration
-    pub fn grant_temporary(&mut self, scope: &str, capability: Capability, duration: Duration, granted_by: &str) {
+    pub fn grant_temporary(
+        &mut self,
+        scope: &str,
+        capability: Capability,
+        duration: Duration,
+        granted_by: &str,
+    ) {
         let entry = GrantedCapability::new(capability.clone(), granted_by.to_string())
             .with_expiry(duration);
 

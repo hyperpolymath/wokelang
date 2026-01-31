@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
 //! C-compatible API for WokeLang
 //!
 //! This module provides extern "C" functions that can be called from Zig, C,

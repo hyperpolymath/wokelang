@@ -79,7 +79,7 @@ impl Repl {
             Ok(value) => {
                 // Print non-unit values
                 match value {
-                    crate::interpreter::Value::Unit => {},  // Don't print unit
+                    crate::interpreter::Value::Unit => {} // Don't print unit
                     crate::interpreter::Value::Int(n) => println!("{}", n),
                     crate::interpreter::Value::Float(f) => println!("{}", f),
                     crate::interpreter::Value::String(s) => println!("\"{}\"", s),
@@ -87,7 +87,9 @@ impl Repl {
                     crate::interpreter::Value::Array(arr) => {
                         print!("[");
                         for (i, val) in arr.iter().enumerate() {
-                            if i > 0 { print!(", "); }
+                            if i > 0 {
+                                print!(", ");
+                            }
                             print!("{:?}", val);
                         }
                         println!("]");

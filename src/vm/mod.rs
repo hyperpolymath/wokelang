@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
 //! WokeLang Virtual Machine
 //!
 //! A bytecode compiler and stack-based VM for efficient execution.
@@ -9,7 +10,7 @@ pub mod optimizer;
 
 pub use bytecode::{CompiledFunction, CompiledProgram, OpCode};
 pub use compiler::{BytecodeCompiler, CompileError};
-pub use machine::{VirtualMachine, VMError};
+pub use machine::{VMError, VirtualMachine};
 pub use optimizer::Optimizer;
 
 use crate::interpreter::Value;
@@ -20,7 +21,9 @@ use crate::parser::Parser;
 pub fn run_vm(source: &str) -> Result<Value, String> {
     // Lex
     let lexer = Lexer::new(source);
-    let tokens = lexer.tokenize().map_err(|e| format!("Lexer error: {}", e))?;
+    let tokens = lexer
+        .tokenize()
+        .map_err(|e| format!("Lexer error: {}", e))?;
 
     // Parse
     let mut parser = Parser::new(tokens, source);
@@ -44,7 +47,9 @@ pub fn run_vm(source: &str) -> Result<Value, String> {
 /// Compile WokeLang source to bytecode (without running)
 pub fn compile(source: &str) -> Result<CompiledProgram, String> {
     let lexer = Lexer::new(source);
-    let tokens = lexer.tokenize().map_err(|e| format!("Lexer error: {}", e))?;
+    let tokens = lexer
+        .tokenize()
+        .map_err(|e| format!("Lexer error: {}", e))?;
 
     let mut parser = Parser::new(tokens, source);
     let program = parser.parse().map_err(|e| format!("Parse error: {}", e))?;

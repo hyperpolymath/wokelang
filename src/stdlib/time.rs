@@ -1,10 +1,11 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
 //! WokeLang Standard Library - Time Module
 //!
 //! Date and time handling functions.
 
+use super::{check_arity, expect_int, expect_string, StdlibError};
 use crate::interpreter::Value;
 use crate::security::CapabilityRegistry;
-use super::{check_arity, expect_int, expect_string, StdlibError};
 use std::collections::HashMap;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
@@ -194,7 +195,8 @@ fn parse_date_string(date_str: &str, format_str: &str) -> Result<i64, StdlibErro
 
     // Try ISO 8601 format: YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS
     if format_str.contains("%Y") && format_str.contains("%m") && format_str.contains("%d") {
-        let parts: Vec<&str> = date_str.split(|c| c == '-' || c == 'T' || c == ':' || c == ' ')
+        let parts: Vec<&str> = date_str
+            .split(|c| c == '-' || c == 'T' || c == ':' || c == ' ')
             .collect();
 
         if parts.len() >= 3 {

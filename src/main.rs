@@ -4,8 +4,8 @@ use miette::Result;
 use std::fs;
 use std::path::PathBuf;
 use wokelang::{
-    disassemble as disasm_bytecode, BytecodeCompiler, Interpreter, Lexer,
-    Linter, Parser as WokeParser, Repl, TypeChecker,
+    disassemble as disasm_bytecode, BytecodeCompiler, Interpreter, Lexer, Linter,
+    Parser as WokeParser, Repl, TypeChecker,
 };
 
 #[derive(Parser)]
@@ -227,7 +227,10 @@ fn compile_program(file: &PathBuf, _output: Option<PathBuf>) -> Result<()> {
 
     // Note: bytecode file I/O will be added when serialization is implemented
     println!("\nNote: Bytecode serialization not yet implemented.");
-    println!("Use 'woke run-vm {}' to execute via VM (in-memory)", file.display());
+    println!(
+        "Use 'woke run-vm {}' to execute via VM (in-memory)",
+        file.display()
+    );
 
     Ok(())
 }
@@ -335,10 +338,7 @@ fn lint_program(file: &PathBuf) -> Result<()> {
                 wokelang::linter::Severity::Warning => "warning",
                 wokelang::linter::Severity::Info => "info",
             };
-            println!(
-                "[{}] {}: {}",
-                severity_str, diag.code, diag.message
-            );
+            println!("[{}] {}: {}", severity_str, diag.code, diag.message);
         }
     }
 
@@ -381,7 +381,10 @@ fn parse_file(file: &PathBuf) -> Result<()> {
     match parser.parse() {
         Ok(program) => {
             println!("{:#?}", program);
-            println!("\nParsed {} top-level items successfully.", program.items.len());
+            println!(
+                "\nParsed {} top-level items successfully.",
+                program.items.len()
+            );
         }
         Err(e) => {
             eprintln!("{:?}", miette::Report::new(e));

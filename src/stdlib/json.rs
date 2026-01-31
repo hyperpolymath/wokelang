@@ -87,10 +87,7 @@ fn parse_json_string(s: &str) -> Result<Value, StdlibError> {
         }
 
         let elements = split_json_array(content)?;
-        let values: Result<Vec<_>, _> = elements
-            .iter()
-            .map(|e| parse_json_string(e))
-            .collect();
+        let values: Result<Vec<_>, _> = elements.iter().map(|e| parse_json_string(e)).collect();
         return Ok(Value::Array(values?));
     }
 
@@ -127,8 +124,7 @@ fn value_to_json_string(value: &Value) -> Result<String, StdlibError> {
         Value::Float(f) => Ok(f.to_string()),
         Value::String(s) => Ok(format!("\"{}\"", escape_json_string(s))),
         Value::Array(arr) => {
-            let elements: Result<Vec<_>, _> =
-                arr.iter().map(value_to_json_string).collect();
+            let elements: Result<Vec<_>, _> = arr.iter().map(value_to_json_string).collect();
             Ok(format!("[{}]", elements?.join(",")))
         }
         Value::Record(map) => {
@@ -369,7 +365,9 @@ mod tests {
     #[test]
     fn test_parse_object() {
         let mut caps = test_caps();
-        let args = vec![Value::String("{\"name\": \"Alice\", \"age\": 30}".to_string())];
+        let args = vec![Value::String(
+            "{\"name\": \"Alice\", \"age\": 30}".to_string(),
+        )];
         let result = parse(&args, &mut caps).unwrap();
         match result {
             Value::Record(map) => {

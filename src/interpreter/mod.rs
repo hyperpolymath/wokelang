@@ -5,12 +5,12 @@
 
 pub mod value;
 
-pub use value::{ChannelHandle, CapturedEnv, Closure, Value};
+pub use value::{CapturedEnv, ChannelHandle, Closure, Value};
 
 use crate::ast::*;
+use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
-use std::cell::RefCell;
 
 /// Interpreter runtime error
 #[derive(Debug)]
@@ -103,9 +103,9 @@ pub struct PragmaSettings {
 impl Default for PragmaSettings {
     fn default() -> Self {
         Self {
-            care: true,      // Consent checking on by default
-            strict: false,   // Lenient mode by default
-            verbose: false,  // Quiet by default
+            care: true,     // Consent checking on by default
+            strict: false,  // Lenient mode by default
+            verbose: false, // Quiet by default
         }
     }
 }
@@ -145,18 +145,27 @@ impl Interpreter {
                         crate::ast::PragmaDirective::Care => {
                             self.pragmas.care = pragma.enabled;
                             if self.pragmas.verbose {
-                                println!("[pragma] consent checking: {}", if pragma.enabled { "ON" } else { "OFF" });
+                                println!(
+                                    "[pragma] consent checking: {}",
+                                    if pragma.enabled { "ON" } else { "OFF" }
+                                );
                             }
                         }
                         crate::ast::PragmaDirective::Strict => {
                             self.pragmas.strict = pragma.enabled;
                             if self.pragmas.verbose {
-                                println!("[pragma] strict mode: {}", if pragma.enabled { "ON" } else { "OFF" });
+                                println!(
+                                    "[pragma] strict mode: {}",
+                                    if pragma.enabled { "ON" } else { "OFF" }
+                                );
                             }
                         }
                         crate::ast::PragmaDirective::Verbose => {
                             self.pragmas.verbose = pragma.enabled;
-                            println!("[pragma] verbose output: {}", if pragma.enabled { "ON" } else { "OFF" });
+                            println!(
+                                "[pragma] verbose output: {}",
+                                if pragma.enabled { "ON" } else { "OFF" }
+                            );
                         }
                     }
                 }
@@ -165,7 +174,8 @@ impl Interpreter {
                 }
                 TopLevelItem::WorkerDef(worker) => {
                     // Store worker definition for later spawning
-                    self.worker_defs.insert(worker.name.clone(), worker.body.clone());
+                    self.worker_defs
+                        .insert(worker.name.clone(), worker.body.clone());
                     if self.pragmas.verbose {
                         println!("[worker] Registered worker: {}", worker.name);
                     }
@@ -191,9 +201,9 @@ impl Interpreter {
         args: Vec<Value>,
     ) -> Result<Value, RuntimeError> {
         // Create new scope
-        let new_env = Rc::new(RefCell::new(Environment::with_parent(
-            Rc::clone(&self.environment),
-        )));
+        let new_env = Rc::new(RefCell::new(Environment::with_parent(Rc::clone(
+            &self.environment,
+        ))));
         let old_env = std::mem::replace(&mut self.environment, new_env);
 
         // Bind parameters
@@ -209,7 +219,9 @@ impl Interpreter {
         }
 
         for (param, arg) in func.params.iter().zip(args.iter()) {
-            self.environment.borrow_mut().define(param.name.clone(), arg.clone());
+            self.environment
+                .borrow_mut()
+                .define(param.name.clone(), arg.clone());
         }
 
         // Execute function body
@@ -236,13 +248,17 @@ impl Interpreter {
         match stmt {
             Statement::VarDecl(var_decl) => {
                 let value = self.eval_expr(&var_decl.value)?;
-                self.environment.borrow_mut().define(var_decl.name.clone(), value);
+                self.environment
+                    .borrow_mut()
+                    .define(var_decl.name.clone(), value);
                 Ok(Value::Unit)
             }
 
             Statement::Assignment(assignment) => {
                 let value = self.eval_expr(&assignment.value)?;
-                self.environment.borrow_mut().set(&assignment.target, value)?;
+                self.environment
+                    .borrow_mut()
+                    .set(&assignment.target, value)?;
                 Ok(Value::Unit)
             }
 
@@ -375,15 +391,15 @@ impl Interpreter {
                 }
             }
 
-            Statement::Expression(expr) => {
-                self.eval_expr(expr)
-            }
+            Statement::Expression(expr) => self.eval_expr(expr),
 
             Statement::WorkerSpawn(worker_spawn) => {
                 let worker_name = &worker_spawn.worker_name;
 
                 // Get worker definition
-                let worker_body = self.worker_defs.get(worker_name)
+                let worker_body = self
+                    .worker_defs
+                    .get(worker_name)
                     .ok_or_else(|| RuntimeError {
                         message: format!("Undefined worker: {}", worker_name),
                     })?
@@ -409,7 +425,7 @@ impl Interpreter {
                     // Execute worker body statements
                     for stmt in &worker_body {
                         match worker_interp.execute_statement(stmt) {
-                            Ok(_) => {},
+                            Ok(_) => {}
                             Err(e) => {
                                 eprintln!("[worker {}] Error: {}", worker_name_clone, e.message);
                                 return;
@@ -425,9 +441,9 @@ impl Interpreter {
                 Ok(Value::Unit)
             }
 
-            Statement::Complain(complain) => {
-                Err(RuntimeError { message: complain.message.clone() })
-            }
+            Statement::Complain(complain) => Err(RuntimeError {
+                message: complain.message.clone(),
+            }),
 
             Statement::EmoteAnnotated(emote) => {
                 // Execute the underlying statement, ignoring the emote annotation
@@ -464,9 +480,12 @@ impl Interpreter {
             Expr::Literal(lit) => Ok(self.eval_literal(lit)),
 
             Expr::Identifier(name) => {
-                self.environment.borrow().get(name).ok_or_else(|| RuntimeError {
-                    message: format!("Undefined variable: {}", name),
-                })
+                self.environment
+                    .borrow()
+                    .get(name)
+                    .ok_or_else(|| RuntimeError {
+                        message: format!("Undefined variable: {}", name),
+                    })
             }
 
             Expr::Binary(op, left, right) => {
@@ -481,7 +500,8 @@ impl Interpreter {
             }
 
             Expr::Call(func_name, args) => {
-                let arg_vals: Result<Vec<_>, _> = args.iter().map(|arg| self.eval_expr(arg)).collect();
+                let arg_vals: Result<Vec<_>, _> =
+                    args.iter().map(|arg| self.eval_expr(arg)).collect();
                 let arg_vals = arg_vals?;
 
                 // Check for built-in functions first
@@ -489,7 +509,10 @@ impl Interpreter {
                     "print" => {
                         if arg_vals.len() != 1 {
                             return Err(RuntimeError {
-                                message: format!("print expects 1 argument, got {}", arg_vals.len()),
+                                message: format!(
+                                    "print expects 1 argument, got {}",
+                                    arg_vals.len()
+                                ),
                             });
                         }
                         println!("{}", self.value_to_string(&arg_vals[0]));
@@ -498,7 +521,10 @@ impl Interpreter {
                     "printInline" => {
                         if arg_vals.len() != 1 {
                             return Err(RuntimeError {
-                                message: format!("printInline expects 1 argument, got {}", arg_vals.len()),
+                                message: format!(
+                                    "printInline expects 1 argument, got {}",
+                                    arg_vals.len()
+                                ),
                             });
                         }
                         print!("{}", self.value_to_string(&arg_vals[0]));
@@ -509,7 +535,10 @@ impl Interpreter {
                     "toString" => {
                         if arg_vals.len() != 1 {
                             return Err(RuntimeError {
-                                message: format!("toString expects 1 argument, got {}", arg_vals.len()),
+                                message: format!(
+                                    "toString expects 1 argument, got {}",
+                                    arg_vals.len()
+                                ),
                             });
                         }
                         return Ok(Value::String(self.value_to_string(&arg_vals[0])));
@@ -537,7 +566,9 @@ impl Interpreter {
 
                 // Check stdlib functions
                 if self.stdlib.has(func_name) {
-                    return self.stdlib.call(func_name, &arg_vals, &mut self.capabilities)
+                    return self
+                        .stdlib
+                        .call(func_name, &arg_vals, &mut self.capabilities)
                         .map_err(|e| RuntimeError {
                             message: format!("Stdlib error: {}", e),
                         });
@@ -555,13 +586,12 @@ impl Interpreter {
 
             Expr::CallExpr(callee, args) => {
                 let func_val = self.eval_expr(callee)?;
-                let arg_vals: Result<Vec<_>, _> = args.iter().map(|arg| self.eval_expr(arg)).collect();
+                let arg_vals: Result<Vec<_>, _> =
+                    args.iter().map(|arg| self.eval_expr(arg)).collect();
                 let arg_vals = arg_vals?;
 
                 match func_val {
-                    Value::Function(closure) => {
-                        self.execute_closure(&closure, arg_vals)
-                    }
+                    Value::Function(closure) => self.execute_closure(&closure, arg_vals),
                     _ => Err(RuntimeError {
                         message: format!("Cannot call non-function value: {:?}", func_val),
                     }),
@@ -581,7 +611,11 @@ impl Interpreter {
                     (Value::Array(arr), Value::Int(idx)) => {
                         if idx < 0 || idx as usize >= arr.len() {
                             Err(RuntimeError {
-                                message: format!("Index {} out of bounds (length {})", idx, arr.len()),
+                                message: format!(
+                                    "Index {} out of bounds (length {})",
+                                    idx,
+                                    arr.len()
+                                ),
                             })
                         } else {
                             Ok(arr[idx as usize].clone())
@@ -591,7 +625,11 @@ impl Interpreter {
                         let chars: Vec<char> = s.chars().collect();
                         if idx < 0 || idx as usize >= chars.len() {
                             Err(RuntimeError {
-                                message: format!("Index {} out of bounds (length {})", idx, chars.len()),
+                                message: format!(
+                                    "Index {} out of bounds (length {})",
+                                    idx,
+                                    chars.len()
+                                ),
                             })
                         } else {
                             Ok(Value::String(chars[idx as usize].to_string()))
@@ -629,6 +667,32 @@ impl Interpreter {
                 }
             }
 
+            Expr::FieldAccess(record_expr, field_name) => {
+                let record_val = self.eval_expr(record_expr)?;
+
+                match record_val {
+                    Value::Record(fields) => {
+                        fields.get(field_name).cloned().ok_or_else(|| RuntimeError {
+                            message: format!("Record has no field: {}", field_name),
+                        })
+                    }
+                    _ => Err(RuntimeError {
+                        message: format!("Cannot access field of non-record value"),
+                    }),
+                }
+            }
+
+            Expr::RecordLiteral(_type_name, fields) => {
+                let mut field_map = std::collections::HashMap::new();
+
+                for (field_name, field_expr) in fields {
+                    let field_value = self.eval_expr(field_expr)?;
+                    field_map.insert(field_name.clone(), field_value);
+                }
+
+                Ok(Value::Record(field_map))
+            }
+
             Expr::Lambda(lambda) => {
                 // Capture current environment
                 let bindings = self.environment.borrow().bindings.clone();
@@ -662,7 +726,11 @@ impl Interpreter {
     }
 
     /// Execute a closure
-    fn execute_closure(&mut self, closure: &Closure, args: Vec<Value>) -> Result<Value, RuntimeError> {
+    fn execute_closure(
+        &mut self,
+        closure: &Closure,
+        args: Vec<Value>,
+    ) -> Result<Value, RuntimeError> {
         if closure.params.len() != args.len() {
             return Err(RuntimeError {
                 message: format!(
@@ -722,7 +790,12 @@ impl Interpreter {
     }
 
     /// Evaluate binary operation
-    fn eval_binary_op(&self, op: BinaryOp, left: Value, right: Value) -> Result<Value, RuntimeError> {
+    fn eval_binary_op(
+        &self,
+        op: BinaryOp,
+        left: Value,
+        right: Value,
+    ) -> Result<Value, RuntimeError> {
         match (op, left, right) {
             // Arithmetic
             (BinaryOp::Add, Value::Int(a), Value::Int(b)) => Ok(Value::Int(a + b)),
@@ -743,7 +816,9 @@ impl Interpreter {
 
             (BinaryOp::Div, Value::Int(a), Value::Int(b)) => {
                 if b == 0 {
-                    Err(RuntimeError { message: "Division by zero".to_string() })
+                    Err(RuntimeError {
+                        message: "Division by zero".to_string(),
+                    })
                 } else {
                     Ok(Value::Int(a / b))
                 }
@@ -754,7 +829,9 @@ impl Interpreter {
 
             (BinaryOp::Mod, Value::Int(a), Value::Int(b)) => {
                 if b == 0 {
-                    Err(RuntimeError { message: "Modulo by zero".to_string() })
+                    Err(RuntimeError {
+                        message: "Modulo by zero".to_string(),
+                    })
                 } else {
                     Ok(Value::Int(a % b))
                 }
@@ -819,19 +896,17 @@ impl Interpreter {
                 Ok(true)
             }
             Pattern::Wildcard => Ok(true),
-            Pattern::Constructor(name, inner_pattern) => {
-                match (name.as_str(), value) {
-                    ("Okay", Value::Okay(inner)) => {
-                        if let Some(pat) = inner_pattern {
-                            self.pattern_matches(pat, inner)
-                        } else {
-                            Ok(true)
-                        }
+            Pattern::Constructor(name, inner_pattern) => match (name.as_str(), value) {
+                ("Okay", Value::Okay(inner)) => {
+                    if let Some(pat) = inner_pattern {
+                        self.pattern_matches(pat, inner)
+                    } else {
+                        Ok(true)
                     }
-                    ("Oops", Value::Oops(_)) => Ok(true),
-                    _ => Ok(false),
                 }
-            }
+                ("Oops", Value::Oops(_)) => Ok(true),
+                _ => Ok(false),
+            },
         }
     }
 
@@ -872,7 +947,8 @@ impl Interpreter {
                 format!("[{}]", items.join(", "))
             }
             Value::Record(map) => {
-                let items: Vec<String> = map.iter()
+                let items: Vec<String> = map
+                    .iter()
                     .map(|(k, v)| format!("{}: {}", k, self.value_to_string(v)))
                     .collect();
                 format!("{{{}}}", items.join(", "))
@@ -912,33 +988,63 @@ mod tests {
     fn test_eval_literal() {
         let mut interp = Interpreter::new();
 
-        let int_lit = Spanned { node: Expr::Literal(Literal::Integer(42)), span: Span::default() };
+        let int_lit = Spanned {
+            node: Expr::Literal(Literal::Integer(42)),
+            span: Span::default(),
+        };
         assert_eq!(interp.eval_expr(&int_lit).unwrap(), Value::Int(42));
 
-        let bool_lit = Spanned { node: Expr::Literal(Literal::Bool(true)), span: Span::default() };
+        let bool_lit = Spanned {
+            node: Expr::Literal(Literal::Bool(true)),
+            span: Span::default(),
+        };
         assert_eq!(interp.eval_expr(&bool_lit).unwrap(), Value::Bool(true));
 
-        let str_lit = Spanned { node: Expr::Literal(Literal::String("hello".to_string())), span: Span::default() };
-        assert_eq!(interp.eval_expr(&str_lit).unwrap(), Value::String("hello".to_string()));
+        let str_lit = Spanned {
+            node: Expr::Literal(Literal::String("hello".to_string())),
+            span: Span::default(),
+        };
+        assert_eq!(
+            interp.eval_expr(&str_lit).unwrap(),
+            Value::String("hello".to_string())
+        );
     }
 
     #[test]
     fn test_eval_binary_arithmetic() {
         let mut interp = Interpreter::new();
 
-        let left = Box::new(Spanned { node: Expr::Literal(Literal::Integer(10)), span: Span::default() });
-        let right = Box::new(Spanned { node: Expr::Literal(Literal::Integer(5)), span: Span::default() });
+        let left = Box::new(Spanned {
+            node: Expr::Literal(Literal::Integer(10)),
+            span: Span::default(),
+        });
+        let right = Box::new(Spanned {
+            node: Expr::Literal(Literal::Integer(5)),
+            span: Span::default(),
+        });
 
-        let add = Spanned { node: Expr::Binary(BinaryOp::Add, left.clone(), right.clone()), span: Span::default() };
+        let add = Spanned {
+            node: Expr::Binary(BinaryOp::Add, left.clone(), right.clone()),
+            span: Span::default(),
+        };
         assert_eq!(interp.eval_expr(&add).unwrap(), Value::Int(15));
 
-        let sub = Spanned { node: Expr::Binary(BinaryOp::Sub, left.clone(), right.clone()), span: Span::default() };
+        let sub = Spanned {
+            node: Expr::Binary(BinaryOp::Sub, left.clone(), right.clone()),
+            span: Span::default(),
+        };
         assert_eq!(interp.eval_expr(&sub).unwrap(), Value::Int(5));
 
-        let mul = Spanned { node: Expr::Binary(BinaryOp::Mul, left.clone(), right.clone()), span: Span::default() };
+        let mul = Spanned {
+            node: Expr::Binary(BinaryOp::Mul, left.clone(), right.clone()),
+            span: Span::default(),
+        };
         assert_eq!(interp.eval_expr(&mul).unwrap(), Value::Int(50));
 
-        let div = Spanned { node: Expr::Binary(BinaryOp::Div, left, right), span: Span::default() };
+        let div = Spanned {
+            node: Expr::Binary(BinaryOp::Div, left, right),
+            span: Span::default(),
+        };
         assert_eq!(interp.eval_expr(&div).unwrap(), Value::Int(2));
     }
 
@@ -946,16 +1052,31 @@ mod tests {
     fn test_eval_binary_comparison() {
         let mut interp = Interpreter::new();
 
-        let left = Box::new(Spanned { node: Expr::Literal(Literal::Integer(10)), span: Span::default() });
-        let right = Box::new(Spanned { node: Expr::Literal(Literal::Integer(5)), span: Span::default() });
+        let left = Box::new(Spanned {
+            node: Expr::Literal(Literal::Integer(10)),
+            span: Span::default(),
+        });
+        let right = Box::new(Spanned {
+            node: Expr::Literal(Literal::Integer(5)),
+            span: Span::default(),
+        });
 
-        let lt = Spanned { node: Expr::Binary(BinaryOp::Lt, left.clone(), right.clone()), span: Span::default() };
+        let lt = Spanned {
+            node: Expr::Binary(BinaryOp::Lt, left.clone(), right.clone()),
+            span: Span::default(),
+        };
         assert_eq!(interp.eval_expr(&lt).unwrap(), Value::Bool(false));
 
-        let gt = Spanned { node: Expr::Binary(BinaryOp::Gt, left.clone(), right.clone()), span: Span::default() };
+        let gt = Spanned {
+            node: Expr::Binary(BinaryOp::Gt, left.clone(), right.clone()),
+            span: Span::default(),
+        };
         assert_eq!(interp.eval_expr(&gt).unwrap(), Value::Bool(true));
 
-        let eq = Spanned { node: Expr::Binary(BinaryOp::Eq, left, right), span: Span::default() };
+        let eq = Spanned {
+            node: Expr::Binary(BinaryOp::Eq, left, right),
+            span: Span::default(),
+        };
         assert_eq!(interp.eval_expr(&eq).unwrap(), Value::Bool(false));
     }
 
@@ -963,12 +1084,24 @@ mod tests {
     fn test_eval_unary() {
         let mut interp = Interpreter::new();
 
-        let val = Box::new(Spanned { node: Expr::Literal(Literal::Integer(42)), span: Span::default() });
-        let neg = Spanned { node: Expr::Unary(UnaryOp::Neg, val), span: Span::default() };
+        let val = Box::new(Spanned {
+            node: Expr::Literal(Literal::Integer(42)),
+            span: Span::default(),
+        });
+        let neg = Spanned {
+            node: Expr::Unary(UnaryOp::Neg, val),
+            span: Span::default(),
+        };
         assert_eq!(interp.eval_expr(&neg).unwrap(), Value::Int(-42));
 
-        let bool_val = Box::new(Spanned { node: Expr::Literal(Literal::Bool(true)), span: Span::default() });
-        let not = Spanned { node: Expr::Unary(UnaryOp::Not, bool_val), span: Span::default() };
+        let bool_val = Box::new(Spanned {
+            node: Expr::Literal(Literal::Bool(true)),
+            span: Span::default(),
+        });
+        let not = Spanned {
+            node: Expr::Unary(UnaryOp::Not, bool_val),
+            span: Span::default(),
+        };
         assert_eq!(interp.eval_expr(&not).unwrap(), Value::Bool(false));
     }
 
@@ -979,7 +1112,10 @@ mod tests {
         // remember x = 42;
         let var_decl = Statement::VarDecl(VarDecl {
             name: "x".to_string(),
-            value: Spanned { node: Expr::Literal(Literal::Integer(42)), span: Span::default() },
+            value: Spanned {
+                node: Expr::Literal(Literal::Integer(42)),
+                span: Span::default(),
+            },
             unit: None,
             span: Span::default(),
         });
@@ -987,7 +1123,10 @@ mod tests {
         interp.execute_statement(&var_decl).unwrap();
 
         // Access x
-        let ident = Spanned { node: Expr::Identifier("x".to_string()), span: Span::default() };
+        let ident = Spanned {
+            node: Expr::Identifier("x".to_string()),
+            span: Span::default(),
+        };
         assert_eq!(interp.eval_expr(&ident).unwrap(), Value::Int(42));
     }
 
@@ -996,21 +1135,34 @@ mod tests {
         let mut interp = Interpreter::new();
 
         // remember x = 10;
-        interp.execute_statement(&Statement::VarDecl(VarDecl {
-            name: "x".to_string(),
-            value: Spanned { node: Expr::Literal(Literal::Integer(10)), span: Span::default() },
-            unit: None,
-            span: Span::default(),
-        })).unwrap();
+        interp
+            .execute_statement(&Statement::VarDecl(VarDecl {
+                name: "x".to_string(),
+                value: Spanned {
+                    node: Expr::Literal(Literal::Integer(10)),
+                    span: Span::default(),
+                },
+                unit: None,
+                span: Span::default(),
+            }))
+            .unwrap();
 
         // x = 20;
-        interp.execute_statement(&Statement::Assignment(Assignment {
-            target: "x".to_string(),
-            value: Spanned { node: Expr::Literal(Literal::Integer(20)), span: Span::default() },
-            span: Span::default(),
-        })).unwrap();
+        interp
+            .execute_statement(&Statement::Assignment(Assignment {
+                target: "x".to_string(),
+                value: Spanned {
+                    node: Expr::Literal(Literal::Integer(20)),
+                    span: Span::default(),
+                },
+                span: Span::default(),
+            }))
+            .unwrap();
 
-        let ident = Spanned { node: Expr::Identifier("x".to_string()), span: Span::default() };
+        let ident = Spanned {
+            node: Expr::Identifier("x".to_string()),
+            span: Span::default(),
+        };
         assert_eq!(interp.eval_expr(&ident).unwrap(), Value::Int(20));
     }
 
@@ -1020,10 +1172,16 @@ mod tests {
 
         // when true { remember x = 1; }
         let conditional = Statement::Conditional(Conditional {
-            condition: Spanned { node: Expr::Literal(Literal::Bool(true)), span: Span::default() },
+            condition: Spanned {
+                node: Expr::Literal(Literal::Bool(true)),
+                span: Span::default(),
+            },
             then_branch: vec![Statement::VarDecl(VarDecl {
                 name: "x".to_string(),
-                value: Spanned { node: Expr::Literal(Literal::Integer(1)), span: Span::default() },
+                value: Spanned {
+                    node: Expr::Literal(Literal::Integer(1)),
+                    span: Span::default(),
+                },
                 unit: None,
                 span: Span::default(),
             })],
@@ -1033,7 +1191,10 @@ mod tests {
 
         interp.execute_statement(&conditional).unwrap();
 
-        let ident = Spanned { node: Expr::Identifier("x".to_string()), span: Span::default() };
+        let ident = Spanned {
+            node: Expr::Identifier("x".to_string()),
+            span: Span::default(),
+        };
         assert_eq!(interp.eval_expr(&ident).unwrap(), Value::Int(1));
     }
 
@@ -1042,23 +1203,37 @@ mod tests {
         let mut interp = Interpreter::new();
 
         // remember count = 0;
-        interp.execute_statement(&Statement::VarDecl(VarDecl {
-            name: "count".to_string(),
-            value: Spanned { node: Expr::Literal(Literal::Integer(0)), span: Span::default() },
-            unit: None,
-            span: Span::default(),
-        })).unwrap();
+        interp
+            .execute_statement(&Statement::VarDecl(VarDecl {
+                name: "count".to_string(),
+                value: Spanned {
+                    node: Expr::Literal(Literal::Integer(0)),
+                    span: Span::default(),
+                },
+                unit: None,
+                span: Span::default(),
+            }))
+            .unwrap();
 
         // repeat 5 times { count = count + 1; }
         let loop_stmt = Statement::Loop(Loop {
-            count: Spanned { node: Expr::Literal(Literal::Integer(5)), span: Span::default() },
+            count: Spanned {
+                node: Expr::Literal(Literal::Integer(5)),
+                span: Span::default(),
+            },
             body: vec![Statement::Assignment(Assignment {
                 target: "count".to_string(),
                 value: Spanned {
                     node: Expr::Binary(
                         BinaryOp::Add,
-                        Box::new(Spanned { node: Expr::Identifier("count".to_string()), span: Span::default() }),
-                        Box::new(Spanned { node: Expr::Literal(Literal::Integer(1)), span: Span::default() }),
+                        Box::new(Spanned {
+                            node: Expr::Identifier("count".to_string()),
+                            span: Span::default(),
+                        }),
+                        Box::new(Spanned {
+                            node: Expr::Literal(Literal::Integer(1)),
+                            span: Span::default(),
+                        }),
                     ),
                     span: Span::default(),
                 },
@@ -1069,7 +1244,10 @@ mod tests {
 
         interp.execute_statement(&loop_stmt).unwrap();
 
-        let ident = Spanned { node: Expr::Identifier("count".to_string()), span: Span::default() };
+        let ident = Spanned {
+            node: Expr::Identifier("count".to_string()),
+            span: Span::default(),
+        };
         assert_eq!(interp.eval_expr(&ident).unwrap(), Value::Int(5));
     }
 
@@ -1080,9 +1258,18 @@ mod tests {
         // [1, 2, 3]
         let array = Spanned {
             node: Expr::Array(vec![
-                Spanned { node: Expr::Literal(Literal::Integer(1)), span: Span::default() },
-                Spanned { node: Expr::Literal(Literal::Integer(2)), span: Span::default() },
-                Spanned { node: Expr::Literal(Literal::Integer(3)), span: Span::default() },
+                Spanned {
+                    node: Expr::Literal(Literal::Integer(1)),
+                    span: Span::default(),
+                },
+                Spanned {
+                    node: Expr::Literal(Literal::Integer(2)),
+                    span: Span::default(),
+                },
+                Spanned {
+                    node: Expr::Literal(Literal::Integer(3)),
+                    span: Span::default(),
+                },
             ]),
             span: Span::default(),
         };
@@ -1094,7 +1281,10 @@ mod tests {
         let index = Spanned {
             node: Expr::Index(
                 Box::new(array),
-                Box::new(Spanned { node: Expr::Literal(Literal::Integer(1)), span: Span::default() }),
+                Box::new(Spanned {
+                    node: Expr::Literal(Literal::Integer(1)),
+                    span: Span::default(),
+                }),
             ),
             span: Span::default(),
         };
@@ -1153,6 +1343,9 @@ mod tests {
             span: Span::default(),
         };
 
-        assert_eq!(interp.eval_expr(&concat).unwrap(), Value::String("hello world".to_string()));
+        assert_eq!(
+            interp.eval_expr(&concat).unwrap(),
+            Value::String("hello world".to_string())
+        );
     }
 }

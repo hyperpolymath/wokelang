@@ -1,10 +1,11 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
 //! WokeLang Standard Library - Network Module
 //!
 //! HTTP and network operations that require explicit consent.
 
+use super::{check_arity, check_arity_range, expect_string, StdlibError};
 use crate::interpreter::Value;
 use crate::security::{Capability, CapabilityRegistry};
-use super::{check_arity, check_arity_range, expect_string, StdlibError};
 use std::io::{BufRead, BufReader, Read, Write};
 use std::net::{IpAddr, TcpStream, ToSocketAddrs};
 use std::time::Duration;
@@ -167,7 +168,8 @@ pub fn http_get(args: &[Value], caps: &mut CapabilityRegistry) -> Result<Value, 
     // For HTTPS, we can't do it without TLS library - return error
     if protocol == "https" {
         return Err(StdlibError::NetworkError(
-            "HTTPS not supported without TLS library. Use HTTP or compile with TLS support.".to_string(),
+            "HTTPS not supported without TLS library. Use HTTP or compile with TLS support."
+                .to_string(),
         ));
     }
 
@@ -242,8 +244,7 @@ pub fn download(args: &[Value], caps: &mut CapabilityRegistry) -> Result<Value, 
     let response = http_request_binary(&host, port, "GET", &path)?;
 
     // Write to file
-    std::fs::write(&dest_path, response)
-        .map_err(|e| StdlibError::IoError(e.to_string()))?;
+    std::fs::write(&dest_path, response).map_err(|e| StdlibError::IoError(e.to_string()))?;
 
     Ok(Value::Bool(true))
 }
@@ -262,7 +263,12 @@ fn http_request(
 }
 
 /// Make an HTTP request and return the response body as bytes
-fn http_request_binary(host: &str, port: u16, method: &str, path: &str) -> Result<Vec<u8>, StdlibError> {
+fn http_request_binary(
+    host: &str,
+    port: u16,
+    method: &str,
+    path: &str,
+) -> Result<Vec<u8>, StdlibError> {
     http_request_binary_with_body(host, port, method, path, None, None)
 }
 
@@ -280,12 +286,8 @@ fn http_request_binary_with_body(
     let mut stream = TcpStream::connect(&addr)
         .map_err(|e| StdlibError::NetworkError(format!("Connection failed: {}", e)))?;
 
-    stream
-        .set_read_timeout(Some(Duration::from_secs(30)))
-        .ok();
-    stream
-        .set_write_timeout(Some(Duration::from_secs(30)))
-        .ok();
+    stream.set_read_timeout(Some(Duration::from_secs(30))).ok();
+    stream.set_write_timeout(Some(Duration::from_secs(30))).ok();
 
     // Build request
     let mut request = format!("{} {} HTTP/1.1\r\n", method, path);
@@ -320,7 +322,9 @@ fn http_request_binary_with_body(
     // Parse status
     let status_parts: Vec<&str> = status_line.split_whitespace().collect();
     if status_parts.len() < 2 {
-        return Err(StdlibError::NetworkError("Invalid HTTP response".to_string()));
+        return Err(StdlibError::NetworkError(
+            "Invalid HTTP response".to_string(),
+        ));
     }
     let status_code: u16 = status_parts[1]
         .parse()
@@ -492,7 +496,9 @@ mod tests {
         assert!(is_private_ip(&IpAddr::V4(Ipv4Addr::new(172, 31, 255, 255))));
         assert!(is_private_ip(&IpAddr::V4(Ipv4Addr::new(192, 168, 1, 1))));
         assert!(is_private_ip(&IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1))));
-        assert!(is_private_ip(&IpAddr::V4(Ipv4Addr::new(169, 254, 169, 254))));
+        assert!(is_private_ip(&IpAddr::V4(Ipv4Addr::new(
+            169, 254, 169, 254
+        ))));
 
         // Test public IPs should return false
         assert!(!is_private_ip(&IpAddr::V4(Ipv4Addr::new(8, 8, 8, 8))));

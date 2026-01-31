@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
 //! WokeLang Bytecode Instruction Set
 //!
 //! A stack-based bytecode format for efficient execution.

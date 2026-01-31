@@ -1,10 +1,11 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
 //! WokeLang Standard Library - I/O Module
 //!
 //! File I/O operations that require explicit consent through capabilities.
 
+use super::{check_arity, check_arity_range, expect_string, StdlibError};
 use crate::interpreter::Value;
 use crate::security::{Capability, CapabilityRegistry};
-use super::{check_arity, check_arity_range, expect_string, StdlibError};
 use std::fs;
 use std::io::{self, BufRead, Write};
 use std::path::{Path, PathBuf};
@@ -128,7 +129,11 @@ pub fn append_file(args: &[Value], caps: &mut CapabilityRegistry) -> Result<Valu
     require_write(&path, caps)?;
 
     use std::fs::OpenOptions;
-    match OpenOptions::new().create(true).append(true).open(&validated_path) {
+    match OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(&validated_path)
+    {
         Ok(mut file) => match file.write_all(contents.as_bytes()) {
             Ok(()) => Ok(Value::Bool(true)),
             Err(e) => Err(StdlibError::IoError(e.to_string())),
@@ -247,7 +252,10 @@ mod tests {
 
         // Write
         let write_result = write_file(
-            &[Value::String(path.clone()), Value::String("Hello, WokeLang!".to_string())],
+            &[
+                Value::String(path.clone()),
+                Value::String("Hello, WokeLang!".to_string()),
+            ],
             &mut caps,
         );
         assert!(write_result.is_ok());
@@ -290,24 +298,27 @@ mod tests {
 
         // Write initial content
         write_file(
-            &[Value::String(path.clone()), Value::String("Hello".to_string())],
+            &[
+                Value::String(path.clone()),
+                Value::String("Hello".to_string()),
+            ],
             &mut caps,
         )
         .unwrap();
 
         // Append
         append_file(
-            &[Value::String(path.clone()), Value::String(", World!".to_string())],
+            &[
+                Value::String(path.clone()),
+                Value::String(", World!".to_string()),
+            ],
             &mut caps,
         )
         .unwrap();
 
         // Read and verify
         let result = read_file(&[Value::String(path.clone())], &mut caps);
-        assert_eq!(
-            result.unwrap(),
-            Value::String("Hello, World!".to_string())
-        );
+        assert_eq!(result.unwrap(), Value::String("Hello, World!".to_string()));
 
         // Cleanup
         let _ = fs::remove_file(&path);
@@ -362,7 +373,10 @@ mod tests {
         let result = read_file(&[Value::String("../etc/passwd".to_string())], &mut caps);
         assert!(result.is_err());
 
-        let result = read_file(&[Value::String("/tmp/../etc/passwd".to_string())], &mut caps);
+        let result = read_file(
+            &[Value::String("/tmp/../etc/passwd".to_string())],
+            &mut caps,
+        );
         assert!(result.is_err());
 
         // Should reject paths with null bytes

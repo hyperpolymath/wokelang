@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
 //! Persistent Consent Storage for WokeLang
 //!
 //! This module provides persistent storage for consent decisions,
@@ -176,7 +177,13 @@ impl ConsentStore {
     }
 
     /// Store a consent decision
-    pub fn store(&mut self, scope: &str, capability: &str, granted: bool, duration: ConsentDuration) -> Result<()> {
+    pub fn store(
+        &mut self,
+        scope: &str,
+        capability: &str,
+        granted: bool,
+        duration: ConsentDuration,
+    ) -> Result<()> {
         let now = SystemTime::now()
             .duration_since(SystemTime::UNIX_EPOCH)
             .map(|d| d.as_secs())
@@ -295,7 +302,11 @@ mod dirs {
             std::env::var("XDG_CONFIG_HOME")
                 .map(PathBuf::from)
                 .ok()
-                .or_else(|| std::env::var("HOME").map(|h| PathBuf::from(h).join(".config")).ok())
+                .or_else(|| {
+                    std::env::var("HOME")
+                        .map(|h| PathBuf::from(h).join(".config"))
+                        .ok()
+                })
         }
 
         #[cfg(target_os = "macos")]
@@ -332,7 +343,9 @@ mod tests {
         let mut store = ConsentStore::new(path);
         store.set_auto_save(false);
 
-        store.store("main", "file:read", true, ConsentDuration::Forever).unwrap();
+        store
+            .store("main", "file:read", true, ConsentDuration::Forever)
+            .unwrap();
 
         assert_eq!(store.check("main", "file:read"), Some(true));
         assert_eq!(store.check("main", "file:write"), None);
@@ -344,7 +357,9 @@ mod tests {
         let mut store = ConsentStore::new(path);
         store.set_auto_save(false);
 
-        store.store("main", "network", true, ConsentDuration::Forever).unwrap();
+        store
+            .store("main", "network", true, ConsentDuration::Forever)
+            .unwrap();
         assert_eq!(store.check("main", "network"), Some(true));
 
         store.revoke("main", "network").unwrap();
@@ -360,8 +375,12 @@ mod tests {
         // Store some consents
         {
             let mut store = ConsentStore::new(path.clone());
-            store.store("main", "file:read", true, ConsentDuration::Forever).unwrap();
-            store.store("main", "network", false, ConsentDuration::Day).unwrap();
+            store
+                .store("main", "file:read", true, ConsentDuration::Forever)
+                .unwrap();
+            store
+                .store("main", "network", false, ConsentDuration::Day)
+                .unwrap();
         }
 
         // Load in a new store
@@ -383,7 +402,9 @@ mod tests {
         let mut store = ConsentStore::new(path);
         store.set_auto_save(false);
 
-        store.store("main", "temp", true, ConsentDuration::Once).unwrap();
+        store
+            .store("main", "temp", true, ConsentDuration::Once)
+            .unwrap();
 
         // Once consents should never be returned from check
         assert_eq!(store.check("main", "temp"), None);

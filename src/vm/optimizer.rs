@@ -1,9 +1,10 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
 //! WokeLang Bytecode Optimizer
 //!
 //! Optimization passes for improving bytecode performance.
 
-use crate::interpreter::Value;
 use super::bytecode::{CompiledFunction, CompiledProgram, OpCode};
+use crate::interpreter::Value;
 
 /// Optimizer for bytecode programs
 pub struct Optimizer {
@@ -44,8 +45,7 @@ impl Optimizer {
         let mut i = 0;
         while i + 2 < func.code.len() {
             // Look for patterns like: Const(a), Const(b), BinaryOp
-            if let (OpCode::Const(a_idx), OpCode::Const(b_idx)) =
-                (&func.code[i], &func.code[i + 1])
+            if let (OpCode::Const(a_idx), OpCode::Const(b_idx)) = (&func.code[i], &func.code[i + 1])
             {
                 let a = func.constants.get(*a_idx).cloned();
                 let b = func.constants.get(*b_idx).cloned();

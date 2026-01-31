@@ -41,14 +41,14 @@ pub struct Parser<'a> {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 enum Precedence {
     None = 0,
-    Or = 1,          // or
-    And = 2,         // and
-    Equality = 3,    // == !=
-    Comparison = 4,  // < > <= >=
-    Term = 5,        // + -
-    Factor = 6,      // * / %
-    Unary = 7,       // - not
-    Call = 8,        // f(x) arr[i]
+    Or = 1,         // or
+    And = 2,        // and
+    Equality = 3,   // == !=
+    Comparison = 4, // < > <= >=
+    Term = 5,       // + -
+    Factor = 6,     // * / %
+    Unary = 7,      // - not
+    Call = 8,       // f(x) arr[i]
     Primary = 9,
 }
 
@@ -233,16 +233,23 @@ impl<'a> Parser<'a> {
             Token::False => {
                 self.advance();
                 let end = self.tokens[self.current - 1].span.end;
-                Ok(Spanned::new(Expr::Literal(Literal::Bool(false)), start..end))
+                Ok(Spanned::new(
+                    Expr::Literal(Literal::Bool(false)),
+                    start..end,
+                ))
             }
 
-            // Identifier or function call
+            // Identifier or function call or record literal
             Token::Identifier(name) => {
                 self.advance();
                 let end = self.tokens[self.current - 1].span.end;
 
+                // Check if it's a record literal (Type { field: value, ... })
+                if matches!(self.peek(), Token::LBrace) {
+                    self.parse_record_literal(name, start)
+                }
                 // Check if it's a function call
-                if matches!(self.peek(), Token::LParen) {
+                else if matches!(self.peek(), Token::LParen) {
                     self.parse_call(name, start)
                 } else {
                     Ok(Spanned::new(Expr::Identifier(name), start..end))
@@ -278,14 +285,10 @@ impl<'a> Parser<'a> {
             }
 
             // Array literal
-            Token::LBracket => {
-                self.parse_array_literal()
-            }
+            Token::LBracket => self.parse_array_literal(),
 
             // Lambda expression
-            Token::Pipe => {
-                self.parse_lambda()
-            }
+            Token::Pipe => self.parse_lambda(),
 
             // Result constructors
             Token::Okay => {
@@ -293,7 +296,10 @@ impl<'a> Parser<'a> {
                 self.expect(Token::LParen, "(")?;
                 let value = self.parse_expression()?;
                 let end_span = self.expect(Token::RParen, ")")?;
-                Ok(Spanned::new(Expr::Okay(Box::new(value)), start..end_span.end))
+                Ok(Spanned::new(
+                    Expr::Okay(Box::new(value)),
+                    start..end_span.end,
+                ))
             }
 
             // Thanks literal
@@ -304,7 +310,10 @@ impl<'a> Parser<'a> {
                     let name = name.clone();
                     self.advance();
                     let end_span = self.expect(Token::RParen, ")")?;
-                    Ok(Spanned::new(Expr::GratitudeLiteral(name), start..end_span.end))
+                    Ok(Spanned::new(
+                        Expr::GratitudeLiteral(name),
+                        start..end_span.end,
+                    ))
                 } else {
                     Err(ParseError::ExpectedToken {
                         expected: "string".to_string(),
@@ -323,10 +332,19 @@ impl<'a> Parser<'a> {
 
         match self.peek().clone() {
             // Binary operators
-            Token::Plus | Token::Minus | Token::Star | Token::Slash | Token::Percent |
-            Token::EqualEqual | Token::BangEqual |
-            Token::Less | Token::Greater | Token::LessEqual | Token::GreaterEqual |
-            Token::And | Token::Or => {
+            Token::Plus
+            | Token::Minus
+            | Token::Star
+            | Token::Slash
+            | Token::Percent
+            | Token::EqualEqual
+            | Token::BangEqual
+            | Token::Less
+            | Token::Greater
+            | Token::LessEqual
+            | Token::GreaterEqual
+            | Token::And
+            | Token::Or => {
                 let op = self.binary_op_from_token(self.peek())?;
                 self.advance();
                 let precedence = self.get_precedence_for_binop(&op);
@@ -334,6 +352,17 @@ impl<'a> Parser<'a> {
                 let end = right.span.end;
                 Ok(Spanned::new(
                     Expr::Binary(op, Box::new(left), Box::new(right)),
+                    start..end,
+                ))
+            }
+
+            // Field access
+            Token::Dot => {
+                self.advance();
+                let (field_name, _) = self.expect_identifier()?;
+                let end = self.tokens[self.current - 1].span.end;
+                Ok(Spanned::new(
+                    Expr::FieldAccess(Box::new(left), field_name),
                     start..end,
                 ))
             }
@@ -370,6 +399,34 @@ impl<'a> Parser<'a> {
 
             _ => Ok(left),
         }
+    }
+
+    fn parse_record_literal(
+        &mut self,
+        type_name: String,
+        start: usize,
+    ) -> Result<Spanned<Expr>, ParseError> {
+        self.expect(Token::LBrace, "{")?;
+
+        let mut fields = Vec::new();
+        if !matches!(self.peek(), Token::RBrace) {
+            loop {
+                let (field_name, _) = self.expect_identifier()?;
+                self.expect(Token::Colon, ":")?;
+                let field_value = self.parse_expression()?;
+                fields.push((field_name, field_value));
+
+                if !self.match_tokens(&[Token::Comma]) {
+                    break;
+                }
+            }
+        }
+
+        let end_span = self.expect(Token::RBrace, "}")?;
+        Ok(Spanned::new(
+            Expr::RecordLiteral(type_name, fields),
+            start..end_span.end,
+        ))
     }
 
     fn parse_array_literal(&mut self) -> Result<Spanned<Expr>, ParseError> {
@@ -482,7 +539,10 @@ impl<'a> Parser<'a> {
         }
 
         let end_span = self.expect(Token::RParen, ")")?;
-        Ok(Spanned::new(Expr::Call(func_name, args), start..end_span.end))
+        Ok(Spanned::new(
+            Expr::Call(func_name, args),
+            start..end_span.end,
+        ))
     }
 
     fn get_precedence(&self) -> Precedence {
@@ -495,7 +555,7 @@ impl<'a> Parser<'a> {
             }
             Token::Plus | Token::Minus => Precedence::Term,
             Token::Star | Token::Slash | Token::Percent => Precedence::Factor,
-            Token::LParen | Token::LBracket => Precedence::Call,
+            Token::LParen | Token::LBracket | Token::Dot => Precedence::Call,
             _ => Precedence::None,
         }
     }
@@ -505,9 +565,7 @@ impl<'a> Parser<'a> {
             BinaryOp::Or => Precedence::Or,
             BinaryOp::And => Precedence::And,
             BinaryOp::Eq | BinaryOp::NotEq => Precedence::Equality,
-            BinaryOp::Lt | BinaryOp::Gt | BinaryOp::LtEq | BinaryOp::GtEq => {
-                Precedence::Comparison
-            }
+            BinaryOp::Lt | BinaryOp::Gt | BinaryOp::LtEq | BinaryOp::GtEq => Precedence::Comparison,
             BinaryOp::Add | BinaryOp::Sub => Precedence::Term,
             BinaryOp::Mul | BinaryOp::Div | BinaryOp::Mod => Precedence::Factor,
         }
@@ -818,7 +876,10 @@ impl<'a> Parser<'a> {
                 if self.match_tokens(&[Token::LParen]) {
                     let inner = self.parse_pattern()?;
                     self.expect(Token::RParen, ")")?;
-                    Ok(Pattern::Constructor("Okay".to_string(), Some(Box::new(inner))))
+                    Ok(Pattern::Constructor(
+                        "Okay".to_string(),
+                        Some(Box::new(inner)),
+                    ))
                 } else {
                     Ok(Pattern::Constructor("Okay".to_string(), None))
                 }
@@ -1319,7 +1380,8 @@ impl<'a> Parser<'a> {
 
         let enabled = if self.match_tokens(&[Token::On]) {
             true
-        } else if self.match_tokens(&[Token::Or]) {  // "or" is used for "off" in "#care or"
+        } else if self.match_tokens(&[Token::Or]) {
+            // "or" is used for "off" in "#care or"
             false
         } else {
             return Err(ParseError::ExpectedToken {

@@ -1,10 +1,11 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
 //! WokeLang Standard Library - Math Module
 //!
 //! Mathematical functions that don't require any special capabilities.
 
+use super::{check_arity, check_arity_range, expect_float, StdlibError};
 use crate::interpreter::Value;
 use crate::security::CapabilityRegistry;
-use super::{check_arity, check_arity_range, expect_float, StdlibError};
 use std::f64::consts::{E, PI};
 
 /// Absolute value
@@ -125,7 +126,8 @@ pub fn random(args: &[Value], _caps: &mut CapabilityRegistry) -> Result<Value, S
         .unwrap_or(0);
 
     // Simple LCG
-    let random_val = ((seed.wrapping_mul(1103515245).wrapping_add(12345)) % (1 << 31)) as f64 / (1u64 << 31) as f64;
+    let random_val = ((seed.wrapping_mul(1103515245).wrapping_add(12345)) % (1 << 31)) as f64
+        / (1u64 << 31) as f64;
 
     match args.len() {
         0 => Ok(Value::Float(random_val)),
@@ -134,7 +136,10 @@ pub fn random(args: &[Value], _caps: &mut CapabilityRegistry) -> Result<Value, S
             let max = expect_float(&args[1], "max")?;
             Ok(Value::Float(min + random_val * (max - min)))
         }
-        _ => Err(StdlibError::ArityError { expected: 0, got: args.len() }),
+        _ => Err(StdlibError::ArityError {
+            expected: 0,
+            got: args.len(),
+        }),
     }
 }
 
@@ -161,10 +166,7 @@ mod tests {
     #[test]
     fn test_abs() {
         let mut caps = test_caps();
-        assert_eq!(
-            abs(&[Value::Int(-5)], &mut caps).unwrap(),
-            Value::Int(5)
-        );
+        assert_eq!(abs(&[Value::Int(-5)], &mut caps).unwrap(), Value::Int(5));
         assert_eq!(
             abs(&[Value::Float(-3.14)], &mut caps).unwrap(),
             Value::Float(3.14)

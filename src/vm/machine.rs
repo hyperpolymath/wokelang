@@ -111,11 +111,7 @@ impl VirtualMachine {
             // Execute instruction
             match opcode {
                 OpCode::Const(idx) => {
-                    let value = func
-                        .constants
-                        .get(idx)
-                        .ok_or(VMError::InvalidIP)?
-                        .clone();
+                    let value = func.constants.get(idx).ok_or(VMError::InvalidIP)?.clone();
                     self.push(value);
                 }
 
@@ -175,7 +171,9 @@ impl VirtualMachine {
                 OpCode::Add => self.binary_op(|a, b| match (a, b) {
                     (Value::Int(x), Value::Int(y)) => Ok(Value::Int(x + y)),
                     (Value::Float(x), Value::Float(y)) => Ok(Value::Float(x + y)),
-                    (Value::String(x), Value::String(y)) => Ok(Value::String(format!("{}{}", x, y))),
+                    (Value::String(x), Value::String(y)) => {
+                        Ok(Value::String(format!("{}{}", x, y)))
+                    }
                     _ => Err(VMError::TypeError("Invalid operands for +".to_string())),
                 })?,
 
@@ -208,7 +206,11 @@ impl VirtualMachine {
                     match value {
                         Value::Int(n) => self.push(Value::Int(-n)),
                         Value::Float(f) => self.push(Value::Float(-f)),
-                        _ => return Err(VMError::TypeError("Cannot negate non-numeric value".to_string())),
+                        _ => {
+                            return Err(VMError::TypeError(
+                                "Cannot negate non-numeric value".to_string(),
+                            ))
+                        }
                     }
                 }
 
@@ -253,7 +255,11 @@ impl VirtualMachine {
                     let value = self.pop()?;
                     match value {
                         Value::Bool(b) => self.push(Value::Bool(!b)),
-                        _ => return Err(VMError::TypeError("Cannot negate non-boolean value".to_string())),
+                        _ => {
+                            return Err(VMError::TypeError(
+                                "Cannot negate non-boolean value".to_string(),
+                            ))
+                        }
                     }
                 }
 

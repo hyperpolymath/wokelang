@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
 pub mod ast;
 pub mod interpreter;
 pub mod lexer;
@@ -20,6 +21,6 @@ pub use repl::Repl;
 pub use security::CapabilityRegistry;
 pub use stdlib::StdlibRegistry;
 pub use typechecker::TypeChecker;
-pub use vm::{BytecodeCompiler, VirtualMachine, CompiledProgram, disassemble};
+pub use vm::{disassemble, BytecodeCompiler, CompiledProgram, VirtualMachine};
 // Worker exports disabled
 // pub use worker::{WorkerPool, WorkerHandle, WorkerMessage};

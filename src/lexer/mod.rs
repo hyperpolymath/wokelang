@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
 mod token;
 
 pub use token::Token;
@@ -55,7 +56,10 @@ impl<'src> Lexer<'src> {
             }
         }
 
-        tokens.push(Spanned::new(Token::Eof, self.source.len()..self.source.len()));
+        tokens.push(Spanned::new(
+            Token::Eof,
+            self.source.len()..self.source.len(),
+        ));
         Ok(tokens)
     }
 }

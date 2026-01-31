@@ -68,15 +68,15 @@ impl Linter {
     fn lint_top_level_item(&mut self, item: &TopLevelItem) {
         match item {
             TopLevelItem::Function(func) => self.lint_function(func),
-            TopLevelItem::ConsentBlock(_) => {},
-            TopLevelItem::GratitudeDecl(_) => {},
-            TopLevelItem::WorkerDef(_) => {},
-            TopLevelItem::SideQuestDef(_) => {},
-            TopLevelItem::SuperpowerDecl(_) => {},
-            TopLevelItem::ModuleImport(_) => {},
-            TopLevelItem::Pragma(_) => {},
-            TopLevelItem::TypeDef(_) => {},
-            TopLevelItem::ConstDef(_) => {},
+            TopLevelItem::ConsentBlock(_) => {}
+            TopLevelItem::GratitudeDecl(_) => {}
+            TopLevelItem::WorkerDef(_) => {}
+            TopLevelItem::SideQuestDef(_) => {}
+            TopLevelItem::SuperpowerDecl(_) => {}
+            TopLevelItem::ModuleImport(_) => {}
+            TopLevelItem::Pragma(_) => {}
+            TopLevelItem::TypeDef(_) => {}
+            TopLevelItem::ConstDef(_) => {}
         }
     }
 
@@ -209,6 +209,14 @@ impl Linter {
             Expr::Index(array, index) => {
                 self.lint_expr(array);
                 self.lint_expr(index);
+            }
+            Expr::FieldAccess(record, _field) => {
+                self.lint_expr(record);
+            }
+            Expr::RecordLiteral(_type_name, fields) => {
+                for (_name, value) in fields {
+                    self.lint_expr(value);
+                }
             }
             Expr::Okay(val) => self.lint_expr(val),
             Expr::Oops(val) => self.lint_expr(val),

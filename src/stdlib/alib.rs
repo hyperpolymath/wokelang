@@ -7,9 +7,9 @@
 //!
 //! Reference: https://github.com/hyperpolymath/aggregate-library
 
+use super::{check_arity, StdlibError};
 use crate::interpreter::Value;
 use crate::security::CapabilityRegistry;
-use super::{check_arity, StdlibError};
 
 // ============================================================================
 // ARITHMETIC (5 operations)
@@ -279,11 +279,9 @@ pub fn filter(args: &[Value], _caps: &mut CapabilityRegistry) -> Result<Value, S
     check_arity(args, 2)?;
 
     match (&args[0], &args[1]) {
-        (Value::Array(_arr), Value::Function(_closure)) => {
-            Err(StdlibError::RuntimeError(
-                "filter requires interpreter context (not yet implemented in stdlib)".to_string(),
-            ))
-        }
+        (Value::Array(_arr), Value::Function(_closure)) => Err(StdlibError::RuntimeError(
+            "filter requires interpreter context (not yet implemented in stdlib)".to_string(),
+        )),
         _ => Err(StdlibError::TypeError {
             expected: "Array, Function".to_string(),
             got: format!("{:?}, {:?}", args[0], args[1]),
@@ -297,11 +295,9 @@ pub fn fold(args: &[Value], _caps: &mut CapabilityRegistry) -> Result<Value, Std
     check_arity(args, 3)?;
 
     match (&args[0], &args[2]) {
-        (Value::Array(_arr), Value::Function(_closure)) => {
-            Err(StdlibError::RuntimeError(
-                "fold requires interpreter context (not yet implemented in stdlib)".to_string(),
-            ))
-        }
+        (Value::Array(_arr), Value::Function(_closure)) => Err(StdlibError::RuntimeError(
+            "fold requires interpreter context (not yet implemented in stdlib)".to_string(),
+        )),
         _ => Err(StdlibError::TypeError {
             expected: "Array, Initial, Function".to_string(),
             got: format!("{:?}, {:?}, {:?}", args[0], args[1], args[2]),
@@ -452,37 +448,67 @@ mod tests {
     #[test]
     fn test_equal() {
         let mut caps = test_caps();
-        assert_eq!(equal(&[Value::Int(5), Value::Int(5)], &mut caps).unwrap(), Value::Bool(true));
-        assert_eq!(equal(&[Value::Int(5), Value::Int(3)], &mut caps).unwrap(), Value::Bool(false));
+        assert_eq!(
+            equal(&[Value::Int(5), Value::Int(5)], &mut caps).unwrap(),
+            Value::Bool(true)
+        );
+        assert_eq!(
+            equal(&[Value::Int(5), Value::Int(3)], &mut caps).unwrap(),
+            Value::Bool(false)
+        );
     }
 
     #[test]
     fn test_less_than() {
         let mut caps = test_caps();
-        assert_eq!(less_than(&[Value::Int(3), Value::Int(5)], &mut caps).unwrap(), Value::Bool(true));
-        assert_eq!(less_than(&[Value::Int(5), Value::Int(3)], &mut caps).unwrap(), Value::Bool(false));
+        assert_eq!(
+            less_than(&[Value::Int(3), Value::Int(5)], &mut caps).unwrap(),
+            Value::Bool(true)
+        );
+        assert_eq!(
+            less_than(&[Value::Int(5), Value::Int(3)], &mut caps).unwrap(),
+            Value::Bool(false)
+        );
     }
 
     // Logical tests
     #[test]
     fn test_and() {
         let mut caps = test_caps();
-        assert_eq!(and(&[Value::Bool(true), Value::Bool(true)], &mut caps).unwrap(), Value::Bool(true));
-        assert_eq!(and(&[Value::Bool(true), Value::Bool(false)], &mut caps).unwrap(), Value::Bool(false));
+        assert_eq!(
+            and(&[Value::Bool(true), Value::Bool(true)], &mut caps).unwrap(),
+            Value::Bool(true)
+        );
+        assert_eq!(
+            and(&[Value::Bool(true), Value::Bool(false)], &mut caps).unwrap(),
+            Value::Bool(false)
+        );
     }
 
     #[test]
     fn test_or() {
         let mut caps = test_caps();
-        assert_eq!(or(&[Value::Bool(false), Value::Bool(true)], &mut caps).unwrap(), Value::Bool(true));
-        assert_eq!(or(&[Value::Bool(false), Value::Bool(false)], &mut caps).unwrap(), Value::Bool(false));
+        assert_eq!(
+            or(&[Value::Bool(false), Value::Bool(true)], &mut caps).unwrap(),
+            Value::Bool(true)
+        );
+        assert_eq!(
+            or(&[Value::Bool(false), Value::Bool(false)], &mut caps).unwrap(),
+            Value::Bool(false)
+        );
     }
 
     #[test]
     fn test_not() {
         let mut caps = test_caps();
-        assert_eq!(not(&[Value::Bool(true)], &mut caps).unwrap(), Value::Bool(false));
-        assert_eq!(not(&[Value::Bool(false)], &mut caps).unwrap(), Value::Bool(true));
+        assert_eq!(
+            not(&[Value::Bool(true)], &mut caps).unwrap(),
+            Value::Bool(false)
+        );
+        assert_eq!(
+            not(&[Value::Bool(false)], &mut caps).unwrap(),
+            Value::Bool(true)
+        );
     }
 
     // Collection tests
@@ -490,15 +516,28 @@ mod tests {
     fn test_contains() {
         let mut caps = test_caps();
         let arr = vec![Value::Int(1), Value::Int(2), Value::Int(3)];
-        assert_eq!(contains(&[Value::Array(arr.clone()), Value::Int(2)], &mut caps).unwrap(), Value::Bool(true));
-        assert_eq!(contains(&[Value::Array(arr), Value::Int(5)], &mut caps).unwrap(), Value::Bool(false));
+        assert_eq!(
+            contains(&[Value::Array(arr.clone()), Value::Int(2)], &mut caps).unwrap(),
+            Value::Bool(true)
+        );
+        assert_eq!(
+            contains(&[Value::Array(arr), Value::Int(5)], &mut caps).unwrap(),
+            Value::Bool(false)
+        );
     }
 
     // String tests
     #[test]
     fn test_concat() {
         let mut caps = test_caps();
-        let result = concat(&[Value::String("hello".to_string()), Value::String(" world".to_string())], &mut caps).unwrap();
+        let result = concat(
+            &[
+                Value::String("hello".to_string()),
+                Value::String(" world".to_string()),
+            ],
+            &mut caps,
+        )
+        .unwrap();
         assert_eq!(result, Value::String("hello world".to_string()));
     }
 
@@ -512,7 +551,15 @@ mod tests {
     #[test]
     fn test_substring() {
         let mut caps = test_caps();
-        let result = substring(&[Value::String("hello world".to_string()), Value::Int(0), Value::Int(5)], &mut caps).unwrap();
+        let result = substring(
+            &[
+                Value::String("hello world".to_string()),
+                Value::Int(0),
+                Value::Int(5),
+            ],
+            &mut caps,
+        )
+        .unwrap();
         assert_eq!(result, Value::String("hello".to_string()));
     }
 }

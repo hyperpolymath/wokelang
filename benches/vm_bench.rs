@@ -1,10 +1,11 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
 //! WokeLang VM Performance Benchmarks
 //!
 //! Benchmarks comparing interpreter vs VM execution.
 
 use std::time::Instant;
+use wokelang::vm::{compile, run_vm};
 use wokelang::{Interpreter, Lexer, Parser};
-use wokelang::vm::{run_vm, compile};
 
 fn bench_interpreter(source: &str, iterations: u32) -> std::time::Duration {
     let start = Instant::now();
