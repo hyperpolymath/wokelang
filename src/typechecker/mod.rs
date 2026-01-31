@@ -21,6 +21,96 @@ impl std::fmt::Display for TypeError {
 
 impl std::error::Error for TypeError {}
 
+/// Unit of measure for dimensional analysis
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum Unit {
+    /// Dimensionless (no unit)
+    Dimensionless,
+    /// Base units
+    Meter,
+    Second,
+    Kilogram,
+    Ampere,
+    Kelvin,
+    Mole,
+    Candela,
+    /// Derived units (stored as combinations of base units)
+    Derived(Box<DerivedUnit>),
+    /// Custom named unit
+    Custom(String),
+}
+
+/// Derived unit (like meter/second, meter²)
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct DerivedUnit {
+    /// Numerator units with powers (e.g., meter², second⁻¹)
+    pub numerator: Vec<(Unit, i32)>,
+    /// Denominator units with powers
+    pub denominator: Vec<(Unit, i32)>,
+}
+
+impl Unit {
+    /// Multiply two units
+    pub fn multiply(&self, other: &Unit) -> Unit {
+        match (self, other) {
+            (Unit::Dimensionless, u) | (u, Unit::Dimensionless) => u.clone(),
+            _ => Unit::Derived(Box::new(DerivedUnit {
+                numerator: vec![(self.clone(), 1), (other.clone(), 1)],
+                denominator: vec![],
+            })),
+        }
+    }
+
+    /// Divide two units
+    pub fn divide(&self, other: &Unit) -> Unit {
+        match (self, other) {
+            (u, Unit::Dimensionless) => u.clone(),
+            (Unit::Dimensionless, u) => Unit::Derived(Box::new(DerivedUnit {
+                numerator: vec![],
+                denominator: vec![(u.clone(), 1)],
+            })),
+            _ => Unit::Derived(Box::new(DerivedUnit {
+                numerator: vec![(self.clone(), 1)],
+                denominator: vec![(other.clone(), 1)],
+            })),
+        }
+    }
+}
+
+impl fmt::Display for Unit {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Unit::Dimensionless => write!(f, "1"),
+            Unit::Meter => write!(f, "m"),
+            Unit::Second => write!(f, "s"),
+            Unit::Kilogram => write!(f, "kg"),
+            Unit::Ampere => write!(f, "A"),
+            Unit::Kelvin => write!(f, "K"),
+            Unit::Mole => write!(f, "mol"),
+            Unit::Candela => write!(f, "cd"),
+            Unit::Custom(name) => write!(f, "{}", name),
+            Unit::Derived(derived) => {
+                if !derived.numerator.is_empty() {
+                    for (i, (unit, power)) in derived.numerator.iter().enumerate() {
+                        if i > 0 { write!(f, "·")?; }
+                        write!(f, "{}", unit)?;
+                        if *power != 1 { write!(f, "^{}", power)?; }
+                    }
+                }
+                if !derived.denominator.is_empty() {
+                    write!(f, "/")?;
+                    for (i, (unit, power)) in derived.denominator.iter().enumerate() {
+                        if i > 0 { write!(f, "·")?; }
+                        write!(f, "{}", unit)?;
+                        if *power != 1 { write!(f, "^{}", power)?; }
+                    }
+                }
+                Ok(())
+            }
+        }
+    }
+}
+
 /// Type in the type system
 #[derive(Debug, Clone, PartialEq)]
 pub enum TypeInfo {
@@ -39,6 +129,8 @@ pub enum TypeInfo {
     Var(usize),
     /// Unknown type (for gradual typing)
     Unknown,
+    /// Quantity with unit of measure (e.g., 5 meters)
+    Quantity(Box<TypeInfo>, Unit),
 }
 
 impl fmt::Display for TypeInfo {
@@ -75,6 +167,7 @@ impl fmt::Display for TypeInfo {
             }
             TypeInfo::Var(id) => write!(f, "T{}", id),
             TypeInfo::Unknown => write!(f, "?"),
+            TypeInfo::Quantity(base_type, unit) => write!(f, "{} measured in {}", base_type, unit),
         }
     }
 }
@@ -123,6 +216,9 @@ impl Substitution {
                     .map(|(k, v)| (k.clone(), self.apply(v)))
                     .collect();
                 TypeInfo::Record(new_fields)
+            }
+            TypeInfo::Quantity(base_type, unit) => {
+                TypeInfo::Quantity(Box::new(self.apply(base_type)), unit.clone())
             }
             _ => ty.clone(),
         }
@@ -265,6 +361,19 @@ pub fn unify(t1: &TypeInfo, t2: &TypeInfo) -> Result<Substitution, TypeError> {
             Ok(sub)
         }
 
+        // Quantity types - units must match exactly
+        (TypeInfo::Quantity(base1, unit1), TypeInfo::Quantity(base2, unit2)) => {
+            if unit1 != unit2 {
+                return Err(TypeError {
+                    message: format!(
+                        "Unit mismatch: cannot unify {} with {}",
+                        unit1, unit2
+                    ),
+                });
+            }
+            unify(base1, base2)
+        }
+
         // Unknown type matches anything
         (TypeInfo::Unknown, _) | (_, TypeInfo::Unknown) => Ok(Substitution::new()),
 
@@ -285,6 +394,7 @@ fn occurs_check(var: usize, ty: &TypeInfo) -> bool {
         }
         TypeInfo::Result(ok, err) => occurs_check(var, ok) || occurs_check(var, err),
         TypeInfo::Record(fields) => fields.values().any(|t| occurs_check(var, t)),
+        TypeInfo::Quantity(base_type, _unit) => occurs_check(var, base_type),
         _ => false,
     }
 }
@@ -636,9 +746,17 @@ impl TypeChecker {
             }
 
             // Unit measurement
-            Expr::UnitMeasurement(value, _unit) => {
-                // For now, just infer the value type (unit tracking is future work)
-                self.infer_expr(value, sub)
+            Expr::UnitMeasurement(value, unit_name) => {
+                // Infer the base value type
+                let (value_type, sub1) = self.infer_expr(value, sub)?;
+
+                // Parse unit name into Unit enum
+                let unit = self.parse_unit(unit_name);
+
+                // Create Quantity type
+                let quantity_type = TypeInfo::Quantity(Box::new(value_type), unit);
+
+                Ok((quantity_type, sub1))
             }
 
             // Gratitude literal
@@ -650,6 +768,26 @@ impl TypeChecker {
     /// For now, just clone the type (full polymorphism is future work)
     fn instantiate(&mut self, ty: &TypeInfo) -> TypeInfo {
         ty.clone()
+    }
+
+    /// Parse a unit name into a Unit enum
+    fn parse_unit(&self, unit_name: &str) -> Unit {
+        match unit_name.to_lowercase().as_str() {
+            // Base SI units
+            "meter" | "meters" | "m" => Unit::Meter,
+            "second" | "seconds" | "s" => Unit::Second,
+            "kilogram" | "kilograms" | "kg" => Unit::Kilogram,
+            "ampere" | "amperes" | "a" => Unit::Ampere,
+            "kelvin" | "k" => Unit::Kelvin,
+            "mole" | "moles" | "mol" => Unit::Mole,
+            "candela" | "cd" => Unit::Candela,
+
+            // Dimensionless
+            "1" | "dimensionless" | "" => Unit::Dimensionless,
+
+            // Custom unit (anything else)
+            _ => Unit::Custom(unit_name.to_string()),
+        }
     }
 
     /// Type check a statement
