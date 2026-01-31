@@ -6,7 +6,7 @@
 pub mod array;
 pub mod chan;
 pub mod io;
-// pub mod json; // TODO: Restore json module
+pub mod json;
 pub mod math;
 pub mod net;
 pub mod string;
@@ -102,11 +102,9 @@ impl StdlibRegistry {
         self.register("std.io.createDir", io::create_dir);
         self.register("std.io.readLine", io::read_line);
 
-        // JSON functions - TODO: Restore when json module is implemented
-        // self.register("std.json.parse", json::parse);
-        // self.register("std.json.stringify", json::stringify);
-        // self.register("std.json.get", json::get);
-        // self.register("std.json.set", json::set);
+        // JSON functions
+        self.register("std.json.parse", json::parse);
+        self.register("std.json.stringify", json::stringify);
 
         // Time functions
         self.register("std.time.now", time::now);
