@@ -7,6 +7,7 @@ pub mod repl;
 pub mod security;
 pub mod stdlib;
 pub mod typechecker;
+pub mod vm;
 
 pub use ast::Program;
 pub use interpreter::Interpreter;
@@ -17,3 +18,4 @@ pub use repl::Repl;
 pub use security::CapabilityRegistry;
 pub use stdlib::StdlibRegistry;
 pub use typechecker::TypeChecker;
+pub use vm::{BytecodeCompiler, VirtualMachine, CompiledProgram, disassemble};

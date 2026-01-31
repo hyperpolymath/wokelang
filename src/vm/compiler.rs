@@ -252,7 +252,8 @@ impl BytecodeCompiler {
                     Literal::Integer(n) => Value::Int(*n),
                     Literal::Float(f) => Value::Float(*f),
                     Literal::String(s) => Value::String(s.clone()),
-                    Literal::Boolean(b) => Value::Bool(*b),
+                    Literal::Bool(b) => Value::Bool(*b),
+                    Literal::Unit => Value::Unit,
                 };
                 let const_idx = func.add_constant(value);
                 func.emit(OpCode::Const(const_idx));

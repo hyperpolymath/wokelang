@@ -1,49 +1,148 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+use clap::{Parser, Subcommand};
 use miette::Result;
-use std::env;
 use std::fs;
-use wokelang::{Interpreter, Lexer, Parser, Repl, TypeChecker};
+use std::path::PathBuf;
+use wokelang::{
+    disassemble as disasm_bytecode, BytecodeCompiler, Interpreter, Lexer,
+    Linter, Parser as WokeParser, Repl, TypeChecker,
+};
+
+#[derive(Parser)]
+#[command(name = "woke")]
+#[command(version = "0.1.0")]
+#[command(about = "WokeLang - A human-centered, consent-driven programming language", long_about = None)]
+struct Cli {
+    #[command(subcommand)]
+    command: Option<Commands>,
+
+    /// Input file (shorthand for 'woke run <file>')
+    #[arg(value_name = "FILE")]
+    file: Option<PathBuf>,
+}
+
+#[derive(Subcommand)]
+enum Commands {
+    /// Run a WokeLang program (tree-walking interpreter)
+    Run {
+        /// Path to .woke file
+        file: PathBuf,
+    },
+    /// Start interactive REPL
+    Repl,
+    /// Compile to bytecode (.wbc file)
+    Compile {
+        /// Path to .woke file
+        file: PathBuf,
+        /// Output bytecode file (default: <input>.wbc)
+        #[arg(short, long)]
+        output: Option<PathBuf>,
+    },
+    /// Run bytecode via VM
+    RunVm {
+        /// Path to .wbc bytecode file
+        file: PathBuf,
+    },
+    /// Disassemble bytecode
+    Disasm {
+        /// Path to .wbc bytecode file
+        file: PathBuf,
+    },
+    /// Type-check without running
+    Typecheck {
+        /// Path to .woke file
+        file: PathBuf,
+    },
+    /// Run linter (static analysis)
+    Lint {
+        /// Path to .woke file
+        file: PathBuf,
+    },
+    /// Show lexer tokens (debug)
+    Tokenize {
+        /// Path to .woke file
+        file: PathBuf,
+    },
+    /// Show parsed AST (debug)
+    Parse {
+        /// Path to .woke file
+        file: PathBuf,
+    },
+}
 
 fn main() -> Result<()> {
-    let args: Vec<String> = env::args().collect();
+    let cli = Cli::parse();
 
-    if args.len() < 2 {
-        println!("WokeLang v0.1.0 - A human-centered, consent-driven programming language");
-        println!();
-        println!("Usage: woke <file.woke>           Run a WokeLang program");
-        println!("       woke repl                  Start interactive REPL");
-        println!("       woke --tokenize <file>     Show lexer tokens");
-        println!("       woke --parse <file>        Show parsed AST");
-        println!("       woke --typecheck <file>    Type-check without running");
-        return Ok(());
-    }
-
-    // Check for REPL mode first
-    if args.get(1).map(|s| s.as_str()) == Some("repl") {
-        let mut repl = Repl::new().expect("Failed to create REPL");
-        repl.run().expect("REPL error");
-        return Ok(());
-    }
-
-    let (mode, file_path) = match args.get(1).map(|s| s.as_str()) {
-        Some("--tokenize") => ("tokenize", args.get(2)),
-        Some("--parse") => ("parse", args.get(2)),
-        Some("--typecheck") => ("typecheck", args.get(2)),
-        Some(_) => ("run", Some(&args[1])),
-        None => {
-            eprintln!("Expected file path");
+    // Handle shorthand: `woke file.woke` → `woke run file.woke`
+    let command = match (cli.command, cli.file) {
+        (Some(cmd), _) => cmd,
+        (None, Some(file)) => Commands::Run { file },
+        (None, None) => {
+            // No args - show help
+            println!("WokeLang v0.1.0 - A human-centered, consent-driven programming language");
+            println!();
+            println!("Usage: woke <COMMAND> [OPTIONS]");
+            println!();
+            println!("Commands:");
+            println!("  run          Run a WokeLang program (tree-walking interpreter)");
+            println!("  repl         Start interactive REPL");
+            println!("  compile      Compile to bytecode (.wbc file)");
+            println!("  run-vm       Run bytecode via VM");
+            println!("  disasm       Disassemble bytecode");
+            println!("  typecheck    Type-check without running");
+            println!("  lint         Run linter (static analysis)");
+            println!("  tokenize     Show lexer tokens (debug)");
+            println!("  parse        Show parsed AST (debug)");
+            println!();
+            println!("Run 'woke --help' for more information.");
             return Ok(());
         }
     };
 
-    let file_path = match file_path {
-        Some(p) => p,
-        None => {
-            eprintln!("Expected file path after flag");
-            return Ok(());
+    match command {
+        Commands::Repl => {
+            let mut repl = Repl::new().expect("Failed to create REPL");
+            repl.run().expect("REPL error");
         }
-    };
 
-    let source = fs::read_to_string(file_path).expect("Failed to read file");
+        Commands::Run { file } => {
+            run_program(&file)?;
+        }
+
+        Commands::Compile { file, output } => {
+            compile_program(&file, output)?;
+        }
+
+        Commands::RunVm { file } => {
+            run_vm(&file)?;
+        }
+
+        Commands::Disasm { file } => {
+            disassemble(&file)?;
+        }
+
+        Commands::Typecheck { file } => {
+            typecheck_program(&file)?;
+        }
+
+        Commands::Lint { file } => {
+            lint_program(&file)?;
+        }
+
+        Commands::Tokenize { file } => {
+            tokenize_file(&file)?;
+        }
+
+        Commands::Parse { file } => {
+            parse_file(&file)?;
+        }
+    }
+
+    Ok(())
+}
+
+fn run_program(file: &PathBuf) -> Result<()> {
+    let source = fs::read_to_string(file).expect("Failed to read file");
     let lexer = Lexer::new(&source);
 
     let tokens = match lexer.tokenize() {
@@ -54,68 +153,239 @@ fn main() -> Result<()> {
         }
     };
 
-    match mode {
-        "tokenize" => {
-            for token in &tokens {
-                println!("{:?} @ {:?}", token.value, token.span);
-            }
-            println!("\nTokenized {} tokens successfully.", tokens.len());
+    let mut parser = WokeParser::new(tokens, &source);
+    let program = match parser.parse() {
+        Ok(p) => p,
+        Err(e) => {
+            eprintln!("{:?}", miette::Report::new(e));
+            return Ok(());
         }
-        "parse" => {
-            let mut parser = Parser::new(tokens, &source);
-            match parser.parse() {
-                Ok(program) => {
-                    println!("{:#?}", program);
-                    println!("\nParsed {} top-level items successfully.", program.items.len());
-                }
-                Err(e) => {
-                    eprintln!("{:?}", miette::Report::new(e));
-                }
-            }
-        }
-        "typecheck" => {
-            let mut parser = Parser::new(tokens, &source);
-            match parser.parse() {
-                Ok(program) => {
-                    let mut typechecker = TypeChecker::new();
-                    match typechecker.check_program(&program) {
-                        Ok(()) => {
-                            println!("Type check passed!");
-                        }
-                        Err(e) => {
-                            eprintln!("Type error: {}", e);
-                        }
-                    }
-                }
-                Err(e) => {
-                    eprintln!("{:?}", miette::Report::new(e));
-                }
-            }
-        }
-        "run" => {
-            let mut parser = Parser::new(tokens, &source);
-            match parser.parse() {
-                Ok(program) => {
-                    // Type check first
-                    let mut typechecker = TypeChecker::new();
-                    if let Err(e) = typechecker.check_program(&program) {
-                        eprintln!("Type error: {}", e);
-                        eprintln!("\nType checking failed. Not running.");
-                        return Ok(());
-                    }
+    };
 
-                    // Run the program
-                    let mut interpreter = Interpreter::new();
-                    if let Err(e) = interpreter.run(&program) {
-                        eprintln!("Runtime error: {}", e);
-                    }
-                }
-                Err(e) => {
-                    eprintln!("{:?}", miette::Report::new(e));
-                }
-            }
+    // Type check first
+    let mut typechecker = TypeChecker::new();
+    if let Err(e) = typechecker.check_program(&program) {
+        eprintln!("Type error: {}", e);
+        eprintln!("\nType checking failed. Not running.");
+        return Ok(());
+    }
+
+    // Run the program
+    let mut interpreter = Interpreter::new();
+    if let Err(e) = interpreter.run(&program) {
+        eprintln!("Runtime error: {}", e);
+    }
+
+    Ok(())
+}
+
+fn compile_program(file: &PathBuf, _output: Option<PathBuf>) -> Result<()> {
+    let source = fs::read_to_string(file).expect("Failed to read file");
+    let lexer = Lexer::new(&source);
+
+    let tokens = match lexer.tokenize() {
+        Ok(t) => t,
+        Err(e) => {
+            eprintln!("{:?}", miette::Report::new(e));
+            return Ok(());
         }
-        _ => unreachable!(),
+    };
+
+    let mut parser = WokeParser::new(tokens, &source);
+    let program = match parser.parse() {
+        Ok(p) => p,
+        Err(e) => {
+            eprintln!("{:?}", miette::Report::new(e));
+            return Ok(());
+        }
+    };
+
+    // Type check
+    let mut typechecker = TypeChecker::new();
+    if let Err(e) = typechecker.check_program(&program) {
+        eprintln!("Type error: {}", e);
+        eprintln!("\nType checking failed. Not compiling.");
+        return Ok(());
+    }
+
+    // Compile to bytecode
+    let mut compiler = BytecodeCompiler::new();
+    let compiled = match compiler.compile(&program) {
+        Ok(bc) => bc,
+        Err(e) => {
+            eprintln!("Compilation error: {}", e);
+            return Ok(());
+        }
+    };
+
+    // Show compilation success and stats
+    println!("✓ Compiled successfully!");
+    println!("  {} function(s)", compiled.functions.len());
+    if let Some(entry) = compiled.entry {
+        println!("  Entry point: {}", compiled.functions[entry].name);
+    }
+
+    // Note: bytecode file I/O will be added when serialization is implemented
+    println!("\nNote: Bytecode serialization not yet implemented.");
+    println!("Use 'woke run-vm {}' to execute via VM (in-memory)", file.display());
+
+    Ok(())
+}
+
+fn run_vm(file: &PathBuf) -> Result<()> {
+    let source = fs::read_to_string(file).expect("Failed to read file");
+
+    // Use the vm::run_vm helper which compiles and runs
+    match wokelang::vm::run_vm(&source) {
+        Ok(result) => {
+            println!("{:?}", result);
+        }
+        Err(e) => {
+            eprintln!("VM error: {}", e);
+        }
+    }
+
+    Ok(())
+}
+
+fn disassemble(file: &PathBuf) -> Result<()> {
+    let source = fs::read_to_string(file).expect("Failed to read file");
+
+    // Compile to bytecode
+    let compiled = match wokelang::vm::compile(&source) {
+        Ok(c) => c,
+        Err(e) => {
+            eprintln!("Compilation error: {}", e);
+            return Ok(());
+        }
+    };
+
+    // Use the vm::disassemble helper
+    let disasm = disasm_bytecode(&compiled);
+    println!("{}", disasm);
+
+    Ok(())
+}
+
+fn typecheck_program(file: &PathBuf) -> Result<()> {
+    let source = fs::read_to_string(file).expect("Failed to read file");
+    let lexer = Lexer::new(&source);
+
+    let tokens = match lexer.tokenize() {
+        Ok(t) => t,
+        Err(e) => {
+            eprintln!("{:?}", miette::Report::new(e));
+            return Ok(());
+        }
+    };
+
+    let mut parser = WokeParser::new(tokens, &source);
+    let program = match parser.parse() {
+        Ok(p) => p,
+        Err(e) => {
+            eprintln!("{:?}", miette::Report::new(e));
+            return Ok(());
+        }
+    };
+
+    let mut typechecker = TypeChecker::new();
+    match typechecker.check_program(&program) {
+        Ok(()) => {
+            println!("✓ Type check passed!");
+        }
+        Err(e) => {
+            eprintln!("Type error: {}", e);
+        }
+    }
+
+    Ok(())
+}
+
+fn lint_program(file: &PathBuf) -> Result<()> {
+    let source = fs::read_to_string(file).expect("Failed to read file");
+    let lexer = Lexer::new(&source);
+
+    let tokens = match lexer.tokenize() {
+        Ok(t) => t,
+        Err(e) => {
+            eprintln!("{:?}", miette::Report::new(e));
+            return Ok(());
+        }
+    };
+
+    let mut parser = WokeParser::new(tokens, &source);
+    let program = match parser.parse() {
+        Ok(p) => p,
+        Err(e) => {
+            eprintln!("{:?}", miette::Report::new(e));
+            return Ok(());
+        }
+    };
+
+    let mut linter = Linter::new();
+    let diagnostics = linter.lint(&program);
+
+    if diagnostics.is_empty() {
+        println!("✓ No issues found!");
+    } else {
+        println!("Found {} issue(s):\n", diagnostics.len());
+        for diag in &diagnostics {
+            let severity_str = match diag.severity {
+                wokelang::linter::Severity::Error => "error",
+                wokelang::linter::Severity::Warning => "warning",
+                wokelang::linter::Severity::Info => "info",
+            };
+            println!(
+                "[{}] {}: {}",
+                severity_str, diag.code, diag.message
+            );
+        }
+    }
+
+    Ok(())
+}
+
+fn tokenize_file(file: &PathBuf) -> Result<()> {
+    let source = fs::read_to_string(file).expect("Failed to read file");
+    let lexer = Lexer::new(&source);
+
+    let tokens = match lexer.tokenize() {
+        Ok(t) => t,
+        Err(e) => {
+            eprintln!("{:?}", miette::Report::new(e));
+            return Ok(());
+        }
+    };
+
+    for token in &tokens {
+        println!("{:?} @ {:?}", token.value, token.span);
+    }
+    println!("\nTokenized {} tokens successfully.", tokens.len());
+
+    Ok(())
+}
+
+fn parse_file(file: &PathBuf) -> Result<()> {
+    let source = fs::read_to_string(file).expect("Failed to read file");
+    let lexer = Lexer::new(&source);
+
+    let tokens = match lexer.tokenize() {
+        Ok(t) => t,
+        Err(e) => {
+            eprintln!("{:?}", miette::Report::new(e));
+            return Ok(());
+        }
+    };
+
+    let mut parser = WokeParser::new(tokens, &source);
+    match parser.parse() {
+        Ok(program) => {
+            println!("{:#?}", program);
+            println!("\nParsed {} top-level items successfully.", program.items.len());
+        }
+        Err(e) => {
+            eprintln!("{:?}", miette::Report::new(e));
+        }
     }
 
     Ok(())

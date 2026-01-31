@@ -1,0 +1,5 @@
+to main() {
+    remember x = 10;
+    remember y = 20;
+    give back x + y;
+}
