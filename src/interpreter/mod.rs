@@ -409,10 +409,12 @@ impl Interpreter {
                     println!("[worker] Spawning worker: {}", worker_name);
                 }
 
-                // Spawn worker in background thread (simplified - no message passing for now)
                 let worker_name_clone = worker_name.clone();
                 let verbose = self.pragmas.verbose;
 
+                // Workers execute in background threads
+                // For message passing, users should create channels in the main scope
+                // and pass them to workers as needed (channels are designed for this)
                 std::thread::spawn(move || {
                     // Create new interpreter for this worker
                     let mut worker_interp = Interpreter::new();
@@ -438,6 +440,7 @@ impl Interpreter {
                     }
                 });
 
+                // Return Unit - workers communicate via shared channels created in main scope
                 Ok(Value::Unit)
             }
 

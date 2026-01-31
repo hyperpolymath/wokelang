@@ -568,6 +568,58 @@ impl TypeChecker {
             TypeInfo::Function(vec![TypeInfo::String], Box::new(TypeInfo::String)),
         );
 
+        // === Channel Functions (Go-style concurrency) ===
+        // std.chan.make: Int -> Channel
+        env.define(
+            "std.chan.make".to_string(),
+            TypeInfo::Function(vec![TypeInfo::Int], Box::new(TypeInfo::Var(0))), // Returns generic channel
+        );
+        // std.chan.send: (Channel, a) -> Unit
+        env.define(
+            "std.chan.send".to_string(),
+            TypeInfo::Function(
+                vec![TypeInfo::Var(0), TypeInfo::Var(1)],
+                Box::new(TypeInfo::Unit),
+            ),
+        );
+        // std.chan.recv: Channel -> a
+        env.define(
+            "std.chan.recv".to_string(),
+            TypeInfo::Function(vec![TypeInfo::Var(0)], Box::new(TypeInfo::Var(1))),
+        );
+        // std.chan.tryRecv: Channel -> Result a b
+        env.define(
+            "std.chan.tryRecv".to_string(),
+            TypeInfo::Function(
+                vec![TypeInfo::Var(0)],
+                Box::new(TypeInfo::Result(
+                    Box::new(TypeInfo::Var(1)),
+                    Box::new(TypeInfo::String),
+                )),
+            ),
+        );
+        // std.chan.recvTimeout: (Channel, Int) -> Result a b
+        env.define(
+            "std.chan.recvTimeout".to_string(),
+            TypeInfo::Function(
+                vec![TypeInfo::Var(0), TypeInfo::Int],
+                Box::new(TypeInfo::Result(
+                    Box::new(TypeInfo::Var(1)),
+                    Box::new(TypeInfo::String),
+                )),
+            ),
+        );
+        // std.chan.close: Channel -> Unit
+        env.define(
+            "std.chan.close".to_string(),
+            TypeInfo::Function(vec![TypeInfo::Var(0)], Box::new(TypeInfo::Unit)),
+        );
+        // std.chan.isClosed: Channel -> Bool
+        env.define(
+            "std.chan.isClosed".to_string(),
+            TypeInfo::Function(vec![TypeInfo::Var(0)], Box::new(TypeInfo::Bool)),
+        );
+
         // === Short aliases (same types as above) ===
         // Reuse the type definitions
         let num_to_num2 = TypeInfo::Function(
