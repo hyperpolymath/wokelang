@@ -1,0 +1,12 @@
+to main() {
+    remember x = 10;
+    remember y = 5;
+
+    remember sum = x + y;
+    remember diff = x - y;
+    remember product = x * y;
+    remember quotient = x / y;
+    remember remainder = x % y;
+
+    give back sum;
+}
