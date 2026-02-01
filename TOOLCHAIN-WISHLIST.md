@@ -1,0 +1,634 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell
+
+# WokeLang Toolchain Wishlist
+## Missing Components for Production-Grade Language
+
+**Current Status:** Core language complete (85% overall)
+
+**Existing Tools:** ✅
+- Lexer, Parser, AST
+- Type System (Hindley-Milner inference)
+- Interpreter (tree-walking)
+- Bytecode VM + Compiler
+- REPL (interactive mode)
+- CLI (`woke run/typecheck/lint/parse/tokenize`)
+- Consent/Capability System (runtime enforcement)
+- Worker System (basic concurrency)
+- Standard Library (partial integration)
+- Examples/Demos
+
+---
+
+## High Priority (Production Essentials)
+
+### 1. Language Server Protocol (LSP) 📡
+**Impact:** IDE integration, developer experience
+**Effort:** 2-3 weeks
+
+**Features:**
+- Go to definition
+- Find references
+- Hover documentation
+- Auto-completion
+- Inline diagnostics (errors/warnings)
+- Code actions (quick fixes)
+- Rename symbol
+- Signature help
+
+**Implementation:**
+```rust
+// src/lsp/server.rs
+pub struct LspServer {
+    // JSON-RPC server
+    // textDocument/didOpen, didChange, didSave
+    // textDocument/completion
+    // textDocument/hover
+    // textDocument/definition
+    // textDocument/references
+    // textDocument/formatting
+}
+```
+
+**Why Critical:**
+- VSCode/Neovim/Emacs integration
+- Real-time error checking
+- Autocomplete for stdlib functions
+- Standard for modern languages
+
+**Deliverable:** `woke lsp` command
+
+---
+
+### 2. Debugger 🐛
+**Impact:** Program development, troubleshooting
+**Effort:** 1-2 weeks
+
+**Features:**
+- Breakpoints in WokeLang code
+- Step-through execution
+- Variable inspection
+- Watch expressions
+- Call stack
+- Worker thread debugging
+
+**Implementation:**
+```rust
+// src/debugger.rs
+pub struct Debugger {
+    // Instrument AST with breakpoints
+    // Step-by-step evaluation
+    // State inspection at each step
+    // Integration with existing interpreter
+}
+```
+
+**Why Critical:**
+- Complex programs hard to debug
+- Worker concurrency needs investigation
+- Consent flow debugging
+
+**Deliverable:** `woke debug program.woke`
+
+---
+
+### 3. Testing Framework 🧪
+**Impact:** Code reliability, CI/CD
+**Effort:** 1 week
+
+**Features:**
+- Unit tests for WokeLang code
+- Property-based testing
+- Consent scenario testing
+- Worker concurrency tests
+- Coverage reporting
+
+**Implementation:**
+```rust
+// src/test_framework.rs
+pub struct TestFramework {
+    // Test macro expansion
+    // Assertion functions
+    // Test runner
+    // Coverage analysis
+}
+```
+
+**Test File Example:**
+```wokelang
+test "consent system blocks without permission" {
+    #care on;
+
+    remember result = only if okay "file.read" {
+        // Should fail without grant
+        readFile("test.txt")
+    };
+
+    expect result to be Oops("Permission denied");
+}
+
+test "worker executes concurrently" {
+    remember start = now();
+    spawn worker {
+        sleep(100);
+    };
+    remember elapsed = now() - start;
+    expect elapsed < 50;  // Worker runs in background
+}
+```
+
+**Why Critical:**
+- Consent system is safety-critical
+- Regression testing essential
+- CI/CD integration
+
+**Deliverable:** `woke test` command
+
+---
+
+### 4. Documentation Generator 📚
+**Impact:** API docs, onboarding
+**Effort:** 1 week
+
+**Features:**
+- Auto-generate docs from code
+- Function documentation extraction
+- Stdlib reference
+- Examples/tutorials
+- HTML/PDF output
+
+**Implementation:**
+```rust
+// src/doc.rs
+pub struct DocGenerator {
+    // Extract doc comments from AST
+    // Generate stdlib reference
+    // Cross-reference functions
+    // Export to HTML/Markdown
+}
+```
+
+**Doc Comment Syntax:**
+```wokelang
+##
+# Validates a file path before reading.
+#
+# @param path - File path to validate
+# @returns Okay(path) if valid, Oops(error) otherwise
+# @example
+#   remember result = validatePath("data.txt");
+#   match result {
+#       Okay(p) -> print(p),
+#       Oops(e) -> print(e)
+#   }
+##
+to validatePath(path: String) -> Result<String, String> {
+    // ...
+}
+```
+
+**Why Critical:**
+- Stdlib docs needed
+- Code sharing requires documentation
+- Onboarding new users
+
+**Deliverable:** `woke doc` command
+
+---
+
+### 5. Profiler & Benchmarking ⚡
+**Impact:** Performance optimization
+**Effort:** 1 week
+
+**Features:**
+- Function execution time
+- Module call profiling
+- Worker thread latency
+- Memory usage
+- Hotspot detection
+- Flame graphs
+
+**Implementation:**
+```rust
+// src/profiler.rs
+pub struct Profiler {
+    // Instrument evaluation
+    // Measure time per function
+    // Track call counts
+    // Memory allocation tracking
+    // Export flamegraph.svg
+}
+```
+
+**Why Critical:**
+- Need performance baseline
+- Identify bottlenecks
+- Worker overhead measurement
+
+**Deliverable:** `woke profile program.woke`
+
+---
+
+## Medium Priority (Quality of Life)
+
+### 6. Static Analyzer 🔍
+**Impact:** Code quality, bug prevention
+**Effort:** 1-2 weeks
+
+**Features Beyond Linter:**
+- Dead code detection
+- Unreachable code branches
+- Unused imports
+- Constant propagation analysis
+- Capability leak detection
+- Security vulnerability scanning
+
+**Example Checks:**
+```wokelang
+# Warning: Function 'never_called' is unused
+to never_called() {
+    print("Hello");
+}
+
+# Warning: Unreachable code after 'give back'
+to example() {
+    give back 42;
+    print("This never runs");  // Unreachable
+}
+
+# Error: Capability escape detected
+to leaked_capability() {
+    only if okay "file.write" {
+        // Capability should not escape consent block
+        give back writeFile;  // Error
+    }
+}
+```
+
+**Deliverable:** `woke analyze program.woke`
+
+---
+
+### 7. Package Manager 📦
+**Impact:** Code reuse, ecosystem
+**Effort:** 2-3 weeks
+
+**Features:**
+- Package library publishing
+- Dependency resolution
+- Version management
+- Standard library versioning
+- Local/remote package registry
+
+**Package Manifest:**
+```nickel
+# wokelang.ncl
+{
+  name = "acme-utils",
+  version = "1.0.0",
+  dependencies = {
+    std = "^0.2.0",
+    http = "^1.5.0"
+  },
+  files = [
+    "src/main.woke",
+    "src/utils.woke"
+  ]
+}
+```
+
+**Commands:**
+```bash
+woke pkg init
+woke pkg install http
+woke pkg publish
+woke pkg search validation
+```
+
+**Deliverable:** `woke pkg` subcommand
+
+---
+
+### 8. Syntax Highlighting Definitions 🎨
+**Impact:** Editor support
+**Effort:** 2-3 days
+
+**Targets:**
+- VSCode/VSCodium (TextMate grammar)
+- Vim/Neovim (vim syntax file)
+- Emacs (major mode)
+- Sublime Text
+- Kate/KWrite
+- GitHub/GitLab (linguist)
+
+**Files to Create:**
+```
+syntax/
+├── wokelang.tmLanguage.json  # VSCode/Sublime
+├── wokelang.vim              # Vim/Neovim
+├── wokelang-mode.el          # Emacs
+└── wokelang.xml              # Kate
+```
+
+**Deliverable:** Editor plugin packages
+
+---
+
+### 9. Error Reporter & Diagnostics 🚨
+**Impact:** Developer experience
+**Effort:** 1 week
+
+**Features:**
+- Colorized error messages
+- Source context (line + context)
+- Suggestions for fixes
+- Error codes (E0001, E0002, etc.)
+- Related information
+- Help text
+
+**Example:**
+```
+error[E0042]: undefined variable 'nam'
+  --> hello.woke:12:3
+   |
+12 |   print(nam);
+   |         ^^^ not found in this scope
+   |
+help: a variable with a similar name exists
+   |
+12 |   print(name);
+   |         ~~~~
+
+error[E0053]: permission denied for capability 'file.read'
+  --> app.woke:7:5
+   |
+7  |     remember data = readFile("secrets.txt");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ requires 'file.read' permission
+   |
+help: wrap in consent block
+   |
+7  |     only if okay "file.read" {
+8  |         remember data = readFile("secrets.txt");
+9  |     }
+   |
+```
+
+**Deliverable:** Enhanced error messages throughout
+
+---
+
+### 10. Code Completion Engine 🔮
+**Impact:** IDE productivity
+**Effort:** 1 week
+
+**Features:**
+- Function suggestions
+- Variable name completion
+- Snippet expansion
+- Context-aware suggestions
+- Template insertion
+
+**Completions:**
+```
+to m|  →  to myFunction() {
+     |
+     |    }
+
+only if |  →  only if okay "permission" {
+        |
+        |  }
+
+spawn w|   →  spawn worker {
+       |
+       |      }
+```
+
+**Deliverable:** LSP `textDocument/completion` impl
+
+---
+
+## Low Priority (Advanced Features)
+
+### 11. Refactoring Tools ♻️
+**Impact:** Code maintenance
+**Effort:** 2 weeks
+
+**Features:**
+- Extract function (from code)
+- Inline constant
+- Rename variable/function (safe)
+- Move to module
+- Extract module
+- Change signature
+
+**Deliverable:** LSP code actions
+
+---
+
+### 12. Formal Verification Integration 🔢
+**Impact:** Safety guarantees
+**Effort:** 3-4 weeks
+
+**Current:** Idris2 ABI proofs in src/abi/
+**Proposed:** Full verification of WokeLang programs
+
+```wokelang
+## @verified
+# Ensures array access is in bounds
+to safeGet(arr: [Int], idx: Int) -> Result<Int, String> {
+    if idx >= 0 and idx < length(arr) {
+        give back Okay(arr[idx]);
+    } else {
+        give back Oops("Index out of bounds");
+    }
+}
+```
+
+**Deliverable:** `woke verify` command
+
+---
+
+### 13. Package Repository 🏛️
+**Impact:** Ecosystem growth
+**Effort:** 4-6 weeks (infrastructure + UI)
+
+**Features:**
+- Web UI (search, browse)
+- REST API
+- Authentication
+- Package versioning
+- Download statistics
+- Documentation hosting
+
+**Stack:**
+- Deno + Oak (web framework)
+- PostgreSQL database
+- S3/Spaces for storage
+- CloudFlare CDN
+
+**URL:** `https://packages.wokelang.org`
+
+**Deliverable:** Full package registry service
+
+---
+
+### 14. WASM Target 🌐
+**Impact:** Browser execution
+**Effort:** 2-3 weeks
+
+**Goal:** Compile WokeLang → WebAssembly
+
+**Use Cases:**
+- WokeLang playground in browser
+- Client-side execution
+- Embedded in web apps
+- Edge computing (Cloudflare Workers)
+
+**Implementation:**
+```bash
+woke compile --target wasm program.woke -o program.wasm
+```
+
+**Deliverable:** WASM backend for compiler
+
+---
+
+### 15. Multi-language FFI 🔌
+**Impact:** External integration
+**Effort:** 2 weeks
+
+**Current:** Zig FFI in ffi/zig/
+**Proposed:** Call any language from WokeLang
+
+```wokelang
+# Call Rust function
+extern rust "libcrypto.so" fn hash_sha256(data: String) -> String;
+
+# Call Zig function
+extern zig "libmath.so" fn fast_sqrt(x: Float) -> Float;
+
+to main() {
+    remember result = hash_sha256("hello");
+    print(result);
+}
+```
+
+**Why Deferred:**
+- Security concerns (capability enforcement)
+- ABI complexity
+- Sandboxing needed
+
+**Deliverable:** `extern` keyword support
+
+---
+
+## Implementation Priority Matrix
+
+| Tool | Impact | Effort | Priority | When |
+|------|--------|--------|----------|------|
+| LSP | Very High | High | 1 | Phase 4 |
+| Debugger | High | Medium | 2 | Phase 4 |
+| Testing Framework | Very High | Low | 3 | Phase 3 |
+| Profiler | Medium | Low | 4 | Phase 4 |
+| Doc Generator | Medium | Low | 5 | Phase 4 |
+| Static Analyzer | Medium | Medium | 6 | Phase 5 |
+| Syntax Highlighting | High | Very Low | 7 | Phase 3 |
+| Error Reporter | Medium | Low | 8 | Phase 4 |
+| Package Manager | High | High | 9 | Phase 5 |
+| Code Completion | Medium | Low | 10 | Phase 4 (via LSP) |
+| Refactoring | Low | Medium | 11 | Phase 6 |
+| Formal Verification | Medium | High | 12 | Phase 6 |
+| Package Repository | Low | Very High | 13 | Phase 7 |
+| WASM Target | Medium | Medium | 14 | Phase 6 |
+| Multi-language FFI | Medium | Medium | 15 | Phase 6 |
+
+---
+
+## Recommended Next Steps
+
+**Phase 3 (Current):** Quality & Core Features
+- Complete stdlib integration
+- Record field access
+- Comprehensive testing
+
+**Phase 4 (Next):** Developer Tools
+1. **Syntax highlighting** (2-3 days) ← Quick win
+2. **Testing framework** (1 week) ← Essential
+3. **LSP server** (2-3 weeks) ← Game changer
+4. **Debugger** (1-2 weeks)
+5. **Profiler** (1 week)
+6. **Doc generator** (1 week)
+
+**Phase 5:** Quality & Ecosystem
+- Static analyzer
+- Package manager
+- Error reporter enhancements
+
+**Phase 6:** Advanced Features
+- Formal verification expansion
+- Refactoring tools
+- WASM target
+- Multi-language FFI
+
+**Phase 7:** Infrastructure
+- Package registry (web service)
+- Community platform
+
+---
+
+## Estimated Timeline
+
+**Complete Toolchain (Production-Grade):** 12-16 weeks
+
+- Phase 3: Core Features (1-2 weeks) ✅ Nearly complete
+- Phase 4: Dev Tools (6-8 weeks)
+- Phase 5: Quality (3-4 weeks)
+- Phase 6: Advanced (2-3 weeks)
+- Phase 7: Infrastructure (when needed)
+
+**MVP Toolchain:** 8 weeks (Phases 3-4 only)
+
+---
+
+## Comparison with Phronesis
+
+Both WokeLang and Phronesis need similar toolchain components:
+
+| Component | WokeLang | Phronesis | Notes |
+|-----------|----------|-----------|-------|
+| **Core Language** | ✅ Complete | ✅ Complete | Both have working interpreters |
+| **LSP** | ❌ Missing | ❌ Missing | Highest priority for both |
+| **Debugger** | ❌ Missing | ❌ Missing | Essential dev tool |
+| **Testing Framework** | ⚠️ Partial | ❌ Missing | WokeLang has examples |
+| **Profiler** | ❌ Missing | ❌ Missing | Performance tuning |
+| **Doc Generator** | ❌ Missing | ❌ Missing | User onboarding |
+| **Package Manager** | ❌ Missing | ❌ Missing | Ecosystem growth |
+| **Syntax Highlighting** | ⚠️ Partial | ❌ Missing | Quick wins available |
+
+**Convergence Strategy:** Both languages can share tooling approaches and learn from each other's implementations.
+
+---
+
+## Community Contributions Welcome
+
+Lower priority items ideal for contributors:
+- Syntax highlighting definitions
+- Editor plugins
+- Documentation examples
+- Standard library functions
+- Testing WokeLang programs
+
+High-skill contributions:
+- LSP implementation
+- Debugger
+- WASM backend
+- Formal verification
+
+---
+
+**Current Status:** 85% complete (core language)
+**With full toolchain:** 100% complete (production-ready language)
+
+**Maintainer:** Jonathan D.A. Jewell <jonathan.jewell@open.ac.uk>
+**Date:** 2026-02-01
+**License:** PMPL-1.0-or-later
