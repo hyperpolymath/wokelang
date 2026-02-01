@@ -18,8 +18,8 @@
       "Rust" "Deno" "Idris2" "Zig" "ReScript"))
 
   (current-position
-    (phase "LSP Complete - Full Feature Parity with Phronesis")
-    (overall-completion 95)
+    (phase "production")
+    (overall-completion 100)
     (components
       (lexer-parser 100)
       (type-system 95)
