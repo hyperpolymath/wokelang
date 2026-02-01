@@ -1426,6 +1426,30 @@ impl TypeChecker {
             }
         }
     }
+
+    /// Get the type environment (for LSP)
+    pub fn env(&self) -> &TypeEnv {
+        &self.env
+    }
+
+    /// Take ownership of the type environment (for LSP caching)
+    pub fn take_env(self) -> TypeEnv {
+        self.env
+    }
+
+    /// Get all symbols in scope (for LSP completion)
+    pub fn get_all_symbols(&self) -> Vec<(String, TypeInfo)> {
+        self.env
+            .bindings
+            .iter()
+            .map(|(k, v)| (k.clone(), v.clone()))
+            .collect()
+    }
+
+    /// Get type of specific symbol (for LSP hover)
+    pub fn get_symbol_type(&self, name: &str) -> Option<TypeInfo> {
+        self.env.get(name).cloned()
+    }
 }
 
 impl Default for TypeChecker {
