@@ -5,6 +5,7 @@
 use tower_lsp::jsonrpc::Result;
 use tower_lsp::lsp_types::*;
 
+use crate::lsp::stdlib_metadata::get_stdlib_function_hover;
 use crate::lsp::Backend;
 
 /// Handle hover request
@@ -23,6 +24,24 @@ pub async fn hover(backend: &Backend, params: HoverParams) -> Result<Option<Hove
         Some(w) => w,
         None => return Ok(None),
     };
+
+    // Check if it's a stdlib function (e.g., "std.math.abs")
+    if word.starts_with("std.") && word.matches('.').count() >= 2 {
+        let parts: Vec<&str> = word.split('.').collect();
+        if parts.len() >= 3 {
+            let module = parts[1];
+            let function = parts[2];
+            if let Some(hover_doc) = get_stdlib_function_hover(module, function) {
+                return Ok(Some(Hover {
+                    contents: HoverContents::Markup(MarkupContent {
+                        kind: MarkupKind::Markdown,
+                        value: hover_doc,
+                    }),
+                    range: None,
+                }));
+            }
+        }
+    }
 
     // Check if it's a keyword
     if let Some(keyword_doc) = get_keyword_documentation(&word) {

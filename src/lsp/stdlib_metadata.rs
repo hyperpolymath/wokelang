@@ -203,6 +203,28 @@ fn chan_completions() -> Vec<CompletionItem> {
     ]
 }
 
+/// Get hover documentation for a stdlib function
+pub fn get_stdlib_function_hover(module: &str, function: &str) -> Option<String> {
+    let completions = get_stdlib_completions(module);
+
+    for item in completions {
+        if item.label == function {
+            let signature = item.detail.unwrap_or_default();
+            let description = match item.documentation {
+                Some(Documentation::String(s)) => s,
+                _ => String::new(),
+            };
+
+            return Some(format!(
+                "## std.{}.{}\n\n**Signature:** `{}`\n\n{}",
+                module, function, signature, description
+            ));
+        }
+    }
+
+    None
+}
+
 /// Helper to create a completion item
 fn completion_item(label: &str, doc: &str, signature: &str) -> CompletionItem {
     CompletionItem {
