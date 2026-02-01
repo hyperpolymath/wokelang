@@ -4,6 +4,8 @@
 
 use tower_lsp::lsp_types::*;
 
+use crate::linter::{Linter, Severity};
+use crate::lsp::utils::span_to_range;
 use crate::lsp::Backend;
 
 /// Publish diagnostics for a document
@@ -34,7 +36,7 @@ fn collect_diagnostics(backend: &Backend, uri: &Url) -> Vec<Diagnostic> {
                 end: Position::new(0, 1),
             },
             severity: Some(DiagnosticSeverity::ERROR),
-            code: None,
+            code: Some(NumberOrString::String("lex-error".to_string())),
             source: Some("wokelang-lexer".to_string()),
             message: err.clone(),
             ..Default::default()
@@ -43,26 +45,48 @@ fn collect_diagnostics(backend: &Backend, uri: &Url) -> Vec<Diagnostic> {
     }
 
     // Try to parse
-    if let Err(err) = doc.ast() {
-        diagnostics.push(Diagnostic {
-            range: Range {
-                start: Position::new(0, 0),
-                end: Position::new(0, 1),
-            },
-            severity: Some(DiagnosticSeverity::ERROR),
-            code: None,
-            source: Some("wokelang-parser".to_string()),
-            message: err.clone(),
-            ..Default::default()
-        });
-        return diagnostics; // Can't lint without AST
-    }
+    let ast = match doc.ast() {
+        Ok(a) => a,
+        Err(err) => {
+            diagnostics.push(Diagnostic {
+                range: Range {
+                    start: Position::new(0, 0),
+                    end: Position::new(0, 1),
+                },
+                severity: Some(DiagnosticSeverity::ERROR),
+                code: Some(NumberOrString::String("parse-error".to_string())),
+                source: Some("wokelang-parser".to_string()),
+                message: err.clone(),
+                ..Default::default()
+            });
+            return diagnostics; // Can't lint without AST
+        }
+    };
 
-    // Typecheck (if it fails, type_env will be None, but we don't report it as error
-    // since parse errors are already reported)
+    // Typecheck (errors are silent, we just want to populate the type env)
     let _ = doc.type_env();
 
-    // TODO: Add linter diagnostics
+    // Run linter
+    let mut linter = Linter::new();
+    let lint_diagnostics = linter.lint(ast);
+
+    // Convert linter diagnostics to LSP diagnostics
+    for lint_diag in lint_diagnostics {
+        let severity = match lint_diag.severity {
+            Severity::Error => DiagnosticSeverity::ERROR,
+            Severity::Warning => DiagnosticSeverity::WARNING,
+            Severity::Info => DiagnosticSeverity::INFORMATION,
+        };
+
+        diagnostics.push(Diagnostic {
+            range: span_to_range(&lint_diag.span, &doc.source),
+            severity: Some(severity),
+            code: Some(NumberOrString::String(lint_diag.code)),
+            source: Some("wokelang-linter".to_string()),
+            message: lint_diag.message,
+            ..Default::default()
+        });
+    }
 
     diagnostics
 }

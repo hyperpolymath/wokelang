@@ -3,7 +3,6 @@
 //! Document state management and caching
 
 use once_cell::sync::OnceCell;
-use std::ops::Range;
 use tower_lsp::lsp_types::Url;
 
 use crate::ast::Program;

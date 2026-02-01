@@ -237,7 +237,7 @@ impl Substitution {
 
 /// Type environment
 pub struct TypeEnv {
-    bindings: HashMap<String, TypeInfo>,
+    pub bindings: HashMap<String, TypeInfo>,
     next_var: usize,
 }
 
