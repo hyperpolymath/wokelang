@@ -25,7 +25,7 @@
   "activationEvents": [
     "onLanguage:wokelang"
   ],
-  "main": "./out/extension.js",
+  "main": "./src/Extension.res.js",
   "contributes": {
     "languages": [
       {
@@ -70,16 +70,16 @@
     }
   },
   "scripts": {
-    "vscode:prepublish": "npm run compile",
-    "compile": "tsc -p ./",
-    "watch": "tsc -watch -p ./"
+    "vscode:prepublish": "rescript build",
+    "compile": "rescript build",
+    "watch": "rescript build -w",
+    "clean": "rescript clean"
   },
   "devDependencies": {
-    "@types/node": "^16.0.0",
-    "@types/vscode": "^1.60.0",
-    "typescript": "^4.9.0"
+    "rescript": "^11.0.0"
   },
   "dependencies": {
-    "vscode-languageclient": "^8.0.0"
+    "vscode-languageclient": "^9.0.0",
+    "@rescript/core": "^1.5.0"
   }
 }
