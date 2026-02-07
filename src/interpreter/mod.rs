@@ -11,6 +11,7 @@ use crate::ast::*;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
+use std::sync::{Arc, Mutex};
 
 /// Interpreter runtime error
 #[derive(Debug)]
@@ -699,7 +700,7 @@ impl Interpreter {
             Expr::Lambda(lambda) => {
                 // Capture current environment
                 let bindings = self.environment.borrow().bindings.clone();
-                let env = Rc::new(RefCell::new(CapturedEnv::from_map(bindings)));
+                let env = Arc::new(Mutex::new(CapturedEnv::from_map(bindings)));
 
                 Ok(Value::Function(Closure {
                     params: lambda.params.clone(),
@@ -745,7 +746,7 @@ impl Interpreter {
         }
 
         // Create new environment with captured environment as parent
-        let captured_bindings = closure.env.borrow().bindings.clone();
+        let captured_bindings = closure.env.lock().unwrap().bindings.clone();
         let new_env = Rc::new(RefCell::new(Environment::new()));
 
         // Add captured bindings

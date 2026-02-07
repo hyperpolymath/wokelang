@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+
 //! WokeLang Standard Library
 //!
 //! This module provides the standard library for WokeLang, offering
@@ -128,6 +130,8 @@ impl StdlibRegistry {
         self.register("std.chan.recvTimeout", chan::recv_timeout);
         self.register("std.chan.close", chan::close);
         self.register("std.chan.isClosed", chan::is_closed);
+        self.register("std.chan.len", chan::len);
+        self.register("std.chan.select", chan::select);
 
         // String functions
         self.register("std.string.length", string::length);
@@ -258,6 +262,17 @@ impl StdlibRegistry {
         self.register("readFile", io::read_file);
         self.register("writeFile", io::write_file);
         self.register("readLine", io::read_line);
+
+        // Channel
+        self.register("makeChan", chan::make_chan);
+        self.register("chanSend", chan::send);
+        self.register("chanRecv", chan::recv);
+        self.register("chanTryRecv", chan::try_recv);
+        self.register("chanRecvTimeout", chan::recv_timeout);
+        self.register("chanClose", chan::close);
+        self.register("chanIsClosed", chan::is_closed);
+        self.register("chanLen", chan::len);
+        self.register("chanSelect", chan::select);
     }
 
     /// Register a function
@@ -384,6 +399,21 @@ mod tests {
         assert!(registry.has("std.io.readFile"));
         assert!(registry.has("std.json.parse"));
         assert!(registry.has("std.time.now"));
+        // Channel functions (qualified)
+        assert!(registry.has("std.chan.make"));
+        assert!(registry.has("std.chan.send"));
+        assert!(registry.has("std.chan.recv"));
+        assert!(registry.has("std.chan.tryRecv"));
+        assert!(registry.has("std.chan.recvTimeout"));
+        assert!(registry.has("std.chan.close"));
+        assert!(registry.has("std.chan.isClosed"));
+        assert!(registry.has("std.chan.len"));
+        assert!(registry.has("std.chan.select"));
+        // Channel functions (short aliases)
+        assert!(registry.has("makeChan"));
+        assert!(registry.has("chanSend"));
+        assert!(registry.has("chanRecv"));
+        assert!(registry.has("chanSelect"));
         assert!(!registry.has("nonexistent"));
     }
 
