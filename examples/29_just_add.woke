@@ -1,4 +1,0 @@
-to main() {
-    remember result = add(5, 3);
-    give back result;
-}
