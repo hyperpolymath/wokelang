@@ -1,4 +1,3 @@
-rust nightly
-deno 2.1.4
-idris2 0.7.0
-zig 0.13.0
+# SPDX-License-Identifier: PMPL-1.0-or-later
+# asdf version manager configuration
+rust stable

@@ -1377,6 +1377,24 @@ impl TypeChecker {
 
                 Ok(current_sub)
             }
+
+            Statement::While(while_loop) => {
+                let (cond_ty, s1) = self.infer_expr(&while_loop.condition, sub)?;
+
+                // Condition must be Bool
+                let s2 = unify(&s1.apply(&cond_ty), &TypeInfo::Bool)?;
+
+                // Check body
+                let mut current_sub = s1.compose(&s2);
+                for stmt in &while_loop.body {
+                    current_sub = self.check_statement(stmt, &current_sub)?;
+                }
+
+                Ok(current_sub)
+            }
+
+            Statement::Break(_) => Ok(sub.clone()),
+            Statement::Continue(_) => Ok(sub.clone()),
         }
     }
 

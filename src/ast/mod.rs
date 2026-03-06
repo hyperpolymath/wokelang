@@ -132,6 +132,9 @@ pub enum Statement {
     EmoteAnnotated(EmoteAnnotatedStmt),
     /// `decide based on expr { ... }`
     Decide(DecideStmt),
+    Break(Span),
+    Continue(Span),
+    While(WhileLoop),
 }
 
 impl Statement {
@@ -150,6 +153,9 @@ impl Statement {
             Statement::Complain(c) => c.span.clone(),
             Statement::EmoteAnnotated(e) => e.span.clone(),
             Statement::Decide(d) => d.span.clone(),
+            Statement::Break(s) => s.clone(),
+            Statement::Continue(s) => s.clone(),
+            Statement::While(w) => w.span.clone(),
         }
     }
 }
@@ -463,5 +469,13 @@ pub struct ConstDef {
     pub name: String,
     pub ty: Type,
     pub value: Spanned<Expr>,
+    pub span: Span,
+}
+
+/// While loop: `while condition { ... }`
+#[derive(Debug, Clone)]
+pub struct WhileLoop {
+    pub condition: Spanned<Expr>,
+    pub body: Vec<Statement>,
     pub span: Span,
 }

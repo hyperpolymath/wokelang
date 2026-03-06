@@ -141,9 +141,65 @@ impl Formatter {
                 output.push_str(&indent_str);
                 output.push_str("}\n");
             }
-            _ => {
+            Statement::AttemptBlock(attempt) => {
                 output.push_str(&indent_str);
-                output.push_str("// TODO: format other statement types\n");
+                output.push_str("attempt safely {\n");
+
+                for stmt in &attempt.body {
+                    output.push_str(&self.format_statement(stmt, indent + 1));
+                }
+
+                output.push_str(&indent_str);
+                output.push_str(&format!("}} or reassure \"{}\";\n", attempt.reassurance));
+            }
+            Statement::While(while_loop) => {
+                output.push_str(&indent_str);
+                output.push_str("while ... {\n");
+
+                for stmt in &while_loop.body {
+                    output.push_str(&self.format_statement(stmt, indent + 1));
+                }
+
+                output.push_str(&indent_str);
+                output.push_str("}\n");
+            }
+            Statement::Break(_) => {
+                output.push_str(&indent_str);
+                output.push_str("break;\n");
+            }
+            Statement::Continue(_) => {
+                output.push_str(&indent_str);
+                output.push_str("continue;\n");
+            }
+            Statement::WorkerSpawn(w) => {
+                output.push_str(&indent_str);
+                output.push_str(&format!("spawn worker {};\n", w.worker_name));
+            }
+            Statement::Complain(_) => {
+                output.push_str(&indent_str);
+                output.push_str("complain ...;\n");
+            }
+            Statement::Decide(decide) => {
+                output.push_str(&indent_str);
+                output.push_str("decide based on ... {\n");
+                for arm in &decide.arms {
+                    output.push_str(&indent_str);
+                    output.push_str("    ... → {\n");
+                    for stmt in &arm.body {
+                        output.push_str(&self.format_statement(stmt, indent + 2));
+                    }
+                    output.push_str(&indent_str);
+                    output.push_str("    }\n");
+                }
+                output.push_str(&indent_str);
+                output.push_str("}\n");
+            }
+            Statement::EmoteAnnotated(emote) => {
+                output.push_str(&indent_str);
+                output.push_str(&format!("@{} ", emote.emote.name));
+                // Recurse without extra indent for the statement itself if it's not a block
+                let formatted = self.format_statement(&emote.statement, 0);
+                output.push_str(formatted.trim_start());
             }
         }
 

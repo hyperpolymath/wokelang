@@ -36,7 +36,7 @@ pub fn first(args: &[Value], _caps: &mut CapabilityRegistry) -> Result<Value, St
     check_arity(args, 1)?;
     match &args[0] {
         Value::Array(a) => match a.first() {
-            Some(v) => Ok(Value::Okay(Box::new(v.clone()))),
+            Some(v) => Ok(Value::Okay(Box::<Value>::new(v.clone()))),
             None => Ok(Value::Oops("array is empty".to_string())),
         },
         other => Err(StdlibError::TypeError {
@@ -51,7 +51,7 @@ pub fn last(args: &[Value], _caps: &mut CapabilityRegistry) -> Result<Value, Std
     check_arity(args, 1)?;
     match &args[0] {
         Value::Array(a) => match a.last() {
-            Some(v) => Ok(Value::Okay(Box::new(v.clone()))),
+            Some(v) => Ok(Value::Okay(Box::<Value>::new(v.clone()))),
             None => Ok(Value::Oops("array is empty".to_string())),
         },
         other => Err(StdlibError::TypeError {
@@ -313,7 +313,7 @@ pub fn flatten(args: &[Value], _caps: &mut CapabilityRegistry) -> Result<Value, 
         }
     };
 
-    let mut result = Vec::new();
+    let mut result = Vec::<Value>::new();
     for item in arr {
         match item {
             Value::Array(inner) => result.extend(inner.clone()),
@@ -338,7 +338,7 @@ pub fn unique(args: &[Value], _caps: &mut CapabilityRegistry) -> Result<Value, S
         }
     };
 
-    let mut result = Vec::new();
+    let mut result = Vec::<Value>::new();
     for item in arr {
         if !result.contains(item) {
             result.push(item.clone());
@@ -375,7 +375,7 @@ pub fn zip(args: &[Value], _caps: &mut CapabilityRegistry) -> Result<Value, Stdl
     let result: Vec<Value> = arr1
         .iter()
         .zip(arr2.iter())
-        .map(|(a, b)| Value::Array(vec![a.clone(), b.clone()]))
+        .map(|(a, b): (&Value, &Value)| Value::Array(vec![a.clone(), b.clone()]))
         .collect();
 
     Ok(Value::Array(result))

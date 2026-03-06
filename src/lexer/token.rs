@@ -53,6 +53,14 @@ pub enum Token {
 
     #[token("repeat")]
     Repeat,
+    #[token("break")]
+    Break,
+
+    #[token("continue")]
+    Continue,
+
+    #[token("while")]
+    While,
 
     #[token("times")]
     Times,
@@ -303,6 +311,9 @@ impl std::fmt::Display for Token {
             Token::Otherwise => write!(f, "otherwise"),
             Token::Repeat => write!(f, "repeat"),
             Token::Times => write!(f, "times"),
+            Token::Break => write!(f, "break"),
+            Token::Continue => write!(f, "continue"),
+            Token::While => write!(f, "while"),
             Token::Only => write!(f, "only"),
             Token::If => write!(f, "if"),
             Token::Okay => write!(f, "okay"),

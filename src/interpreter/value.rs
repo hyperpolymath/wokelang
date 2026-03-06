@@ -1,9 +1,7 @@
 // SPDX-License-Identifier: PMPL-1.0-or-later
 use crate::ast::{LambdaBody, Parameter};
-use std::cell::RefCell;
 use std::collections::HashMap;
 use std::fmt;
-use std::rc::Rc;
 use std::sync::mpsc::{self, Receiver, RecvTimeoutError, Sender, TryRecvError};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
@@ -37,7 +35,7 @@ impl Default for CapturedEnv {
 pub struct Closure {
     pub params: Vec<Parameter>,
     pub body: LambdaBody,
-    pub env: Rc<RefCell<CapturedEnv>>,
+    pub env: Arc<Mutex<CapturedEnv>>,
 }
 
 impl PartialEq for Closure {
@@ -167,6 +165,40 @@ impl ChannelHandle {
     /// Check if the channel is closed
     pub fn is_closed(&self) -> bool {
         *self.closed.lock().unwrap()
+    }
+
+    /// Drain all currently available items (non-blocking) and count them,
+    /// then put them back. Returns an approximation of pending items.
+    /// NOTE: Because `std::sync::mpsc` does not expose a `.len()`,
+    /// this uses a drain-and-refill strategy. Only accurate when no
+    /// concurrent senders are active.
+    pub fn pending_count(&self) -> usize {
+        if *self.closed.lock().unwrap() {
+            return 0;
+        }
+        let receiver = self.receiver.lock().unwrap();
+        let mut count = 0usize;
+        let mut drained = Vec::new();
+        loop {
+            match receiver.try_recv() {
+                Ok(val) => {
+                    drained.push(val);
+                    count += 1;
+                }
+                Err(_) => break,
+            }
+        }
+        // Put them back via the sender
+        for val in drained {
+            // If send fails the channel is disconnected; nothing we can do.
+            let _ = self.sender.send(val);
+        }
+        count
+    }
+
+    /// Clone the sender side only (useful for giving to another thread)
+    pub fn clone_sender(&self) -> Sender<Value> {
+        self.sender.clone()
     }
 }
 

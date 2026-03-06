@@ -146,7 +146,7 @@
     "clean": "rescript clean"
   },
   "devDependencies": {
-    "rescript": "^11.0.0"
+    "rescript": "^12.0.0"
   },
   "dependencies": {
     "vscode-languageclient": "^9.0.0",

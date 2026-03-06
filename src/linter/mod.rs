@@ -166,6 +166,14 @@ impl Linter {
                     }
                 }
             }
+            Statement::Break(_) => {}
+            Statement::Continue(_) => {}
+            Statement::While(while_loop) => {
+                self.lint_expr(&while_loop.condition);
+                for stmt in &while_loop.body {
+                    self.lint_statement(stmt);
+                }
+            }
         }
     }
 

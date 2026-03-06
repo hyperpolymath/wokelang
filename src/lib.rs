@@ -11,8 +11,7 @@ pub mod security;
 pub mod stdlib;
 pub mod typechecker;
 pub mod vm;
-// Worker module disabled due to Send trait issues with Value/Closure
-// pub mod worker;
+pub mod worker;
 
 pub use ast::Program;
 pub use formatter::Formatter;
@@ -25,5 +24,4 @@ pub use security::CapabilityRegistry;
 pub use stdlib::StdlibRegistry;
 pub use typechecker::TypeChecker;
 pub use vm::{disassemble, BytecodeCompiler, CompiledProgram, VirtualMachine};
-// Worker exports disabled
-// pub use worker::{WorkerPool, WorkerHandle, WorkerMessage};
+pub use worker::{WorkerHandle, WorkerMessage, WorkerPool};

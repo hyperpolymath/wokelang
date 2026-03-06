@@ -11,6 +11,7 @@ use crate::ast::*;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
+use std::sync::{Arc, Mutex};
 
 /// Interpreter runtime error
 #[derive(Debug)]
@@ -86,8 +87,11 @@ impl Default for Environment {
 #[derive(Debug, Clone)]
 enum ControlFlow {
     None,
+    Break,
+    Continue,
     Return(Value),
 }
+
 
 /// Pragma settings for interpreter behavior
 #[derive(Debug, Clone)]
@@ -314,12 +318,58 @@ impl Interpreter {
                 for _ in 0..iterations {
                     for stmt in &loop_stmt.body {
                         result = self.execute_statement(stmt)?;
-                        if !matches!(self.control_flow, ControlFlow::None) {
-                            return Ok(result);
+                        match self.control_flow {
+                            ControlFlow::Break => {
+                                self.control_flow = ControlFlow::None;
+                                return Ok(result);
+                            }
+                            ControlFlow::Continue => {
+                                self.control_flow = ControlFlow::None;
+                                break; // Break inner statement loop to continue outer iteration
+                            }
+                            ControlFlow::Return(_) => return Ok(result),
+                            ControlFlow::None => {}
                         }
                     }
                 }
                 Ok(result)
+            }
+
+            Statement::While(while_loop) => {
+                let mut result = Value::Unit;
+                loop {
+                    let condition = self.eval_expr(&while_loop.condition)?;
+                    if !condition.is_truthy() {
+                        break;
+                    }
+
+                    for stmt in &while_loop.body {
+                        result = self.execute_statement(stmt)?;
+                        match self.control_flow {
+                            ControlFlow::Break => {
+                                self.control_flow = ControlFlow::None;
+                                return Ok(result);
+                            }
+                            ControlFlow::Continue => {
+                                self.control_flow = ControlFlow::None;
+                                break; // Break inner statement loop to re-evaluate while condition
+                            }
+                            ControlFlow::Return(_) => return Ok(result),
+                            ControlFlow::None => {}
+                        }
+                    }
+                }
+                Ok(result)
+            }
+
+            Statement::Break(_) => {
+                self.control_flow = ControlFlow::Break;
+                Ok(Value::Unit)
+            }
+
+            Statement::Continue(_) => {
+                self.control_flow = ControlFlow::Continue;
+                Ok(Value::Unit)
             }
 
             Statement::AttemptBlock(attempt) => {
@@ -699,7 +749,7 @@ impl Interpreter {
             Expr::Lambda(lambda) => {
                 // Capture current environment
                 let bindings = self.environment.borrow().bindings.clone();
-                let env = Rc::new(RefCell::new(CapturedEnv::from_map(bindings)));
+                let env = Arc::new(Mutex::new(CapturedEnv::from_map(bindings)));
 
                 Ok(Value::Function(Closure {
                     params: lambda.params.clone(),
@@ -745,7 +795,7 @@ impl Interpreter {
         }
 
         // Create new environment with captured environment as parent
-        let captured_bindings = closure.env.borrow().bindings.clone();
+        let captured_bindings = closure.env.lock().unwrap().bindings.clone();
         let new_env = Rc::new(RefCell::new(Environment::new()));
 
         // Add captured bindings

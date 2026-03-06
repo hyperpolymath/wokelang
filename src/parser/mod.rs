@@ -601,6 +601,9 @@ impl<'a> Parser<'a> {
             Token::Give => self.parse_return(),
             Token::When => self.parse_conditional(),
             Token::Repeat => self.parse_loop(),
+            Token::While => self.parse_while_loop(),
+            Token::Break => self.parse_break(),
+            Token::Continue => self.parse_continue(),
             Token::Attempt => self.parse_attempt_block(),
             Token::Only => Ok(Statement::ConsentBlock(self.parse_consent_block()?)),
             Token::Spawn => self.parse_worker_spawn(),
@@ -728,6 +731,37 @@ impl<'a> Parser<'a> {
             body,
             span: start..end_span.end,
         }))
+    }
+
+    fn parse_while_loop(&mut self) -> Result<Statement, ParseError> {
+        let start = self.current_span().start;
+        self.expect(Token::While, "while")?;
+        let condition = self.parse_expression()?;
+        self.expect(Token::LBrace, "{")?;
+
+        let mut body = Vec::new();
+        while !matches!(self.peek(), Token::RBrace) && !self.is_at_end() {
+            body.push(self.parse_statement()?);
+        }
+        let end_span = self.expect(Token::RBrace, "}")?;
+
+        Ok(Statement::While(WhileLoop {
+            condition,
+            body,
+            span: start..end_span.end,
+        }))
+    }
+
+    fn parse_break(&mut self) -> Result<Statement, ParseError> {
+        let span = self.expect(Token::Break, "break")?;
+        self.expect(Token::Semicolon, ";")?;
+        Ok(Statement::Break(span))
+    }
+
+    fn parse_continue(&mut self) -> Result<Statement, ParseError> {
+        let span = self.expect(Token::Continue, "continue")?;
+        self.expect(Token::Semicolon, ";")?;
+        Ok(Statement::Continue(span))
     }
 
     fn parse_attempt_block(&mut self) -> Result<Statement, ParseError> {
