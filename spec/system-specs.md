@@ -62,8 +62,9 @@ WokeLang's effect system is built around the consent model:
 - **Consent propagation**: When a function calls another function, consent context
   propagates through the call chain. Inner functions cannot escalate beyond the
   consent granted to their callers.
-- **Revocation**: Consent can be revoked mid-execution, causing subsequent
-  unconsented operations to fail gracefully.
+- **Monotonic consent**: Consent is monotonic within a session — once granted,
+  it only grows and is never revoked during execution. New consent categories
+  can be added but existing grants persist until session end.
 - **Audit trail**: All consent checks are logged, providing a runtime trace of
   which effects were attempted and whether they were permitted.
 

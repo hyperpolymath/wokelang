@@ -1,6 +1,6 @@
 ;; @taxonomy: spec/core
 ;; SPDX-License-Identifier: PMPL-1.0-or-later
-;; SPDX-FileCopyrightText: 2026 Hyperpolymath
+;; SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 ;;
 ;; Core Language Specification Contract for WokeLang
 ;; This file defines the semantic invariants that all implementations must preserve.
