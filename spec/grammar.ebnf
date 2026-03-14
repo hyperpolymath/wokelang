@@ -1,295 +1,346 @@
+(* SPDX-License-Identifier: PMPL-1.0-or-later *)
 (* @taxonomy: spec/grammar *)
 (* ============================================================================ *)
-(* WokeLang - Human-Centered, Consent-Driven Programming Language             *)
-(* Complete EBNF Grammar Specification                                         *)
+(* WokeLang — Human-Centered, Consent-Driven Programming Language              *)
+(* Complete EBNF Grammar Specification (Canonical)                              *)
 (* ============================================================================ *)
 (*                                                                              *)
-(* Philosophy: Emotionally-Aware, Consent-First, Gratitude-Based Programming  *)
+(* This is the CANONICAL grammar. Other copies (docs/grammar.ebnf,              *)
+(* grammar/wokelang.ebnf) are superseded by this file.                          *)
+(*                                                                              *)
+(* Philosophy: Emotionally-Aware, Consent-First, Gratitude-Based Programming    *)
 (*                                                                              *)
 (* Key Features:                                                                *)
-(*   - Natural language-style syntax                                           *)
-(*   - Explicit consent blocks                                                 *)
-(*   - Built-in gratitude/attribution system                                   *)
-(*   - Emotional annotations (emote tags)                                      *)
-(*   - Physical unit system                                                    *)
-(*   - Gentle error handling                                                   *)
-(*   - Worker/side quest concurrency model                                     *)
+(*   - Natural language-style syntax                                            *)
+(*   - Explicit consent blocks                                                  *)
+(*   - Built-in gratitude/attribution system                                    *)
+(*   - Emotional annotations (emote tags)                                       *)
+(*   - Physical unit system                                                     *)
+(*   - Gentle error handling with Result types                                  *)
+(*   - Worker/side quest concurrency model with messaging                       *)
+(*   - Pattern matching with guards, constructors, and Result patterns          *)
 (*                                                                              *)
+(* Version: 1.0.0 — 2026-03-14                                                 *)
 (* ============================================================================ *)
+
+(* ===================================================================== *)
+(* LEXICAL GRAMMAR                                                       *)
+(* ===================================================================== *)
+
+(* Whitespace and Comments *)
+whitespace      = { " " | "\t" | "\n" | "\r" | "\f" } ;
+line_comment    = "//" , { ? any character except newline ? } ;
+block_comment   = "/*" , { ? any character ? } , "*/" ;
+
+(* Character Classes *)
+digit           = "0"-"9" ;
+letter          = "a"-"z" | "A"-"Z" ;
+escape_char     = "\\" , ( "n" | "t" | "r" | '"' | "'" | "\\" ) ;
+string_char     = ( ? any character except '"' and '\\' ? ) | escape_char ;
+
+(* Literals *)
+integer         = [ "-" ] , digit , { digit } ;
+float           = [ "-" ] , digit , { digit } , "." , digit , { digit } ;
+string          = '"' , { string_char } , '"' ;
+identifier      = ( letter | "_" ) , { letter | digit | "_" } ;
+boolean         = "true" | "false" ;
+
+(* ===================================================================== *)
+(* SYNTACTIC GRAMMAR                                                     *)
+(* ===================================================================== *)
 
 (* --- Program Structure --- *)
 
-program = { top_level_item } ;
+program         = { top_level_item } ;
 
-top_level_item = function_def
-               | consent_block
-               | gratitude_decl
-               | worker_def
-               | side_quest_def
-               | superpower_decl
-               | module_import
-               | pragma
-               | type_def
-               | const_def
-               ;
+top_level_item  = function_def
+                | consent_block
+                | gratitude_decl
+                | worker_def
+                | side_quest_def
+                | superpower_decl
+                | module_import
+                | module_export
+                | pragma
+                | type_def
+                | const_def ;
 
-(* --- Module System --- *)
+(* ===================================================================== *)
+(* FUNCTIONS                                                             *)
+(* ===================================================================== *)
 
-module_import = "use" , qualified_name , [ "renamed" , identifier ] , ";" ;
+function_def    = [ emote_tag ] , "to" , identifier ,
+                  "(" , [ param_list ] , ")" ,
+                  [ return_type ] , "{" ,
+                  [ hello_clause ] ,
+                  { statement } ,
+                  [ goodbye_clause ] ,
+                  "}" ;
 
-qualified_name = identifier , { "." , identifier } ;
+param_list      = parameter , { "," , parameter } ;
+parameter       = identifier , [ ":" , type ] ;
+return_type     = ( "->" | "→" ) , type ;
+hello_clause    = "hello" , string , ";" ;
+goodbye_clause  = "goodbye" , string , ";" ;
 
-(* --- Function Definitions --- *)
+(* ===================================================================== *)
+(* STATEMENTS                                                            *)
+(* ===================================================================== *)
 
-function_def = [ emote_tag ] ,
-               "to" , identifier ,
-               "(" , [ parameter_list ] , ")" ,
-               [ "→" , type ] ,
-               "{" ,
-               [ "hello" , string_literal , ";" ] ,
-               { statement } ,
-               [ "goodbye" , string_literal , ";" ] ,
-               "}" ;
+statement       = var_decl
+                | assignment
+                | return_stmt
+                | conditional
+                | loop_stmt
+                | attempt_block
+                | consent_stmt
+                | expression_stmt
+                | worker_spawn
+                | send_message
+                | receive_message
+                | await_worker
+                | cancel_worker
+                | complain_stmt
+                | emote_annotated
+                | decide_stmt ;
 
-parameter_list = parameter , { "," , parameter } ;
+(* Variable Declaration *)
+var_decl        = "remember" , identifier , "=" , expression ,
+                  [ "measured" , "in" , identifier ] , ";" ;
 
-parameter = identifier , [ ":" , type ] ;
+(* Assignment *)
+assignment      = identifier , "=" , expression , ";" ;
 
-(* --- Consent System --- *)
+(* Return Statement *)
+return_stmt     = "give" , "back" , expression , ";" ;
 
-consent_block = "only" , "if" , "okay" , string_literal , "{" , { statement } , "}" ;
+(* Conditional *)
+conditional     = "when" , expression , "{" , { statement } , "}" ,
+                  [ "otherwise" , "{" , { statement } , "}" ] ;
 
-(* --- Gratitude System --- *)
+(* Loop *)
+loop_stmt       = "repeat" , expression , "times" , "{" , { statement } , "}" ;
 
-gratitude_decl = "thanks" , "to" , "{" , { gratitude_entry } , "}" ;
+(* Attempt Block (Error Handling) *)
+attempt_block   = "attempt" , "safely" , "{" , { statement } , "}" ,
+                  "or" , "reassure" , string , ";" ;
 
-gratitude_entry = string_literal , "→" , string_literal , ";" ;
+(* Consent Statement *)
+consent_stmt    = "only" , "if" , "okay" , string , "{" , { statement } , "}" ;
 
-(* --- Statements --- *)
-
-statement = variable_decl
-          | assignment
-          | return_stmt
-          | conditional
-          | loop
-          | attempt_block
-          | consent_block
-          | expression_stmt
-          | worker_spawn
-          | complain_stmt
-          | emote_annotated_stmt
-          ;
-
-variable_decl = "remember" , identifier , "=" , expression ,
-                [ "measured" , "in" , unit_type ] , ";" ;
-
-assignment = identifier , "=" , expression , ";" ;
-
-return_stmt = "give" , "back" , expression , ";" ;
-
-conditional = "when" , expression , "{" , { statement } , "}" ,
-              [ "otherwise" , "{" , { statement } , "}" ] ;
-
-loop = "repeat" , expression , "times" , "{" , { statement } , "}" ;
-
-attempt_block = "attempt" , "safely" , "{" , { statement } , "}" ,
-                "or" , "reassure" , string_literal , ";" ;
-
+(* Expression Statement *)
 expression_stmt = expression , ";" ;
 
-worker_spawn = "spawn" , "worker" , identifier , ";" ;
+(* Complain Statement (Error Throwing) *)
+complain_stmt   = "complain" , string , ";" ;
 
-complain_stmt = "complain" , string_literal , ";" ;
+(* Emote-Annotated Statement *)
+emote_annotated = emote_tag , statement ;
 
-emote_annotated_stmt = emote_tag , statement ;
+(* ===================================================================== *)
+(* PATTERN MATCHING                                                      *)
+(* ===================================================================== *)
 
-(* --- Expressions --- *)
+decide_stmt     = "decide" , "based" , "on" , expression , "{" ,
+                  { match_arm } ,
+                  "}" ;
 
-expression = logical_or ;
+match_arm       = pattern , ( "->" | "→" ) , "{" , { statement } , "}" ;
 
-logical_or = logical_and , { "or" , logical_and } ;
+pattern         = literal
+                | identifier
+                | "_"                                       (* Wildcard *)
+                | "Okay" , "(" , [ identifier ] , ")"       (* Result ok pattern *)
+                | "Oops" , "(" , [ identifier ] , ")"       (* Result error pattern *)
+                | identifier , "(" , [ pattern_list ] , ")" (* Constructor pattern *)
+                | pattern , "when" , expression ;           (* Guard expression *)
 
-logical_and = equality , { "and" , equality } ;
+pattern_list    = pattern , { "," , pattern } ;
 
-equality = comparison , { ( "==" | "!=" ) , comparison } ;
+(* ===================================================================== *)
+(* CONCURRENCY                                                           *)
+(* ===================================================================== *)
 
-comparison = additive , { ( "<" | ">" | "<=" | ">=" ) , additive } ;
-
-additive = multiplicative , { ( "+" | "-" ) , multiplicative } ;
-
-multiplicative = unary , { ( "*" | "/" | "%" ) , unary } ;
-
-unary = ( "not" | "-" ) , unary
-      | primary ;
-
-primary = literal
-        | identifier
-        | function_call
-        | "(" , expression , ")"
-        | unit_measurement
-        ;
-
-function_call = identifier , "(" , [ argument_list ] , ")" ;
-
-argument_list = expression , { "," , expression } ;
-
-unit_measurement = expression , "measured" , "in" , unit_type ;
-
-(* --- Pattern Matching --- *)
-
-decide_stmt = "decide" , "based" , "on" , expression , "{" , { match_arm } , "}" ;
-
-match_arm = pattern , "→" , "{" , { statement } , "}" ;
-
-pattern = literal
-        | identifier
-        | "_"
-        ;
-
-(* --- Concurrency Primitives --- *)
-
-worker_def = "worker" , identifier , "{" , { statement } , "}" ;
-
-side_quest_def = "side" , "quest" , identifier , "{" , { statement } , "}" ;
-
+worker_def      = "worker" , identifier , "{" , { statement } , "}" ;
+side_quest_def  = "side" , "quest" , identifier , "{" , { statement } , "}" ;
 superpower_decl = "superpower" , identifier , "{" , { statement } , "}" ;
 
-(* --- Emote Tags (Emotional Annotations) --- *)
+worker_spawn    = "spawn" , "worker" , identifier , ";" ;
+send_message    = "send" , expression , "to" , identifier , ";" ;
+receive_message = "receive" , "from" , identifier , ";" ;
+await_worker    = "await" , identifier , ";" ;
+cancel_worker   = "cancel" , identifier , ";" ;
 
-emote_tag = "@" , identifier , [ "(" , emote_params , ")" ] ;
+(* ===================================================================== *)
+(* MODULES                                                               *)
+(* ===================================================================== *)
 
-emote_params = emote_param , { "," , emote_param } ;
+module_import   = "use" , qualified_name , [ "renamed" , identifier ] , ";" ;
+module_export   = "share" , identifier , ";" ;
+qualified_name  = identifier , { "." , identifier } ;
 
-emote_param = identifier , "=" , ( number | string_literal | identifier ) ;
+(* ===================================================================== *)
+(* CONSENT & SAFETY                                                      *)
+(* ===================================================================== *)
 
-(* --- Type System --- *)
+consent_block   = "only" , "if" , "okay" , string , "{" , { statement } , "}" ;
 
-type = basic_type
-     | array_type
-     | optional_type
-     | reference_type
-     ;
+(* ===================================================================== *)
+(* GRATITUDE                                                             *)
+(* ===================================================================== *)
 
-basic_type = "String"
-           | "Int"
-           | "Float"
-           | "Bool"
-           | identifier
-           ;
+gratitude_decl  = "thanks" , "to" , "{" , { gratitude_entry } , "}" ;
+gratitude_entry = string , ( "->" | "→" ) , string , ";" ;
 
-array_type = "[" , type , "]" ;
+(* ===================================================================== *)
+(* PRAGMAS                                                               *)
+(* ===================================================================== *)
 
-optional_type = "Maybe" , type ;
+pragma          = "#" , pragma_directive , ( "on" | "off" ) , ";" ;
+pragma_directive = "care" | "strict" | "verbose" ;
 
-reference_type = "&" , type ;
+(* ===================================================================== *)
+(* TYPES                                                                 *)
+(* ===================================================================== *)
 
-unit_type = identifier ;  (* meters, seconds, kilograms, etc. *)
+type_def        = "type" , identifier , "=" , type_variant , ";" ;
 
-(* --- Type Definitions --- *)
+type_variant    = struct_type
+                | enum_type
+                | type ;                 (* type alias *)
 
-type_def = "type" , identifier , "=" , type_variant , ";" ;
+struct_type     = "{" , { field_def } , "}" ;
+field_def       = identifier , ":" , type , [ "," ] ;
 
-type_variant = struct_type
-             | enum_type
-             | type_alias
-             ;
+enum_type       = variant , { "|" , variant } ;
+variant         = identifier , [ "(" , type_list , ")" ] ;
+type_list       = type , { "," , type } ;
 
-struct_type = "{" , field_list , "}" ;
+type            = basic_type
+                | array_type
+                | optional_type
+                | reference_type
+                | result_type
+                | generic_type ;
 
-field_list = field , { "," , field } ;
+basic_type      = "String" | "Int" | "Float" | "Bool" | identifier ;
+array_type      = "[" , type , "]" ;
+optional_type   = "Maybe" , type ;
+reference_type  = "&" , type ;
+result_type     = "Result" , "[" , type , [ "," , type ] , "]" ;
+generic_type    = identifier , "[" , type_list , "]" ;
 
-field = identifier , ":" , type ;
+(* Constant Definition *)
+const_def       = "const" , identifier , ":" , type , "=" , expression , ";" ;
 
-enum_type = variant , { "|" , variant } ;
-
-variant = identifier , [ "(" , type_list , ")" ] ;
-
-type_list = type , { "," , type } ;
-
-type_alias = type ;
-
-(* --- Constants --- *)
-
-const_def = "const" , identifier , ":" , type , "=" , expression , ";" ;
-
-(* --- Pragmas (Caring Modes) --- *)
-
-pragma = "#" , pragma_directive , ( "on" | "off" ) , ";" ;
-
-pragma_directive = "care"
-                 | "strict"
-                 | "verbose"
-                 ;
-
-(* --- Constraints --- *)
-
+(* Constraints *)
 constraint_block = "must" , "have" , "{" , { constraint } , "}" ;
+constraint      = expression , ";" ;
 
-constraint = expression , ";" ;
+(* ===================================================================== *)
+(* EXPRESSIONS                                                           *)
+(* ===================================================================== *)
+(*                                                                       *)
+(*  Precedence (lowest to highest):                                      *)
+(*   1. or           (logical or)                                        *)
+(*   2. and          (logical and)                                       *)
+(*   3. == !=        (equality)                                          *)
+(*   4. < > <= >=    (comparison)                                        *)
+(*   5. + -          (additive)                                          *)
+(*   6. * / %        (multiplicative)                                    *)
+(*   7. - not        (unary prefix)                                      *)
+(*   8. ? () [] .    (postfix)                                           *)
+(*   9. primary      (literals, identifiers, grouping)                   *)
 
-(* --- Literals --- *)
+expression      = logical_or ;
 
-literal = number
-        | string_literal
-        | bool_literal
-        | array_literal
-        | gratitude_literal
-        ;
+logical_or      = logical_and , { "or" , logical_and } ;
+logical_and     = equality , { "and" , equality } ;
+equality        = comparison , { ( "==" | "!=" ) , comparison } ;
+comparison      = term , { ( "<" | ">" | "<=" | ">=" ) , term } ;
+term            = factor , { ( "+" | "-" ) , factor } ;
+factor          = unary , { ( "*" | "/" | "%" ) , unary } ;
 
-number = integer | float ;
+unary           = ( "-" | "not" ) , unary
+                | postfix ;
 
-integer = [ "-" ] , digit , { digit } ;
+postfix         = primary , { postfix_op } ;
+postfix_op      = "?"                                       (* Try operator *)
+                | "(" , [ arg_list ] , ")"                  (* Function call *)
+                | "[" , expression , "]"                    (* Index access *)
+                | "measured" , "in" , identifier ;          (* Unit annotation *)
 
-float = [ "-" ] , digit , { digit } , "." , digit , { digit } ;
+primary         = literal
+                | identifier
+                | "(" , expression , ")"
+                | array_literal
+                | result_constructor
+                | "unwrap" , expression
+                | "thanks" , "(" , string , ")" ;           (* Gratitude literal *)
 
-string_literal = '"' , { string_char } , '"' ;
+(* ===================================================================== *)
+(* LITERALS                                                              *)
+(* ===================================================================== *)
 
-string_char = ? any character except '"' and '\' ?
-            | escape_sequence ;
+literal         = integer
+                | float
+                | string
+                | boolean ;
 
-escape_sequence = "\\" , ( "n" | "t" | "r" | '"' | "'" | "\\" ) ;
+array_literal   = "[" , [ expression , { "," , expression } ] , "]" ;
 
-bool_literal = "true" | "false" ;
+result_constructor = "Okay" , "(" , expression , ")"
+                   | "Oops" , "(" , expression , ")" ;
 
-array_literal = "[" , [ expression_list ] , "]" ;
+(* ===================================================================== *)
+(* FUNCTION CALLS                                                        *)
+(* ===================================================================== *)
 
-expression_list = expression , { "," , expression } ;
+arg_list        = expression , { "," , expression } ;
 
-gratitude_literal = "thanks" , "(" , string_literal , ")" ;
+(* ===================================================================== *)
+(* EMOTE TAGS (Emotional Annotations)                                    *)
+(* ===================================================================== *)
 
-(* --- Identifiers and Keywords --- *)
+emote_tag       = "@" , identifier , [ "(" , emote_params , ")" ] ;
+emote_params    = emote_param , { "," , emote_param } ;
+emote_param     = identifier , "=" , emote_value ;
+emote_value     = integer | float | string | identifier ;
 
-identifier = letter , { letter | digit | "_" } ;
+(* ===================================================================== *)
+(* RESERVED KEYWORDS                                                     *)
+(* ===================================================================== *)
+(*
+    Control Flow:    to, give, back, remember, when, otherwise, repeat, times
+    Consent/Safety:  only, if, okay, attempt, safely, reassure, complain
+    Gratitude:       thanks
+    Lifecycle:       hello, goodbye
+    Concurrency:     worker, side, quest, superpower, spawn, send, receive,
+                     channel, await, cancel, from, to
+    Pattern Match:   decide, based, on
+    Units:           measured, in
+    Modules:         use, renamed, share
+    Types:           type, const, String, Int, Float, Bool, Maybe, Result
+    Constraints:     must, have
+    Pragmas:         care, strict, verbose
+    Boolean:         true, false, and, or, not
+    Result Types:    Okay, Oops, unwrap
+*)
 
-letter = "a" | "b" | "c" | "d" | "e" | "f" | "g" | "h" | "i" | "j"
-       | "k" | "l" | "m" | "n" | "o" | "p" | "q" | "r" | "s" | "t"
-       | "u" | "v" | "w" | "x" | "y" | "z"
-       | "A" | "B" | "C" | "D" | "E" | "F" | "G" | "H" | "I" | "J"
-       | "K" | "L" | "M" | "N" | "O" | "P" | "Q" | "R" | "S" | "T"
-       | "U" | "V" | "W" | "X" | "Y" | "Z" ;
+(* ===================================================================== *)
+(* UNICODE SUPPORT                                                       *)
+(* ===================================================================== *)
+(*
+    The arrow operator supports both ASCII and Unicode forms:
+    - ASCII:   ->
+    - Unicode: →
 
-digit = "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" ;
+    This allows for more readable code while maintaining compatibility:
 
-(* --- Reserved Keywords --- *)
+        to greet(name: String) -> String { ... }
+        to greet(name: String) → String { ... }
+*)
 
-(* Core Control Flow: to, give back, remember, when, otherwise, repeat, times *)
-(* Consent & Safety: only if okay, attempt safely, or reassure, complain *)
-(* Gratitude: thanks to, thanks *)
-(* Lifecycle: hello, goodbye *)
-(* Concurrency: worker, side quest, superpower, spawn *)
-(* Pattern Matching: decide based on *)
-(* Units: measured in *)
-(* Pragmas: care, strict, verbose *)
-(* Types: String, Int, Float, Bool, Maybe *)
-(* Boolean: true, false, and, or, not *)
-(* Constraints: must have *)
-
-(* --- Comments --- *)
-
-line_comment = "//" , { ? any character except newline ? } , newline ;
-
-block_comment = "/*" , { ? any character ? } , "*/" ;
-
-(* ============================================================================ *)
-(* End of WokeLang Grammar Specification                                       *)
-(* ============================================================================ *)
+(* ===================================================================== *)
+(* End of WokeLang Grammar Specification                                 *)
+(* ===================================================================== *)
