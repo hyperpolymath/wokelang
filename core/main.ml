@@ -1,4 +1,4 @@
-(* SPDX-License-Identifier: AGPL-3.0-or-later *)
+(* SPDX-License-Identifier: PMPL-1.0-or-later *)
 (* SPDX-FileCopyrightText: 2026 Hyperpolymath *)
 
 (** WokeLang CLI
@@ -16,25 +16,76 @@ let read_file filename =
   close_in ic;
   s
 
+(** A parse diagnostic with location. *)
+type parse_diagnostic = {
+  pd_message : string;
+  pd_line    : int;
+  pd_column  : int;
+}
+
+(** Synchronize the lexer by skipping tokens until a top-level keyword is found.
+    Returns [true] if EOF was reached. *)
+let synchronize_lexer lexbuf =
+  let rec loop () =
+    try
+      let tok = Lexer.token lexbuf in
+      match tok with
+      | Parser.EOF -> true
+      | Parser.TO | Parser.CONST | Parser.WORKER
+      | Parser.SIDE | Parser.THANKS ->
+        (* Push back by letting the next parse attempt re-lex;
+           unfortunately Menhir consumed the token, so we note
+           that the position is already at a valid start. *)
+        false
+      | _ -> loop ()
+    with
+    | Lexer.LexError _ -> loop ()
+  in
+  loop ()
+
+(** Parse source code into AST with error recovery.
+    Collects multiple diagnostics instead of stopping at first error. *)
+let parse_source_recovering source =
+  let lexbuf = Lexing.from_string source in
+  let diagnostics = ref [] in
+  let items = ref [] in
+  let at_eof = ref false in
+  while not !at_eof do
+    (try
+       let program = Parser.program Lexer.token lexbuf in
+       items := program @ !items;
+       at_eof := true
+     with
+     | Lexer.LexError msg ->
+       let pos = lexbuf.Lexing.lex_curr_p in
+       diagnostics := {
+         pd_message = Printf.sprintf "Lexical error: %s" msg;
+         pd_line = pos.Lexing.pos_lnum;
+         pd_column = pos.Lexing.pos_cnum - pos.Lexing.pos_bol;
+       } :: !diagnostics;
+       at_eof := synchronize_lexer lexbuf
+     | Parser.Error ->
+       let pos = lexbuf.Lexing.lex_curr_p in
+       diagnostics := {
+         pd_message = "Unexpected token";
+         pd_line = pos.Lexing.pos_lnum;
+         pd_column = pos.Lexing.pos_cnum - pos.Lexing.pos_bol;
+       } :: !diagnostics;
+       at_eof := synchronize_lexer lexbuf)
+  done;
+  (List.rev !items, List.rev !diagnostics)
+
 (** Parse source code into AST *)
 let parse_source source =
-  let lexbuf = Lexing.from_string source in
-  try
-    Parser.program Lexer.token lexbuf
-  with
-  | Lexer.LexError msg ->
-    let pos = lexbuf.Lexing.lex_curr_p in
-    Printf.eprintf "Lexical error at line %d, column %d: %s\n"
-      pos.Lexing.pos_lnum
-      (pos.Lexing.pos_cnum - pos.Lexing.pos_bol)
-      msg;
+  let (program, diagnostics) = parse_source_recovering source in
+  if diagnostics <> [] then begin
+    List.iter (fun d ->
+      Printf.eprintf "Parse error at line %d, column %d: %s\n"
+        d.pd_line d.pd_column d.pd_message
+    ) diagnostics;
     exit 1
-  | Parser.Error ->
-    let pos = lexbuf.Lexing.lex_curr_p in
-    Printf.eprintf "Parse error at line %d, column %d: unexpected token\n"
-      pos.Lexing.pos_lnum
-      (pos.Lexing.pos_cnum - pos.Lexing.pos_bol);
-    exit 1
+  end;
+  program
 
 (** Run a WokeLang program from source *)
 let run_source source =
@@ -79,7 +130,7 @@ let version () =
   print_endline "WokeLang 0.1.0";
   print_endline "OCaml Core Implementation";
   print_endline "Copyright (c) 2026 Hyperpolymath";
-  print_endline "Licensed under AGPL-3.0-or-later"
+  print_endline "Licensed under PMPL-1.0-or-later"
 
 (** Main entry point *)
 let () =

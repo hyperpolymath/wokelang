@@ -1,0 +1,15 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+// Conformance: worker concurrency declaration
+
+worker Processor {
+    remember count = 0;
+
+    to process(item) {
+        remember count = count + 1;
+        give back item;
+    }
+}
+
+to main() {
+    give back 0;
+}

@@ -1,0 +1,10 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+// Conformance: simplest valid program (function definition + give back)
+
+to greet() {
+    give back "hi";
+}
+
+to main() {
+    give back 0;
+}

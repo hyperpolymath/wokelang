@@ -1,0 +1,11 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+// Conformance: gratitude block with 'thanks to'
+
+thanks to {
+    "database" → "storing data";
+    "network" → "connectivity";
+}
+
+to main() {
+    give back 0;
+}

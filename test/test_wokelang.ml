@@ -1,4 +1,4 @@
-(* SPDX-License-Identifier: AGPL-3.0-or-later *)
+(* SPDX-License-Identifier: PMPL-1.0-or-later *)
 (* SPDX-FileCopyrightText: 2026 Hyperpolymath *)
 
 (** WokeLang Core Test Suite
@@ -74,11 +74,9 @@ let test name f =
     Printf.printf "FAIL (exception: %s)\n" (Printexc.to_string e)
 
 (** Assert equality *)
-let assert_eq expected actual =
+let assert_eq (expected : int) (actual : int) =
   if expected <> actual then
-    failwith (Printf.sprintf "Expected %s but got %s"
-      (Obj.magic expected |> string_of_int)
-      (Obj.magic actual |> string_of_int))
+    failwith (Printf.sprintf "Expected %d but got %d" expected actual)
 
 (** Assert that parsing succeeds *)
 let assert_parses source =

@@ -1,0 +1,12 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+// Conformance: loop with 'repeat N times'
+
+to main() {
+    remember sum = 0;
+
+    repeat 10 times {
+        remember sum = sum + 1;
+    }
+
+    give back sum;
+}

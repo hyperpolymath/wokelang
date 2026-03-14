@@ -1,0 +1,137 @@
+type token =
+    WORKER
+  | WHEN
+  | VERBOSE
+  | USE
+  | UNDERSCORE
+  | TYPE_STRING
+  | TYPE_INT
+  | TYPE_FLOAT
+  | TYPE_BOOL
+  | TYPE
+  | TRUE
+  | TO
+  | TIMES
+  | THANKS
+  | SUPERPOWER
+  | STRING of string
+  | STRICT
+  | STAR
+  | SPAWN
+  | SLASH
+  | SIDE
+  | SEMICOLON
+  | SAY
+  | SAFELY
+  | RPAREN
+  | REPEAT
+  | RENAMED
+  | REMEMBER
+  | REASSURE
+  | RBRACKET
+  | RBRACE
+  | QUEST
+  | PLUS
+  | PERCENT
+  | OTHERWISE
+  | OR
+  | ONLY
+  | ON
+  | OKAY
+  | NOT
+  | NE
+  | MUST
+  | MINUS
+  | MEASURED
+  | MAYBE
+  | LT
+  | LPAREN
+  | LE
+  | LBRACKET
+  | LBRACE
+  | INT of int
+  | IN
+  | IF
+  | IDENT of string
+  | HELLO
+  | HAVE
+  | HASH
+  | GT
+  | GOODBYE
+  | GIVE
+  | GE
+  | FLOAT of float
+  | FALSE
+  | EQUALS
+  | EQEQ
+  | EOF
+  | DECIDE
+  | CONST
+  | COMPLAIN
+  | COMMA
+  | COLON
+  | CARE
+  | BASED
+  | BACK
+  | ATTEMPT
+  | AT
+  | ARROW
+  | AND
+val menhir_begin_marker : int
+val xv_worker_def : Ast.worker_def
+val xv_unary_expr : Ast.expr
+val xv_typ : Ast.typ
+val xv_top_level_item : Ast.top_level
+val xv_terminated_STRING_SEMICOLON_ : string
+val xv_statement : Ast.stmt
+val xv_simple_statement : Ast.stmt
+val xv_side_quest_def : Ast.side_quest_def
+val xv_separated_nonempty_list_COMMA_param_ : Ast.param list
+val xv_separated_nonempty_list_COMMA_expr_ : Ast.expr list
+val xv_separated_nonempty_list_COMMA_emote_param_ : (string * Ast.expr) list
+val xv_separated_list_COMMA_param_ : Ast.param list
+val xv_separated_list_COMMA_expr_ : Ast.expr list
+val xv_program : Ast.program
+val xv_primary_expr : Ast.expr
+val xv_preceded_pair_MEASURED_IN__IDENT_ : string
+val xv_preceded_OTHERWISE_delimited_LBRACE_list_statement__RBRACE__ :
+  Ast.stmt list
+val xv_preceded_HELLO_terminated_STRING_SEMICOLON__ : string
+val xv_preceded_GOODBYE_terminated_STRING_SEMICOLON__ : string
+val xv_preceded_COLON_typ_ : Ast.typ
+val xv_preceded_ARROW_typ_ : Ast.typ
+val xv_param : Ast.param
+val xv_pair_MEASURED_IN_ : unit * unit
+val xv_option_preceded_pair_MEASURED_IN__IDENT__ : string option
+val xv_option_preceded_OTHERWISE_delimited_LBRACE_list_statement__RBRACE___ :
+  Ast.stmt list option
+val xv_option_preceded_HELLO_terminated_STRING_SEMICOLON___ : string option
+val xv_option_preceded_GOODBYE_terminated_STRING_SEMICOLON___ : string option
+val xv_option_preceded_COLON_typ__ : Ast.typ option
+val xv_option_preceded_ARROW_typ__ : Ast.typ option
+val xv_option_emote_tag_ : Ast.emote_tag option
+val xv_option_delimited_LPAREN_emote_params_RPAREN__ :
+  (string * Ast.expr) list option
+val xv_multiplicative_expr : Ast.expr
+val xv_loption_separated_nonempty_list_COMMA_param__ : Ast.param list
+val xv_loption_separated_nonempty_list_COMMA_expr__ : Ast.expr list
+val xv_logical_or_expr : Ast.expr
+val xv_logical_and_expr : Ast.expr
+val xv_list_top_level_item_ : Ast.program
+val xv_list_statement_ : Ast.stmt list
+val xv_list_gratitude_entry_ : Ast.gratitude_entry list
+val xv_gratitude_entry : Ast.gratitude_entry
+val xv_gratitude_block : Ast.gratitude_entry list
+val xv_function_def : Ast.func_def
+val xv_expr : Ast.expr
+val xv_equality_expr : Ast.expr
+val xv_emote_tag : Ast.emote_tag
+val xv_emote_params : (string * Ast.expr) list
+val xv_emote_param : string * Ast.expr
+val xv_delimited_LPAREN_emote_params_RPAREN_ : (string * Ast.expr) list
+val xv_delimited_LBRACE_list_statement__RBRACE_ : Ast.stmt list
+val xv_const_def : Ast.top_level
+val xv_compound_statement : Ast.stmt
+val xv_comparison_expr : Ast.expr
+val xv_additive_expr : Ast.expr
+val menhir_end_marker : int

@@ -1,4 +1,4 @@
-(* SPDX-License-Identifier: AGPL-3.0-or-later *)
+(* SPDX-License-Identifier: PMPL-1.0-or-later *)
 (* SPDX-FileCopyrightText: 2026 Hyperpolymath *)
 
 (** WokeLang Abstract Syntax Tree
@@ -74,6 +74,7 @@ type stmt =
   | SComplain of string                                   (** complain "error message" *)
   | SEmoteAnnotated of emote_tag * stmt                   (** @emote stmt *)
   | SSpawnWorker of string                                (** spawn worker name *)
+  | SError                                                (** Placeholder for a statement that failed to parse *)
 
 (** Gratitude entry: contributor -> contribution *)
 type gratitude_entry = {
@@ -128,6 +129,7 @@ type top_level =
   | TLWorker of worker_def
   | TLSideQuest of side_quest_def
   | TLConst of string * typ option * expr  (** const name : type = expr *)
+  | TLError  (** Placeholder for a top-level item that failed to parse *)
 
 (** Complete program *)
 type program = top_level list

@@ -1,4 +1,5 @@
-(* SPDX-License-Identifier: AGPL-3.0-or-later *)
+(* @taxonomy: compiler/parser *)
+(* SPDX-License-Identifier: PMPL-1.0-or-later *)
 (* SPDX-FileCopyrightText: 2026 Hyperpolymath *)
 
 %{
@@ -83,6 +84,10 @@ top_level_item:
   | w = worker_def { TLWorker w }
   | s = side_quest_def { TLSideQuest s }
   | c = const_def { c }
+  /* Error recovery: skip a bad top-level item up to the next semicolon
+     or closing brace, then continue parsing. */
+  | error SEMICOLON { TLError }
+  | error RBRACE { TLError }
   ;
 
 function_def:
@@ -172,6 +177,8 @@ simple_statement:
     { SSpawnWorker name }
   | SAY; e = expr; SEMICOLON
     { SExpr (ECall ("say", [e])) }
+  | error; SEMICOLON
+    { SError }
   ;
 
 compound_statement:

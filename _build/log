@@ -1,0 +1,222 @@
+# dune runtest
+# OCAMLPARAM: unset
+# Shared cache: enabled-except-user-rules
+# Shared cache location: /home/hyper/.cache/dune/db
+# Workspace root: /var/mnt/eclipse/repos/nextgen-languages/wokelang
+# Auto-detected concurrency: 8
+# Dune context:
+#  { name = "default"
+#  ; kind = "default"
+#  ; profile = Dev
+#  ; merlin = true
+#  ; fdo_target_exe = None
+#  ; build_dir = In_build_dir "default"
+#  ; instrument_with = []
+#  }
+$ /home/hyper/.opam/default/bin/ocamlc.opt -config > /tmp/dune_ea0b72_output
+$ (cd _build/default && /home/hyper/.opam/default/bin/ocamldep.opt -modules -impl test/test_wokelang.ml) > _build/default/test/.test_wokelang.eobjs/dune__exe__Test_wokelang.impl.d
+$ (cd _build/default && /home/hyper/.opam/default/bin/ocamldep.opt -modules -intf test/test_wokelang.mli) > _build/default/test/.test_wokelang.eobjs/dune__exe__Test_wokelang.intf.d
+$ (cd _build/default && /home/hyper/.opam/default/bin/ocamlc.opt -w @1..3@5..28@30..39@43@46..47@49..57@61..62-40 -strict-sequence -strict-formats -short-paths -keep-locs -w -53 -w -49 -nopervasives -nostdlib -g -bin-annot -bin-annot-occurrences -I test/.test_wokelang.eobjs/byte -no-alias-deps -opaque -o test/.test_wokelang.eobjs/byte/dune__exe.cmo -c -impl test/.test_wokelang.eobjs/dune__exe.ml-gen)
+$ (cd _build/default/test && ./test_parser.exe)
+> Testing `WokeLang Parser'.
+> This run has ID `NZJKUEW1'.
+>
+>   [OK]          functions                  0   simple function.
+>   [OK]          functions                  1   function with params.
+>   [OK]          functions                  2   untyped params.
+>   [OK]          functions                  3   hello/goodbye.
+>   [OK]          functions                  4   unicode arrow.
+>   [OK]          functions                  5   multiple functions.
+>   [OK]          remember                   0   simple.
+>   [OK]          remember                   1   string.
+>   [OK]          remember                   2   bool.
+>   [OK]          remember                   3   float.
+>   [OK]          remember                   4   expr.
+>   [OK]          assignment                 0   assign.
+>   [OK]          give back                  0   int.
+>   [OK]          give back                  1   expr.
+>   [OK]          consent gates              0   basic.
+>   [OK]          consent gates              1   nested.
+>   [OK]          consent gates              2   multiple stmts.
+>   [OK]          gratitude blocks           0   basic.
+>   [OK]          gratitude blocks           1   unicode arrow.
+>   [OK]          gratitude blocks           2   empty.
+>   [OK]          gratitude blocks           3   single entry.
+>   [OK]          when/otherwise             0   basic.
+>   [OK]          when/otherwise             1   otherwise.
+>   [OK]          when/otherwise             2   comparison.
+>   [OK]          when/otherwise             3   nested.
+>   [OK]          repeat times               0   literal.
+>   [OK]          repeat times               1   variable.
+>   [OK]          repeat times               2   expr.
+>   [OK]          attempt safely             0   basic.
+>   [OK]          attempt safely             1   multi stmt.
+>   [OK]          measured in units          0   in remember.
+>   [OK]          measured in units          1   float unit.
+>   [OK]          measured in units          2   expr context.
+>   [OK]          emote annotations          0   function.
+>   [OK]          emote annotations          1   with params.
+>   [OK]          emote annotations          2   multi params.
+>   [OK]          emote annotations          3   on statement.
+>   [OK]          workers/quests             0   worker def.
+>   [OK]          workers/quests             1   worker empty.
+>   [OK]          workers/quests             2   side quest def.
+>   [OK]          workers/quests             3   spawn worker stmt.
+>   [OK]          constants                  0   typed const.
+>   [OK]          constants                  1   untyped const.
+>   [OK]          type annotations           0   String.
+>   [OK]          type annotations           1   array.
+>   [OK]          type annotations           2   Maybe.
+>   [OK]          type annotations           3   custom.
+>   [OK]          expressions                0   int.
+>   [OK]          expressions                1   float.
+>   [OK]          expressions                2   string.
+>   [OK]          expressions                3   bool true.
+>   [OK]          expressions                4   bool false.
+>   [OK]          expressions                5   ident.
+>   [OK]          expressions                6   array.
+>   [OK]          expressions                7   empty array.
+>   [OK]          expressions                8   call no args.
+>   [OK]          expressions                9   call with args.
+>   [OK]          expressions               10   nested call.
+>   [OK]          expressions               11   add.
+>   [OK]          expressions               12   sub.
+>   [OK]          expressions               13   mul.
+>   [OK]          expressions               14   div.
+>   [OK]          expressions               15   mod.
+>   [OK]          expressions               16   precedence * over +.
+>   [OK]          expressions               17   parens override.
+>   [OK]          expressions               18   ==.
+>   [OK]          expressions               19   !=.
+>   [OK]          expressions               20   <.
+>   [OK]          expressions               21   >.
+>   [OK]          expressions               22   <=.
+>   [OK]          expressions               23   >=.
+>   [OK]          expressions               24   and.
+>   [OK]          expressions               25   or.
+>   [OK]          expressions               26   not.
+>   [OK]          expressions               27   neg.
+>   [OK]          expressions               28   thanks().
+>   [OK]          expressions               29   measured in.
+>   [OK]          say                        0   say stmt.
+>   [OK]          complain                   0   complain stmt.
+>   [OK]          top-level items            0   mixed top-level.
+>   [OK]          top-level items            1   empty program.
+>   [OK]          parse errors               0   missing paren.
+>   [OK]          parse errors               1   missing brace.
+>   [OK]          parse errors               2   missing semicolon.
+>   [OK]          parse errors               3   bare give.
+>   [OK]          parse errors               4   consent no string.
+>
+> Full test results in `/var/mnt/eclipse/repos/nextgen-languages/wokelang/_build/default/test/_build/_tests/WokeLang Parser'.
+> Test Successful in 0.008s. 86 tests run.
+$ (cd _build/default/test && ./test_lexer.exe)
+> Testing `WokeLang Lexer'.
+> This run has ID `JO9OZD3Z'.
+>
+>   [OK]          consent keywords               0   okay.
+>   [OK]          consent keywords               1   reassure.
+>   [OK]          consent keywords               2   complain.
+>   [OK]          consent keywords               3   only.
+>   [OK]          consent keywords               4   if.
+>   [OK]          consent keywords               5   attempt.
+>   [OK]          consent keywords               6   safely.
+>   [OK]          consent keywords               7   consent keyword sequence.
+>   [OK]          consent keywords               8   attempt safely sequence.
+>   [OK]          gratitude keywords             0   thanks.
+>   [OK]          gratitude keywords             1   thanks to seq.
+>   [OK]          concurrency keywords           0   spawn.
+>   [OK]          concurrency keywords           1   superpower.
+>   [OK]          concurrency keywords           2   worker.
+>   [OK]          concurrency keywords           3   side.
+>   [OK]          concurrency keywords           4   quest.
+>   [OK]          concurrency keywords           5   side quest sequence.
+>   [OK]          concurrency keywords           6   spawn worker sequence.
+>   [OK]          control-flow keywords          0   to.
+>   [OK]          control-flow keywords          1   give.
+>   [OK]          control-flow keywords          2   back.
+>   [OK]          control-flow keywords          3   remember.
+>   [OK]          control-flow keywords          4   when.
+>   [OK]          control-flow keywords          5   otherwise.
+>   [OK]          control-flow keywords          6   repeat.
+>   [OK]          control-flow keywords          7   times.
+>   [OK]          control-flow keywords          8   give back sequence.
+>   [OK]          lifecycle keywords             0   hello.
+>   [OK]          lifecycle keywords             1   goodbye.
+>   [OK]          misc keywords                  0   decide.
+>   [OK]          misc keywords                  1   based.
+>   [OK]          misc keywords                  2   on.
+>   [OK]          misc keywords                  3   measured.
+>   [OK]          misc keywords                  4   in.
+>   [OK]          misc keywords                  5   care.
+>   [OK]          misc keywords                  6   strict.
+>   [OK]          misc keywords                  7   verbose.
+>   [OK]          misc keywords                  8   must.
+>   [OK]          misc keywords                  9   have.
+>   [OK]          misc keywords                 10   say.
+>   [OK]          type keywords                  0   String.
+>   [OK]          type keywords                  1   Int.
+>   [OK]          type keywords                  2   Float.
+>   [OK]          type keywords                  3   Bool.
+>   [OK]          type keywords                  4   Maybe.
+>   [OK]          type keywords                  5   const.
+>   [OK]          type keywords                  6   type.
+>   [OK]          type keywords                  7   use.
+>   [OK]          type keywords                  8   renamed.
+>   [OK]          boolean keywords               0   true.
+>   [OK]          boolean keywords               1   false.
+>   [OK]          boolean keywords               2   and.
+>   [OK]          boolean keywords               3   not.
+>   [OK]          operators                      0   arithmetic.
+>   [OK]          operators                      1   comparison.
+>   [OK]          operators                      2   assignment.
+>   [OK]          operators                      3   arrow unicode.
+>   [OK]          operators                      4   arrow ascii.
+>   [OK]          delimiters                     0   all delimiters.
+>   [OK]          literals                       0   int.
+>   [OK]          literals                       1   float.
+>   [OK]          literals                       2   string.
+>   [OK]          literals                       3   string escape.
+>   [OK]          literals                       4   empty string.
+>   [OK]          identifiers                    0   simple.
+>   [OK]          identifiers                    1   with digits.
+>   [OK]          identifiers                    2   with underscore.
+>   [OK]          identifiers                    3   camelCase.
+>   [OK]          identifiers                    4   not a keyword.
+>   [OK]          comments                       0   line comment.
+>   [OK]          comments                       1   line comment only.
+>   [OK]          comments                       2   block comment.
+>   [OK]          comments                       3   block multiline.
+>   [OK]          comments                       4   unterminated block.
+>   [OK]          whitespace                     0   tabs and spaces.
+>   [OK]          whitespace                     1   newlines.
+>   [OK]          errors                         0   unexpected char.
+>   [OK]          errors                         1   unexpected backtick.
+>   [OK]          complex sequences              0   function header.
+>   [OK]          complex sequences              1   remember with units.
+>   [OK]          complex sequences              2   emote annotation.
+>   [OK]          complex sequences              3   emote with params.
+>
+> Full test results in `/var/mnt/eclipse/repos/nextgen-languages/wokelang/_build/default/test/_build/_tests/WokeLang Lexer'.
+> Test Successful in 0.010s. 82 tests run.
+$ (cd _build/default && /home/hyper/.opam/default/bin/ocamlc.opt -w @1..3@5..28@30..39@43@46..47@49..57@61..62-40 -strict-sequence -strict-formats -short-paths -keep-locs -g -bin-annot -bin-annot-occurrences -I test/.test_wokelang.eobjs/byte -I /var/home/hyper/.opam/default/lib/ocaml/str -I core/.wokelang_core.objs/byte -no-alias-deps -opaque -open Dune__exe -o test/.test_wokelang.eobjs/byte/dune__exe__Test_wokelang.cmi -c -intf test/test_wokelang.mli)
+$ (cd _build/default && /home/hyper/.opam/default/bin/ocamlopt.opt -w @1..3@5..28@30..39@43@46..47@49..57@61..62-40 -strict-sequence -strict-formats -short-paths -keep-locs -w -53 -w -49 -nopervasives -nostdlib -g -I test/.test_wokelang.eobjs/byte -I test/.test_wokelang.eobjs/native -cmi-file test/.test_wokelang.eobjs/byte/dune__exe.cmi -no-alias-deps -opaque -o test/.test_wokelang.eobjs/native/dune__exe.cmx -c -impl test/.test_wokelang.eobjs/dune__exe.ml-gen)
+$ (cd _build/default && /home/hyper/.opam/default/bin/ocamlopt.opt -w @1..3@5..28@30..39@43@46..47@49..57@61..62-40 -strict-sequence -strict-formats -short-paths -keep-locs -g -I test/.test_wokelang.eobjs/byte -I test/.test_wokelang.eobjs/native -I /var/home/hyper/.opam/default/lib/ocaml/str -I core/.wokelang_core.objs/byte -I core/.wokelang_core.objs/native -cmi-file test/.test_wokelang.eobjs/byte/dune__exe__Test_wokelang.cmi -no-alias-deps -opaque -open Dune__exe -o test/.test_wokelang.eobjs/native/dune__exe__Test_wokelang.cmx -c -impl test/test_wokelang.ml)
+> File "_none_", line 1:
+> Alert ocaml_deprecated_auto_include: 
+> OCaml's lib directory layout changed in 5.0. The unix subdirectory has been
+> automatically added to the search path, but you should add -I +unix to the
+> command-line to silence this alert (e.g. by adding unix to the list of
+> libraries in your dune file, or adding use_unix to your _tags file for
+> ocamlbuild, or using -package unix for ocamlfind).
+>
+> File "test/test_wokelang.ml", line 29, characters 4-17:
+> 29 | let run_capturing source =
+>          ^^^^^^^^^^^^^
+> Error (warning 32 [unused-value-declaration]): unused value run_capturing.
+>
+> File "test/test_wokelang.ml", line 77, characters 4-13:
+> 77 | let assert_eq expected actual =
+>          ^^^^^^^^^
+> Error (warning 32 [unused-value-declaration]): unused value assert_eq.
+[2]

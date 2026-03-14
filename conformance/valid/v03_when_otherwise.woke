@@ -1,0 +1,12 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+// Conformance: conditional with when/otherwise
+
+to main() {
+    remember x = 10;
+
+    when x > 5 {
+        give back 1;
+    } otherwise {
+        give back 0;
+    }
+}
