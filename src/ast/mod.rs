@@ -1,4 +1,6 @@
 // SPDX-License-Identifier: PMPL-1.0-or-later
+pub mod visitor;
+
 use std::ops::Range;
 
 /// Source span for error reporting
