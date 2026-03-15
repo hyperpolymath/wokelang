@@ -1,0 +1,12 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+// Conformance: array literal binding
+
+to main() {
+    remember items = [1, 2, 3];
+    remember names = ["alpha", "beta", "gamma"];
+    remember empty = [];
+
+    print(items);
+    print(names);
+    give back 0;
+}

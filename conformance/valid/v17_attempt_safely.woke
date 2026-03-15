@@ -1,0 +1,11 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+// Conformance: attempt safely / or reassure error handling
+
+to main() {
+    attempt safely {
+        remember result = risky_operation();
+        print(result);
+    } or reassure "It's okay, we handled it";
+
+    give back 0;
+}

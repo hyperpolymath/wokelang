@@ -1,0 +1,10 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+// Conformance (INVALID): attempt safely without matching or reassure
+
+to main() {
+    attempt safely {
+        remember x = 42;
+    }
+
+    give back 0;
+}

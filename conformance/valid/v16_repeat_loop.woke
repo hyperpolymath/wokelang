@@ -1,0 +1,13 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+// Conformance: repeat N times loop construct
+
+to main() {
+    remember count = 0;
+
+    repeat 5 times {
+        count = count + 1;
+        print(count);
+    }
+
+    give back 0;
+}

@@ -1,0 +1,7 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+// Conformance (INVALID): 'store' is not a valid keyword (should be 'remember')
+
+to main() {
+    store x = 42;
+    give back x;
+}

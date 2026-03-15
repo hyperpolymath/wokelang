@@ -1,0 +1,8 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+// Conformance (INVALID): Result type Okay() used without proper context
+
+to main() {
+    remember result = Okay(42);
+    print(result);
+    give back 0;
+}

@@ -1,0 +1,9 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+// Conformance (INVALID): empty function body (edge case, no give back)
+
+to f() {}
+
+to main() {
+    f();
+    give back 0;
+}

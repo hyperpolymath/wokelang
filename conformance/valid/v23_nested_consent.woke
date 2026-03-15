@@ -1,0 +1,15 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+// Conformance: nested consent blocks (consent inside consent)
+
+to main() {
+    only if okay "network.access" {
+        print("network granted");
+
+        only if okay "file.write" {
+            print("file write granted");
+            remember output = "result";
+        }
+    }
+
+    give back 0;
+}
