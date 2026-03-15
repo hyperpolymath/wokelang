@@ -1,0 +1,19 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+= WokeLang Roadmap
+
+== Current
+- Bytecode compiler (Rust)
+- Formal verification (2 Admitted in Coq, 1 sorry in Lean)
+- 38 conformance tests
+- AST visitor framework
+
+== Near-Term
+- Eliminate sorry/Admitted (dangerous patterns)
+- Tree-sitter grammar
+- LSP server
+- Standard library
+
+== Long-Term
+- Self-hosting compiler
+- WASM backend
+- Package manager
