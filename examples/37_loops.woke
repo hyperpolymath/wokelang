@@ -1,0 +1,44 @@
+to main() {
+    // Test repeat loop with break
+    remember i = 0;
+    repeat 10 times {
+        i = i + 1;
+        when i == 5 {
+            break;
+        }
+    }
+    print("Repeat break (expected 5):");
+    print(i);
+
+    // Test repeat loop with continue
+    remember sum_val = 0;
+    remember j = 0;
+    repeat 5 times {
+        j = j + 1;
+        when j == 3 {
+            continue;
+        }
+        sum_val = sum_val + j;
+    }
+    print("Repeat continue (expected 12):");
+    print(sum_val);
+
+    // Test while loop
+    remember k = 0;
+    while k < 5 {
+        k = k + 1;
+    }
+    print("While loop (expected 5):");
+    print(k);
+
+    // Test while loop with break
+    remember m = 0;
+    while true {
+        m = m + 1;
+        when m == 3 {
+            break;
+        }
+    }
+    print("While break (expected 3):");
+    print(m);
+}

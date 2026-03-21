@@ -1,0 +1,241 @@
+(* WokeLang Specific Library - Emote Utilities *)
+(* Emotional annotations and sentiment-aware programming *)
+
+#care on;
+
+(* ===================================================================== *)
+(* EMOTE DEFINITIONS                                                     *)
+(* ===================================================================== *)
+
+(* Emote intensity levels *)
+type EmoteIntensity = Low | Medium | High | Critical;
+
+(* Core emote types for code annotation *)
+type Emote =
+    Happy(Int)           (* Joy level 1-10 *)
+  | Sad(Int)             (* Sadness level 1-10 *)
+  | Curious(Int)         (* Curiosity/investigation level *)
+  | Careful(Int)         (* Caution level for risky operations *)
+  | Mindful(Int)         (* Importance/attention level *)
+  | Thoughtful(Int)      (* Consideration level *)
+  | Frustrated(Int)      (* For legacy code or complex bugs *)
+  | Proud(Int)           (* For achievements and completions *)
+  | Anxious(Int)         (* For uncertain or experimental code *)
+  | Hopeful(Int) ;       (* For optimistic outcomes *)
+
+(* ===================================================================== *)
+(* EMOTE CONTEXT                                                         *)
+(* ===================================================================== *)
+
+type EmoteContext = {
+    emote: Emote,
+    reason: String,
+    timestamp: Int,
+    location: String
+};
+
+to createEmoteContext(emote: Emote, reason: String, location: String) -> EmoteContext {
+    give back {
+        emote: emote,
+        reason: reason,
+        timestamp: now(),
+        location: location
+    };
+}
+
+(* ===================================================================== *)
+(* EMOTE-BASED LOGGING                                                   *)
+(* ===================================================================== *)
+
+@mindful(importance=5)
+to logWithEmote(emote: Emote, message: String) -> Bool {
+    hello "Logging with emote";
+
+    remember prefix = decide based on emote {
+        Happy(level) -> { give back "😊 [HAPPY:" + toString(level) + "]"; }
+        Sad(level) -> { give back "😢 [SAD:" + toString(level) + "]"; }
+        Curious(level) -> { give back "🤔 [CURIOUS:" + toString(level) + "]"; }
+        Careful(level) -> { give back "⚠️ [CAREFUL:" + toString(level) + "]"; }
+        Mindful(level) -> { give back "🧘 [MINDFUL:" + toString(level) + "]"; }
+        Thoughtful(level) -> { give back "💭 [THOUGHTFUL:" + toString(level) + "]"; }
+        Frustrated(level) -> { give back "😤 [FRUSTRATED:" + toString(level) + "]"; }
+        Proud(level) -> { give back "🎉 [PROUD:" + toString(level) + "]"; }
+        Anxious(level) -> { give back "😰 [ANXIOUS:" + toString(level) + "]"; }
+        Hopeful(level) -> { give back "🌟 [HOPEFUL:" + toString(level) + "]"; }
+    };
+
+    print(prefix + " " + message);
+    give back true;
+
+    goodbye "Emote logged";
+}
+
+(* ===================================================================== *)
+(* SENTIMENT-AWARE EXECUTION                                             *)
+(* ===================================================================== *)
+
+@thoughtful(consideration=3)
+to withCaution(level: Int, action: () -> Result[a, String]) -> Result[a, String] {
+    hello "Executing with caution level " + toString(level);
+
+    when level >= 8 {
+        logWithEmote(Careful(level), "High caution operation starting");
+    }
+
+    remember result = action();
+
+    decide based on result {
+        Okay(value) -> {
+            when level >= 5 {
+                logWithEmote(Proud(level), "Cautious operation succeeded");
+            }
+        }
+        Oops(err) -> {
+            logWithEmote(Sad(level), "Cautious operation failed: " + err);
+        }
+    }
+
+    give back result;
+
+    goodbye "Cautious execution complete";
+}
+
+@curious(level=5)
+to withInvestigation(description: String, action: () -> a) -> a {
+    hello "Investigating: " + description;
+
+    logWithEmote(Curious(5), "Starting investigation: " + description);
+
+    remember startTime = now();
+    remember result = action();
+    remember duration = elapsed(startTime);
+
+    logWithEmote(Thoughtful(5), "Investigation complete in " + toString(duration) + "ms");
+
+    give back result;
+
+    goodbye "Investigation complete";
+}
+
+(* ===================================================================== *)
+(* EMOTIONAL STATE TRACKING                                              *)
+(* ===================================================================== *)
+
+type EmotionalState = {
+    current: Emote,
+    history: [EmoteContext],
+    overallMood: Int  (* -10 to +10, negative is stressed, positive is calm *)
+};
+
+to createEmotionalState() -> EmotionalState {
+    give back {
+        current: Hopeful(5),
+        history: [],
+        overallMood: 5
+    };
+}
+
+to updateEmotionalState(state: EmotionalState, newEmote: Emote, reason: String) -> EmotionalState {
+    remember context = createEmoteContext(newEmote, reason, "runtime");
+
+    remember moodDelta = decide based on newEmote {
+        Happy(level) -> { give back level; }
+        Proud(level) -> { give back level; }
+        Hopeful(level) -> { give back level / 2; }
+        Curious(level) -> { give back 0; }
+        Thoughtful(level) -> { give back 0; }
+        Mindful(level) -> { give back 1; }
+        Careful(level) -> { give back 0 - (level / 2); }
+        Anxious(level) -> { give back 0 - level; }
+        Frustrated(level) -> { give back 0 - level; }
+        Sad(level) -> { give back 0 - level; }
+    };
+
+    give back {
+        current: newEmote,
+        history: append(state.history, context),
+        overallMood: clamp(state.overallMood + moodDelta, -10, 10)
+    };
+}
+
+to getEmotionalSummary(state: EmotionalState) -> String {
+    remember moodDesc = when state.overallMood > 5 {
+        give back "very positive 😊";
+    } otherwise when state.overallMood > 0 {
+        give back "positive 🙂";
+    } otherwise when state.overallMood == 0 {
+        give back "neutral 😐";
+    } otherwise when state.overallMood > -5 {
+        give back "slightly stressed 😕";
+    } otherwise {
+        give back "stressed 😰";
+    };
+
+    give back "Emotional state: " + moodDesc + " (mood: " + toString(state.overallMood) + "/10)";
+}
+
+(* ===================================================================== *)
+(* CODE HEALTH INDICATORS                                                *)
+(* ===================================================================== *)
+
+type CodeHealth = {
+    complexity: Int,    (* Cyclomatic complexity estimate *)
+    riskyOps: Int,      (* Number of dangerous operations *)
+    testCoverage: Int,  (* Estimated test coverage % *)
+    mood: Emote
+};
+
+@mindful(importance=8)
+to assessCodeHealth(complexity: Int, riskyOps: Int, testCoverage: Int) -> CodeHealth {
+    remember mood = when complexity < 5 and riskyOps == 0 and testCoverage > 80 {
+        give back Happy(8);
+    } otherwise when complexity < 10 and riskyOps < 3 and testCoverage > 60 {
+        give back Hopeful(6);
+    } otherwise when complexity < 20 and testCoverage > 40 {
+        give back Careful(5);
+    } otherwise {
+        give back Anxious(7);
+    };
+
+    give back {
+        complexity: complexity,
+        riskyOps: riskyOps,
+        testCoverage: testCoverage,
+        mood: mood
+    };
+}
+
+to reportCodeHealth(health: CodeHealth) -> String {
+    remember report = "=== Code Health Report ===\n";
+    report = report + "Complexity: " + toString(health.complexity) + "\n";
+    report = report + "Risky Operations: " + toString(health.riskyOps) + "\n";
+    report = report + "Test Coverage: " + toString(health.testCoverage) + "%\n";
+    report = report + "Overall Mood: " + emoteToString(health.mood) + "\n";
+    report = report + "========================\n";
+    give back report;
+}
+
+to emoteToString(emote: Emote) -> String {
+    give back decide based on emote {
+        Happy(level) -> { give back "Happy (" + toString(level) + ")"; }
+        Sad(level) -> { give back "Sad (" + toString(level) + ")"; }
+        Curious(level) -> { give back "Curious (" + toString(level) + ")"; }
+        Careful(level) -> { give back "Careful (" + toString(level) + ")"; }
+        Mindful(level) -> { give back "Mindful (" + toString(level) + ")"; }
+        Thoughtful(level) -> { give back "Thoughtful (" + toString(level) + ")"; }
+        Frustrated(level) -> { give back "Frustrated (" + toString(level) + ")"; }
+        Proud(level) -> { give back "Proud (" + toString(level) + ")"; }
+        Anxious(level) -> { give back "Anxious (" + toString(level) + ")"; }
+        Hopeful(level) -> { give back "Hopeful (" + toString(level) + ")"; }
+    };
+}
+
+(* ===================================================================== *)
+(* GRATITUDE                                                             *)
+(* ===================================================================== *)
+
+thanks to {
+    "Emotional Intelligence" → "Recognizing that code is written by humans";
+    "Mindfulness" → "Bringing awareness to programming";
+    "Empathy" → "Considering the developer experience";
+}

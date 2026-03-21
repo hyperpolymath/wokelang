@@ -1,0 +1,13 @@
+#verbose on;
+#care on;
+
+to main() {
+    remember message = "Testing consent system";
+
+    only if okay "file.read" {
+        remember data = "Permission granted for file.read!";
+        give back 1;
+    }
+
+    give back 0;
+}

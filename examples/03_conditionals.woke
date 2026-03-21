@@ -1,0 +1,23 @@
+to main() {
+    remember x = 42;
+
+    when x > 40 {
+        remember result = 1;
+        give back result;
+    } otherwise {
+        remember result = 0;
+        give back result;
+    }
+}
+
+to check_sign(n: Int) -> Int {
+    when n > 0 {
+        give back 1;
+    } otherwise {
+        when n < 0 {
+            give back -1;
+        } otherwise {
+            give back 0;
+        }
+    }
+}

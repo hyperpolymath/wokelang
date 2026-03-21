@@ -1,0 +1,13 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+// Conformance: spawn worker for concurrency
+
+to background_task() {
+    print("working in background");
+    give back 0;
+}
+
+to main() {
+    spawn worker background_task;
+    print("main continues");
+    give back 0;
+}

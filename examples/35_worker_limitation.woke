@@ -1,0 +1,36 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+// This example demonstrates worker concurrency and documents limitations
+
+#verbose on;
+
+// IMPLEMENTED: Workers execute concurrently in background threads
+// Each worker gets its own interpreter instance
+
+worker Counter {
+    remember i = 0;
+    repeat 3 times {
+        print("Worker counting...");
+        i = i + 1;
+    }
+    print("Worker done!");
+}
+
+to main() {
+    print("Main: Starting");
+
+    // Spawn multiple workers
+    spawn worker Counter;
+    spawn worker Counter;
+
+    print("Main: Workers spawned and running concurrently");
+    print("Main: Done");
+
+    // LIMITATION: Message passing between workers and main isn't implemented
+    // Reason: Value contains Rc<RefCell<>> which isn't Send (not thread-safe)
+    // Workers run independently - no way to pass values back to main thread
+    //
+    // Future work: Make Value Send-safe by using Arc<Mutex<>> instead of Rc<RefCell<>>
+    // This would enable true Go-style channels for inter-worker communication
+
+    give back 0;
+}

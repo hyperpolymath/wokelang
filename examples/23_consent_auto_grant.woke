@@ -1,0 +1,13 @@
+#verbose on;
+#care or;
+
+to main() {
+    remember message = "Testing auto-grant mode";
+
+    only if okay "file.read" {
+        remember data = "Permission auto-granted!";
+        give back 1;
+    }
+
+    give back 0;
+}

@@ -1,0 +1,12 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+// Conformance: variable binding with remember
+
+to main() {
+    remember x = 42;
+    remember name = "WokeLang";
+    remember flag = true;
+
+    print(x);
+    print(name);
+    give back 0;
+}

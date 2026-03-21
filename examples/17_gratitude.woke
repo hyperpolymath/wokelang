@@ -1,0 +1,14 @@
+// Gratitude example
+// Demonstrates thanks declarations
+
+thanks to {
+    "database" → "storing my data";
+    "filesystem" → "file operations";
+    "network" → "connecting to the world";
+}
+
+to main() {
+    print("Gratitude example:");
+    print("This program expresses gratitude to external systems");
+    give back 0;
+}

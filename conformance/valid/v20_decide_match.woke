@@ -1,0 +1,17 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+// Conformance: decide based on (pattern matching)
+
+to classify(x) {
+    decide based on x {
+        1 -> { give back "one"; }
+        2 -> { give back "two"; }
+        3 -> { give back "three"; }
+        _ -> { give back "other"; }
+    }
+}
+
+to main() {
+    remember label = classify(2);
+    print(label);
+    give back 0;
+}

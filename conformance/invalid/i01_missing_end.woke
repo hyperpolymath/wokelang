@@ -1,0 +1,7 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+// Conformance (INVALID): missing closing brace on function body
+
+to main() {
+    remember x = 42;
+    give back x;
+

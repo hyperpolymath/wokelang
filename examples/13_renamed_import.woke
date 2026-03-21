@@ -1,0 +1,18 @@
+// Renamed import example
+// NOTE: Qualified function calls (mu.square) require grammar extension
+// For now, renamed imports still make functions available globally
+
+use math_utils renamed mu;
+
+to main() {
+    print("Using renamed import (functions in global namespace):");
+
+    // TODO: Once qualified calls are supported, use mu.square(4)
+    remember result = square(4);
+    print("4 squared = " + toString(result));
+
+    remember cubed = cube(2);
+    print("2 cubed = " + toString(cubed));
+
+    give back 0;
+}

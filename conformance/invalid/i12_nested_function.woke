@@ -1,0 +1,11 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+// Conformance (INVALID): function defined inside another function
+
+to main() {
+    to inner() {
+        give back 1;
+    }
+
+    remember val = inner();
+    give back 0;
+}

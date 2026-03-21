@@ -1,0 +1,9 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+// Conformance (INVALID): consent block missing "okay" keyword
+
+to main() {
+    only if "file.read" {
+        print("granted");
+    }
+    give back 0;
+}

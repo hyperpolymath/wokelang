@@ -1,0 +1,11 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+// Conformance: consent block guarding data access
+
+to main() {
+    only if okay "access data" {
+        remember user_data = "sensitive";
+        print(user_data);
+    }
+
+    give back 0;
+}

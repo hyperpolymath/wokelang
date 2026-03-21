@@ -1,0 +1,13 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+// Conformance: function returning a computed value with give back
+
+to add(a, b) {
+    remember sum = a + b;
+    give back sum;
+}
+
+to main() {
+    remember result = add(3, 7);
+    print(result);
+    give back 0;
+}

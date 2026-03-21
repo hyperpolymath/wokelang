@@ -1,0 +1,28 @@
+// Math module - provides basic math utilities
+// Example of WokeLang module system
+
+share add;
+share subtract;
+share multiply;
+share square;
+
+to add(a: Int, b: Int) -> Int {
+    give back a + b;
+}
+
+to subtract(a: Int, b: Int) -> Int {
+    give back a - b;
+}
+
+to multiply(a: Int, b: Int) -> Int {
+    give back a * b;
+}
+
+to square(x: Int) -> Int {
+    give back x * x;
+}
+
+// This function is NOT exported - private to the module
+to internalHelper() {
+    print("This is private");
+}

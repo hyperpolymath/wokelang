@@ -1,0 +1,12 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+// Conformance: unit measurement with 'measured in'
+
+to main() {
+    remember speed = 100 measured in meters;
+    remember duration = 60 measured in seconds;
+    remember weight = 75 measured in kilograms;
+
+    print(speed);
+    print(duration);
+    give back 0;
+}

@@ -1,0 +1,13 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+// Conformance: typed parameters and return type
+
+to add(x: Int, y: Int) -> Int {
+    give back x + y;
+}
+
+type Color = Red | Green | Blue;
+
+to main() {
+    remember result = add(3, 4);
+    give back result;
+}

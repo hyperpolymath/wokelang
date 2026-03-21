@@ -1,0 +1,55 @@
+// Example: Worker System in WokeLang
+// Demonstrates workers, message passing, and async operations
+
+thanks to {
+    "WokeLang" → "For concurrency support";
+}
+
+// Define a background worker
+worker counter {
+    remember i = 0;
+    repeat 5 times {
+        i = i + 1;
+        print("Counter: " + toString(i));
+    }
+}
+
+// Define a worker that processes data
+worker processor {
+    print("Processor started");
+    // In a full implementation, this would receive messages
+    print("Processor completed");
+}
+
+to main() {
+    hello "Testing Worker System";
+
+    print("=== Spawning Workers ===");
+
+    // Spawn a worker (currently runs synchronously)
+    spawn worker counter;
+
+    print("");
+    print("=== Message Passing ===");
+
+    // Send a message to a worker (placeholder for now)
+    send 42 to processor;
+    send "hello" to processor;
+
+    // Receive from a worker (placeholder for now)
+    receive from processor;
+
+    print("");
+    print("=== Worker Control ===");
+
+    // Spawn another worker
+    spawn worker processor;
+
+    // Await worker completion
+    await processor;
+
+    // Cancel a worker if needed
+    // cancel processor;
+
+    goodbye "Workers demonstration complete!";
+}

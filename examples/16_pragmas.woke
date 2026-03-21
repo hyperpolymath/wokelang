@@ -1,0 +1,22 @@
+// Pragmas example
+// Demonstrates #care, #strict, and #verbose directives
+
+#care on;
+#strict on;
+#verbose on;
+
+to main() {
+    print("Pragmas example:");
+    print("Care mode: enabled");
+    print("Strict mode: enabled");
+    print("Verbose mode: enabled");
+
+    remember result = 42;
+    print("Result: " + toString(result));
+
+    give back 0;
+}
+
+#care or;
+#strict or;
+#verbose or;

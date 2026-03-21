@@ -1,0 +1,36 @@
+// Math functions for WASM compilation
+
+to add(a: Int, b: Int) -> Int {
+    give back a + b;
+}
+
+to multiply(a: Int, b: Int) -> Int {
+    give back a * b;
+}
+
+to factorial(n: Int) -> Int {
+    when n <= 1 {
+        give back 1;
+    }
+    give back n * factorial(n - 1);
+}
+
+to fibonacci(n: Int) -> Int {
+    when n <= 0 {
+        give back 0;
+    }
+    when n == 1 {
+        give back 1;
+    }
+    give back fibonacci(n - 1) + fibonacci(n - 2);
+}
+
+to sum_to_n(n: Int) -> Int {
+    remember total = 0;
+    remember i = n;
+    repeat n times {
+        total = total + i;
+        i = i - 1;
+    }
+    give back total;
+}

@@ -1,0 +1,13 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+// Conformance: emote annotation on function
+
+@cheerful(intensity=high)
+to greet() {
+    print("Hello!");
+    give back 0;
+}
+
+to main() {
+    greet();
+    give back 0;
+}

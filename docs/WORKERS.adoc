@@ -1,0 +1,127 @@
+# Worker Concurrency System
+
+WokeLang provides lightweight concurrency through an actor-model worker system.
+
+## Architecture
+
+- **Message Passing**: Workers communicate via async channels (tokio mpsc)
+- **Isolation**: Each worker runs in its own `Interpreter` instance
+- **Single-Threaded**: Workers use `tokio::task::spawn_local` on a `LocalSet` (since `Interpreter` uses `Rc<RefCell<>>`)
+- **Async Runtime**: Powered by tokio for async/await support
+
+## API
+
+### WorkerRuntime
+
+Main coordinator for worker lifecycle:
+
+```rust
+use wokelang::{WorkerRuntime, WorkerDef};
+
+let mut runtime = WorkerRuntime::new();
+
+// Register worker definition
+let worker = WorkerDef {
+    name: "my_worker".to_string(),
+    body: vec![/* statements */],
+    span: Span { start: 0, end: 0 },
+};
+runtime.register_worker(worker);
+
+// Spawn worker (must be inside LocalSet)
+let local = tokio::task::LocalSet::new();
+local.run_until(async {
+    let handle = runtime.spawn_worker("my_worker").await.unwrap();
+
+    // Send messages
+    runtime.send_to_worker("my_worker",
+        WorkerMessage::Value(Value::Int(42))).await.unwrap();
+
+    // List running workers
+    let workers = runtime.list_workers().await;
+
+    // Stop all workers
+    runtime.stop_all().await;
+}).await;
+```
+
+### WorkerMessage
+
+Messages that can be sent to workers:
+
+- `WorkerMessage::Execute(Arc<Statement>)` - Execute a statement
+- `WorkerMessage::Value(Value)` - Send a value (stored in mailbox)
+- `WorkerMessage::Stop` - Request worker to stop
+
+### WorkerHandle
+
+Handle to a running worker:
+
+```rust
+pub struct WorkerHandle {
+    pub name: String,
+    pub tx: mpsc::Sender<WorkerMessage>,
+}
+```
+
+## WokeLang Syntax
+
+```woke
+worker DataProcessor {
+    remember counter = 0;
+
+    to process(data) {
+        remember counter = counter + 1;
+        give back data;
+    }
+}
+
+// Spawned via runtime API (not yet integrated into interpreter)
+```
+
+## Integration Status
+
+✅ **Complete**:
+- Worker runtime infrastructure
+- Message passing system
+- Isolated interpreter instances
+- Async execution with LocalSet
+
+⏳ **Pending**:
+- REPL integration for spawning workers
+- Interpreter-level worker spawn statements
+- Inter-worker communication primitives
+
+## Design Rationale
+
+### Why spawn_local instead of spawn?
+
+The `Interpreter` uses `Rc<RefCell<>>` for environment management, which is not `Send`. This is intentional - WokeLang's semantics don't require true parallelism, just concurrency. Workers run on a single-threaded `LocalSet` which provides:
+
+- Cooperative multitasking
+- No data races (single thread)
+- Efficient context switching
+- Full async/await support
+
+### Why separate from Interpreter?
+
+Keeping the worker runtime separate from the synchronous interpreter:
+
+- Maintains clean separation of concerns
+- Allows sync interpreter for REPL/scripting
+- Enables async worker operations at runtime level
+- Provides flexibility for future execution models
+
+## Testing
+
+See `src/worker/mod.rs` for complete tests:
+
+```bash
+cargo test worker
+```
+
+## Example Usage
+
+See `examples/10_workers.woke` for WokeLang syntax examples.
+
+For Rust API usage, see the tests in `src/worker/mod.rs`.

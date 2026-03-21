@@ -1,0 +1,17 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+// This example demonstrates enhanced error messages with helpful hints
+
+to expectsInt(x: Int) -> Int {
+    give back x + 1;
+}
+
+to main() {
+    // This will produce a type error with a helpful hint
+    // The function expects Int but gets String
+    // Hint: Use toString() to convert numbers to strings
+
+    remember text = "hello";
+    remember result = expectsInt(text);  // Type error!
+
+    give back 0;
+}

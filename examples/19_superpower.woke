@@ -1,0 +1,13 @@
+// Superpower example
+// Demonstrates superpower declarations
+
+superpower fly {
+    print("Activating flying superpower!");
+    print("Soaring through the sky!");
+}
+
+to main() {
+    print("Superpower demonstration");
+    print("Program complete");
+    give back 0;
+}

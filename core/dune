@@ -1,0 +1,19 @@
+; SPDX-License-Identifier: PMPL-1.0-or-later
+; SPDX-FileCopyrightText: 2026 Hyperpolymath
+
+(library
+ (name wokelang_core)
+ (public_name wokelang.core)
+ (modules :standard \ main)
+ (libraries str))
+
+(ocamllex lexer)
+
+(menhir
+ (modules parser))
+
+(executable
+ (name main)
+ (public_name wokelang)
+ (modules main)
+ (libraries wokelang_core))

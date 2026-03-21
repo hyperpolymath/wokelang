@@ -1,0 +1,18 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+// Conformance: hello/goodbye lifecycle with entry and exit
+
+to hello() {
+    print("Program starting");
+    give back 0;
+}
+
+to goodbye() {
+    print("Program ending");
+    give back 0;
+}
+
+to main() {
+    hello();
+    goodbye();
+    give back 0;
+}
