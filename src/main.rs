@@ -1,4 +1,7 @@
 // SPDX-License-Identifier: PMPL-1.0-or-later
+// Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+//
+// WokeLang CLI - main entry point with S-expression and JSON AST dump support
 use clap::{Parser, Subcommand};
 use miette::Result;
 use std::fs;
@@ -7,6 +10,8 @@ use wokelang::{
     disassemble as disasm_bytecode, BytecodeCompiler, Interpreter, Lexer, Linter,
     Parser as WokeParser, Repl, TypeChecker,
 };
+
+mod sexpr;
 
 #[derive(Parser)]
 #[command(name = "woke")]
@@ -67,6 +72,10 @@ enum Commands {
     Parse {
         /// Path to .woke file
         file: PathBuf,
+
+        /// Output format: pretty (default), sexpr, json
+        #[arg(short, long, default_value = "pretty")]
+        output: String,
     },
 }
 
@@ -133,8 +142,8 @@ fn main() -> Result<()> {
             tokenize_file(&file)?;
         }
 
-        Commands::Parse { file } => {
-            parse_file(&file)?;
+        Commands::Parse { file, output } => {
+            parse_file(&file, &output)?;
         }
     }
 
@@ -365,7 +374,13 @@ fn tokenize_file(file: &PathBuf) -> Result<()> {
     Ok(())
 }
 
-fn parse_file(file: &PathBuf) -> Result<()> {
+/// Parse a .woke file and display the AST in the chosen output format.
+///
+/// Supports three output modes:
+/// - `pretty` (default): Rust Debug formatting
+/// - `sexpr` / `sexp`: S-expression representation
+/// - `json`: JSON serialization via serde_json
+fn parse_file(file: &PathBuf, format: &str) -> Result<()> {
     let source = fs::read_to_string(file).expect("Failed to read file");
     let lexer = Lexer::new(&source);
 
@@ -380,11 +395,22 @@ fn parse_file(file: &PathBuf) -> Result<()> {
     let mut parser = WokeParser::new(tokens, &source);
     match parser.parse() {
         Ok(program) => {
-            println!("{:#?}", program);
-            println!(
-                "\nParsed {} top-level items successfully.",
-                program.items.len()
-            );
+            match format {
+                "json" => {
+                    let json = sexpr::program_to_json(&program);
+                    println!("{}", serde_json::to_string_pretty(&json).unwrap());
+                }
+                "sexpr" | "sexp" => {
+                    println!("{}", sexpr::program_to_sexpr(&program));
+                }
+                "pretty" | _ => {
+                    println!("{:#?}", program);
+                    println!(
+                        "\nParsed {} top-level items successfully.",
+                        program.items.len()
+                    );
+                }
+            }
         }
         Err(e) => {
             eprintln!("{:?}", miette::Report::new(e));
