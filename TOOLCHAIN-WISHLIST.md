@@ -629,6 +629,6 @@ High-skill contributions:
 **Current Status:** 85% complete (core language)
 **With full toolchain:** 100% complete (production-ready language)
 
-**Maintainer:** Jonathan D.A. Jewell <jonathan.jewell@open.ac.uk>
+**Maintainer:** Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
 **Date:** 2026-02-01
 **License:** PMPL-1.0-or-later

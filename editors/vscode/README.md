@@ -171,5 +171,5 @@ PMPL-1.0-or-later
 
 ## Credits
 
-**Author:** Jonathan D.A. Jewell <jonathan.jewell@open.ac.uk>
+**Author:** Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
 **Co-Authored-By:** Claude Sonnet 4.5 <noreply@anthropic.com>

@@ -348,7 +348,7 @@ When using WokeLang, we recommend:
 
 | Purpose | Contact |
 |---------|---------|
-| **Security issues** | [Report via GitHub](https://github.com/hyperpolymath/wokelang/security/advisories/new) or {{SECURITY_EMAIL}} |
+| **Security issues** | [Report via GitHub](https://github.com/hyperpolymath/wokelang/security/advisories/new) or 6759885+hyperpolymath@users.noreply.github.com |
 | **General questions** | [GitHub Discussions](https://github.com/hyperpolymath/wokelang/discussions) |
 | **Other enquiries** | See [README](README.md) for contact information |
 

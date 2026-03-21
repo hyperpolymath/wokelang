@@ -50,6 +50,7 @@
 //! For each unit conversion used in the program, a WASM helper function
 //! is emitted (e.g., `convert_m_to_km(val: f64) -> f64`).
 
+#![forbid(unsafe_code)]
 use std::collections::HashMap;
 
 use wasm_encoder::{

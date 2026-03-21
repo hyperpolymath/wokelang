@@ -493,7 +493,7 @@ impl PackageManager {
 
 ---
 
-**Maintainer:** Jonathan D.A. Jewell <jonathan.jewell@open.ac.uk>
+**Maintainer:** Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
 **Date:** 2026-02-01
 **License:** PMPL-1.0-or-later
 **Related:** TOOLCHAIN-WISHLIST.md, NEXT-STEPS.adoc
