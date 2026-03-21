@@ -21,6 +21,10 @@ path = "src/main.rs"
 name = "woke-lsp"
 path = "src/bin/woke-lsp.rs"
 
+[[bin]]
+name = "woke-dap"
+path = "src/bin/wokelang-dap.rs"
+
 [dependencies]
 logos = "0.14"
 thiserror = "1.0"
