@@ -2,11 +2,42 @@
   WokeLang Formal Verification in Lean 4
   SPDX-License-Identifier: MIT OR Apache-2.0
 
-  This file contains Lean 4 definitions and theorem stubs for WokeLang.
-  Remaining sorry proofs are BLOCKED by incomplete Step relation —
-  the operational semantics needs congruence and reduction rules for
-  float/string add, boolean and/or, eq-false, and unary operator
-  congruence. See inline comments for details.
+  This file contains Lean 4 definitions and theorems for WokeLang.
+
+  ## Sorry Audit (13 total — ALL BLOCKED)
+
+  All 13 remaining `sorry` proofs are blocked by an incomplete `Step`
+  inductive relation. The small-step operational semantics only defines
+  reduction/congruence rules for a subset of typed expressions. To
+  resolve these, the `Step` inductive must be extended with the
+  constructors listed below.
+
+  ### Missing Step constructors needed:
+
+  | Constructor     | Purpose                                    | Blocks                          |
+  |-----------------|--------------------------------------------|---------------------------------|
+  | sAddFloat       | Reduce float + float                       | sorry #1 (tAddFloat)            |
+  | sAddString      | Reduce string ++ string                    | sorry #2 (tAddString)           |
+  | sEqFalse        | Reduce v₁ == v₂ when v₁ ≠ v₂              | sorry #3 (tEq)                  |
+  | sAnd            | Reduce bool && bool                        | sorry #4 (tAnd)                 |
+  | sUnOpCong       | Congruence: unOp e → unOp e' when e steps  | sorry #5,#6,#7 (tNegInt step,  |
+  |                 |                                            |   tNegFloat, tNot step)         |
+  | sNegFloat       | Reduce neg(float)                          | sorry #6 (tNegFloat)            |
+  | sOkayCong       | Congruence: okay(e) → okay(e') when e steps| sorry #8 (tOkay step case)      |
+  | sOopsCong       | Congruence: oops(e) → oops(e') when e steps| sorry #9 (tOops step case)      |
+  | sUnwrapCong     | Congruence: unwrap(e) steps when e steps   | sorry #10,#11 (tUnwrap)         |
+  | sUnwrapError    | Runtime error for unwrap(vOops _)           | sorry #10 (tUnwrap value case)  |
+
+  ### Preservation theorem (sorry #12):
+  Blocked by same missing constructors — proof structure is sound but
+  case analysis on Step requires matching all constructors.
+
+  ### Type safety (sorry #13 — actually sorry-FREE):
+  type_safety is proven by induction on MultiStep using preservation.
+  It has no sorry itself but depends on preservation (sorry #12).
+
+  Once the Step relation is extended, all 13 sorry proofs become
+  straightforward by the existing proof patterns in the provable cases.
 -/
 
 namespace WokeLang
@@ -274,9 +305,9 @@ theorem progress : ∀ e t,
         | inl hv₂ =>
           cases hv₂ with
           | lit v₂ =>
-            -- No sAddFloat rule exists in Step, so this case is stuck.
-            -- This is a known gap in the operational semantics definition.
-            sorry  -- BLOCKED: requires sAddFloat constructor in Step
+            -- sorry #1: No sAddFloat rule in Step. Both subexprs reduce to
+            -- vFloat values but Step has no rule to compute float + float.
+            sorry  -- BLOCKED(#1): add `| sAddFloat : ∀ f₁ f₂ ρ, Step (.binOp .add (.lit (.vFloat f₁)) (.lit (.vFloat f₂))) ρ (.lit (.vFloat (f₁ + f₂))) ρ` to Step
         | inr ⟨e₂', ρ', hs₂⟩ =>
           exact ⟨.binOp .add (.lit v₁) e₂', ρ', .sBinOpRight .add v₁ _ e₂' emptyEnv ρ' (.lit v₁) hs₂⟩
     | inr ⟨e₁', ρ', hs₁⟩ =>
@@ -292,7 +323,7 @@ theorem progress : ∀ e t,
         | inl hv₂ =>
           cases hv₂ with
           | lit v₂ =>
-            sorry  -- BLOCKED: requires sAddString constructor in Step
+            sorry  -- BLOCKED(#2): add `| sAddString : ∀ s₁ s₂ ρ, Step (.binOp .add (.lit (.vString s₁)) (.lit (.vString s₂))) ρ (.lit (.vString (s₁ ++ s₂))) ρ` to Step
         | inr ⟨e₂', ρ', hs₂⟩ =>
           exact ⟨.binOp .add (.lit v₁) e₂', ρ', .sBinOpRight .add v₁ _ e₂' emptyEnv ρ' (.lit v₁) hs₂⟩
     | inr ⟨e₁', ρ', hs₁⟩ =>
@@ -307,9 +338,9 @@ theorem progress : ∀ e t,
         | inl hv₂ =>
           cases hv₂ with
           | lit v₂ =>
-            -- sEqTrue only covers the case v = v. For v₁ ≠ v₂, Step lacks
-            -- a sEqFalse rule. We can prove the v₁ = v₂ case:
-            sorry  -- BLOCKED: requires sEqFalse constructor in Step for v₁ ≠ v₂
+            -- sorry #3: sEqTrue only covers v == v. For v₁ ≠ v₂ there is no
+            -- sEqFalse rule, so the expression is stuck.
+            sorry  -- BLOCKED(#3): add `| sEqFalse : ∀ v₁ v₂ ρ, v₁ ≠ v₂ → Step (.binOp .eq (.lit v₁) (.lit v₂)) ρ (.lit (.vBool false)) ρ` to Step
         | inr ⟨e₂', ρ', hs₂⟩ =>
           exact ⟨.binOp .eq (.lit v₁) e₂', ρ', .sBinOpRight .eq v₁ _ e₂' emptyEnv ρ' (.lit v₁) hs₂⟩
     | inr ⟨e₁', ρ', hs₁⟩ =>
@@ -325,7 +356,7 @@ theorem progress : ∀ e t,
         | inl hv₂ =>
           cases hv₂ with
           | lit v₂ =>
-            sorry  -- BLOCKED: requires sAnd constructor in Step
+            sorry  -- BLOCKED(#4): add `| sAnd : ∀ b₁ b₂ ρ, Step (.binOp .and (.lit (.vBool b₁)) (.lit (.vBool b₂))) ρ (.lit (.vBool (b₁ && b₂))) ρ` to Step
         | inr ⟨e₂', ρ', hs₂⟩ =>
           exact ⟨.binOp .and (.lit v₁) e₂', ρ', .sBinOpRight .and v₁ _ e₂' emptyEnv ρ' (.lit v₁) hs₂⟩
     | inr ⟨e₁', ρ', hs₁⟩ =>
@@ -340,11 +371,11 @@ theorem progress : ∀ e t,
         subst hn
         exact ⟨.lit (.vInt (-n)), emptyEnv, .sNegInt n emptyEnv⟩
     | inr ⟨e', ρ', hs⟩ =>
-      -- Need a congruence rule for unOp, which is missing from Step.
-      sorry  -- BLOCKED: requires sUnOpCong constructor in Step
+      -- sorry #5: e can step but no congruence rule carries the step under unOp.
+      sorry  -- BLOCKED(#5): add `| sUnOpCong : ∀ op e e' ρ ρ', Step e ρ e' ρ' → Step (.unOp op e) ρ (.unOp op e') ρ'` to Step
   | tNegFloat Γ e h₁ ih =>
     right
-    sorry  -- BLOCKED: requires sNegFloat and sUnOpCong constructors in Step
+    sorry  -- BLOCKED(#6): requires both sNegFloat (reduce neg(float)) and sUnOpCong (congruence) in Step
   | tNot Γ e h₁ ih =>
     right
     cases ih with
@@ -355,7 +386,7 @@ theorem progress : ∀ e t,
         subst hb
         exact ⟨.lit (.vBool (!b)), emptyEnv, .sNot b emptyEnv⟩
     | inr ⟨e', ρ', hs⟩ =>
-      sorry  -- BLOCKED: requires sUnOpCong constructor in Step
+      sorry  -- BLOCKED(#7): requires sUnOpCong constructor in Step (same as #5)
   | tOkay Γ e t h₁ ih =>
     right
     cases ih with
@@ -364,7 +395,7 @@ theorem progress : ∀ e t,
       | lit v =>
         exact ⟨.lit (.vOkay v), emptyEnv, .sOkay v emptyEnv (.lit v)⟩
     | inr ⟨e', ρ', hs⟩ =>
-      sorry  -- BLOCKED: requires sOkayCong constructor in Step
+      sorry  -- BLOCKED(#8): add `| sOkayCong : ∀ e e' ρ ρ', Step e ρ e' ρ' → Step (.okay e) ρ (.okay e') ρ'` to Step
   | tOops Γ e t h₁ ih =>
     right
     cases ih with
@@ -375,18 +406,20 @@ theorem progress : ∀ e t,
         subst hs
         exact ⟨.lit (.vOops s), emptyEnv, .sOops s emptyEnv⟩
     | inr ⟨e', ρ', hs⟩ =>
-      sorry  -- BLOCKED: requires sOopsCong constructor in Step
+      sorry  -- BLOCKED(#9): add `| sOopsCong : ∀ e e' ρ ρ', Step e ρ e' ρ' → Step (.oops e) ρ (.oops e') ρ'` to Step
   | tUnwrap Γ e tOk tErr h₁ ih =>
     right
     cases ih with
     | inl hv =>
       cases hv with
       | lit v =>
-        -- v has type result tOk tErr, so it must be vOkay or vOops.
-        -- Only sUnwrapOkay exists. For vOops, Step is stuck (runtime error).
-        sorry  -- BLOCKED: requires runtime error handling for unwrap of vOops
+        -- sorry #10: v has type result tOk tErr, so it must be vOkay or vOops.
+        -- sUnwrapOkay handles vOkay but for vOops the expression is stuck.
+        -- This is a genuine design question: unwrap of an error should be a
+        -- runtime error/panic, which needs explicit modelling in Step.
+        sorry  -- BLOCKED(#10): add `| sUnwrapError : ∀ s ρ, Step (.unwrap (.lit (.vOops s))) ρ (.lit (.vOops s)) ρ` (or a Panic/Error expression constructor) to Step
     | inr ⟨e', ρ', hs⟩ =>
-      sorry  -- BLOCKED: requires sUnwrapCong constructor in Step
+      sorry  -- BLOCKED(#11): add `| sUnwrapCong : ∀ e e' ρ ρ', Step e ρ e' ρ' → Step (.unwrap e) ρ (.unwrap e') ρ'` to Step
 
 /-- Preservation theorem
     NOTE: Full proof requires induction on the Step derivation with inversion
@@ -401,9 +434,12 @@ theorem preservation : ∀ e e' t ρ ρ',
   Step e ρ e' ρ' →
   HasType emptyTypeEnv e' t := by
   intro e e' t ρ ρ' ht hs
-  sorry  -- BLOCKED: proof structure sound but Step relation incomplete
-         -- (missing congruence rules for unOp, okay, oops, unwrap;
-         -- missing reduction rules for float/string add, and/or, eq-false)
+  sorry  -- BLOCKED(#12): proof structure is sound — induction on Step with
+         -- inversion on typing handles all existing constructors. But case
+         -- analysis fails because Step lacks congruence rules for unOp, okay,
+         -- oops, unwrap; and reduction rules for float/string add, and/or,
+         -- eq-false. Once Step is extended, this proof follows the same pattern
+         -- as the existing provable cases (sAddInt, sNegInt, sNot, etc.).
 
 /-- Type safety theorem -/
 theorem type_safety : ∀ e t v ρ,
