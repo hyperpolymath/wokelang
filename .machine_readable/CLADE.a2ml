@@ -1,0 +1,26 @@
+# SPDX-License-Identifier: PMPL-1.0-or-later
+# Clade declaration — part of the gv-clade-index registry
+# See: https://github.com/hyperpolymath/gv-clade-index
+
+[identity]
+uuid = "e460af5f-1cfb-58bf-9c5a-70bf458ea2af"
+primary-forge = "github"
+primary-owner = "hyperpolymath"
+canonical-name = "wokelang"
+prefixed-name = "nl-wokelang"
+
+[clade]
+primary = "nl"
+secondary = []
+assigned = "2026-03-16"
+rationale = "Social-justice-aware programming language"
+
+[forges]
+github = "hyperpolymath/wokelang"
+gitlab = "hyperpolymath/wokelang"
+bitbucket = "hyperpolymath/wokelang"
+
+[lineage]
+type = "monorepo-child"
+parent = "nextgen-languages"
+born = "2026-03-16"

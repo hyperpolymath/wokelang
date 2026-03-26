@@ -15,7 +15,8 @@ on:
   workflow_dispatch:
 
 
-permissions: read-all
+permissions:
+  contents: read
 
 jobs:
   validate:
@@ -23,7 +24,7 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       
       - name: RFC 9116 security.txt validation
         run: |
@@ -32,7 +33,7 @@ jobs:
           [ -f "security.txt" ] && SECTXT="security.txt"
           
           if [ -z "$SECTXT" ]; then
-            echo "::warning::No security.txt found. See https://github.com/hyperpolymath/well-known-ecosystem"
+            echo "::warning::No security.txt found. See https://github.com/{{OWNER}}/well-known-ecosystem"
             exit 0
           fi
           
@@ -68,7 +69,7 @@ jobs:
           
           if [ -n "$MISSING" ]; then
             echo "::warning::Missing RSR recommended files:$MISSING"
-            echo "Reference: https://github.com/hyperpolymath/well-known-ecosystem/.well-known/"
+            echo "Reference: https://github.com/{{OWNER}}/well-known-ecosystem/.well-known/"
           else
             echo "✅ RSR well-known compliant"
           fi

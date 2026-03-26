@@ -1,0 +1,1928 @@
+% SPDX-License-Identifier: PMPL-1.0-or-later
+% SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell
+%
+% Consent-Aware Programming: Embedding Ethical Deliberation, Attribution,
+% and Emotional Context in Language Semantics
+%
+% Target: arXiv preprint (cs.PL / cs.HC cross-list)
+
+\documentclass[11pt,a4paper]{article}
+
+% --- Packages ---
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{mathpartir}
+\usepackage{stmaryrd}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{cleveref}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{natbib}
+\usepackage{microtype}
+\usepackage{enumitem}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,shapes.geometric,calc}
+\usepackage{fancyvrb}
+\usepackage[margin=1in]{geometry}
+
+% --- Theorem environments ---
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{definition}[theorem]{Definition}
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{corollary}[theorem]{Corollary}
+\newtheorem{example}[theorem]{Example}
+
+% --- Listings configuration ---
+\definecolor{wokekw}{RGB}{120,50,150}
+\definecolor{wokestr}{RGB}{0,120,60}
+\definecolor{wokecmt}{RGB}{100,100,100}
+\definecolor{wokeann}{RGB}{180,60,30}
+\definecolor{codebg}{RGB}{248,248,248}
+
+\lstdefinelanguage{WokeLang}{
+  morekeywords={to,remember,only,if,okay,thanks,measured,in,data,then,
+                clean,analyze,feeling,confident,return,true,false,
+                when,otherwise,for,each,while,match,with,import,from,
+                module,expose,type,is,has,end,pipeline,step,consent,
+                revoke,grant,audit,acknowledge},
+  sensitive=true,
+  morecomment=[l]{//},
+  morecomment=[s]{/*}{*/},
+  morestring=[b]",
+  moredelim=[s][\color{wokeann}]{@}{)},
+}
+
+\lstset{
+  language=WokeLang,
+  basicstyle=\small\ttfamily,
+  keywordstyle=\color{wokekw}\bfseries,
+  stringstyle=\color{wokestr},
+  commentstyle=\color{wokecmt}\itshape,
+  backgroundcolor=\color{codebg},
+  frame=single,
+  framerule=0.4pt,
+  rulecolor=\color{gray!40},
+  numbers=left,
+  numberstyle=\tiny\color{gray},
+  numbersep=8pt,
+  breaklines=true,
+  breakatwhitespace=true,
+  tabsize=2,
+  showstringspaces=false,
+  captionpos=b,
+  xleftmargin=1.5em,
+  framexleftmargin=1.5em,
+  aboveskip=1em,
+  belowskip=0.8em,
+}
+
+% --- Semantic notation ---
+\newcommand{\sem}[1]{\llbracket #1 \rrbracket}
+\newcommand{\eval}{\Downarrow}
+\newcommand{\step}{\longrightarrow}
+\newcommand{\consent}{\mathsf{consent}}
+\newcommand{\granted}{\mathsf{granted}}
+\newcommand{\denied}{\mathsf{denied}}
+\newcommand{\pending}{\mathsf{pending}}
+\newcommand{\unitty}[1]{\langle #1 \rangle}
+\newcommand{\feeling}[2]{\mathsf{feel}(#1, #2)}
+\newcommand{\attr}[2]{\mathsf{attr}(#1, #2)}
+\newcommand{\WokeLang}{\textsc{WokeLang}}
+
+% --- Title ---
+\title{%
+  \textbf{Consent-Aware Programming:}\\[0.3em]
+  \large Embedding Ethical Deliberation, Attribution, and Emotional Context\\
+  in Language Semantics%
+}
+
+\author{%
+  Jonathan D.A.\ Jewell\\
+  \texttt{j.d.a.jewell@open.ac.uk}\\
+  \texttt{https://github.com/hyperpolymath}%
+}
+
+\date{March 2026}
+
+\begin{document}
+
+\maketitle
+
+% ============================================================================
+% ABSTRACT
+% ============================================================================
+\begin{abstract}
+Programming languages encode assumptions about what matters.
+Most languages assume that what matters is \emph{computation}---the
+transformation of inputs to outputs, the allocation and reclamation of
+memory, the dispatch of messages between processes.  We argue that this
+assumption is incomplete.  Programs are social artifacts: they are
+written by people, for people, within institutional and ethical
+contexts that shape their meaning no less than their operational
+semantics.
+
+We present \WokeLang{}, a programming language that embeds ethical
+deliberation, attribution, and emotional context directly into its
+semantics.  \WokeLang{} introduces four novel constructs:
+\emph{consent gates} (\texttt{only if okay}), which create mandatory
+deliberation points around ethically significant operations;
+\emph{units of measure} (\texttt{measured in}), which carry
+dimensional information as first-class types oriented toward human
+communication; \emph{gratitude blocks} (\texttt{thanks to}), which
+make contribution attribution an executable, auditable program
+construct; and \emph{empathy annotations} (\texttt{@feeling}), which
+allow developers to attach confidence and emotional metadata to code.
+We provide formal operational semantics for consent gates, describe
+the integration of these features into a Hindley-Milner type system
+with dimensional analysis, and report on an implementation targeting
+WebAssembly via an OCaml frontend and Rust runtime.
+
+Our design philosophy holds that programming languages are
+\emph{communication media} between humans, not merely instruction sets
+for machines.  We draw on values-sensitive design, feminist HCI, and
+the philosophy of technology to argue that language designers have both
+the opportunity and the responsibility to make ethical deliberation
+syntactically cheap and semantically meaningful.
+\end{abstract}
+
+\vspace{0.5em}
+\noindent\textbf{Keywords:} programming language design, consent,
+ethics in computing, human-centered programming, units of measure,
+attribution, values-sensitive design, formal semantics
+
+% ============================================================================
+% 1. INTRODUCTION
+% ============================================================================
+\section{Introduction}
+\label{sec:introduction}
+
+Every programming language embodies a theory of what programming
+\emph{is}.  C treats programming as the management of memory and
+machine words.  Haskell treats it as the composition of mathematical
+functions.  Erlang treats it as the coordination of isolated,
+message-passing processes.  These are not merely implementation
+choices; they are \emph{ontological commitments} that shape how
+programmers think about the systems they build
+\citep{sapir1929status,whorf1956language,iverson1980notation}.
+
+What no mainstream language treats programming as is a fundamentally
+\emph{social} and \emph{ethical} activity.  Yet programs are written by
+teams of people with different levels of confidence in their own code.
+Programs delete user data, transfer money, make medical decisions, and
+deny parole.  Programs are built on the unacknowledged labor of open
+source maintainers.  The social and ethical dimensions of programming
+are not peripheral concerns to be addressed by external tooling,
+governance frameworks, or codes of conduct bolted onto an amoral
+substrate.  They are \emph{intrinsic} to the activity of writing
+software.
+
+This paper presents \WokeLang{}, a programming language designed
+around the premise that ethical deliberation, contribution
+attribution, developer confidence, and human readability are
+first-class concerns deserving of direct syntactic and semantic
+support.  \WokeLang{} does not aim to solve ethics by technical
+means---a category error we are keen to
+avoid~\citep{green2019good,selbst2019fairness}.  Rather, it aims to
+make the social and ethical texture of programming \emph{visible} in
+the source code itself, creating affordances for deliberation where
+current languages create affordances for speed.
+
+We make the following contributions:
+
+\begin{enumerate}[leftmargin=*]
+  \item \textbf{Consent gates} (\S\ref{sec:consent}): a control flow
+    construct that creates mandatory deliberation points around
+    ethically weighted operations, with formal operational semantics
+    that distinguish consent-gated from ungated execution paths.
+
+  \item \textbf{Communicative units of measure}
+    (\S\ref{sec:units}): a dimensional type system integrated with the
+    consent model, oriented not just toward bug prevention but toward
+    making programs legible as descriptions of physical and social
+    reality.
+
+  \item \textbf{Gratitude blocks} (\S\ref{sec:gratitude}): an
+    executable attribution mechanism that creates auditable graphs of
+    contribution acknowledgment within programs.
+
+  \item \textbf{Empathy annotations} (\S\ref{sec:empathy}): a
+    metadata system for developer confidence and emotional context,
+    surfaceable by code review tools and static analysis.
+
+  \item \textbf{A human-readable design philosophy}
+    (\S\ref{sec:philosophy}) that treats syntax as a communication
+    medium between people, informed by values-sensitive design and
+    feminist HCI.
+
+  \item \textbf{Formal semantics and implementation}
+    (\S\ref{sec:semantics}, \S\ref{sec:implementation}): operational
+    semantics for the consent gate calculus and a working compiler
+    targeting WebAssembly.
+\end{enumerate}
+
+% ============================================================================
+% 2. BACKGROUND
+% ============================================================================
+\section{Background and Motivation}
+\label{sec:background}
+
+\subsection{Programming Languages as Social Artifacts}
+
+The view that programming languages are purely technical artifacts has
+been challenged from multiple directions.  \citet{knuth1984literate}
+argued that programs should be written primarily for human readers.
+\citet{gabriel1996patterns} explored the relationship between software
+design and the built environment through the lens of Christopher
+Alexander's pattern language.  More recently, \citet{ko2017past}
+surveyed decades of evidence that programming is fundamentally a
+\emph{human} activity, shaped by cognitive constraints, social
+dynamics, and institutional pressures.
+
+The sociotechnical systems perspective~\citep{trist1981evolution}
+insists that technical and social systems are mutually constitutive:
+you cannot optimize one without attending to the other.  Applied to
+programming languages, this means that syntax and semantics are not
+neutral conduits for expressing algorithms; they \emph{afford} certain
+ways of thinking and \emph{constrain} others.  A language without
+first-class support for error handling affords ignoring errors.  A
+language without a concept of ownership affords memory unsafety.  We
+contend that a language without a concept of consent affords ethical
+inattention.
+
+\subsection{Values-Sensitive Design}
+
+Values-sensitive design (VSD) is a theoretically grounded approach to
+the design of technology that accounts for human values in a
+principled and comprehensive
+manner~\citep{friedman1996value,friedman2013value}.  VSD identifies
+three types of investigation: \emph{conceptual} (what values are at
+stake?), \emph{empirical} (how do stakeholders experience the
+technology?), and \emph{technical} (how can the technology's
+properties support or hinder the identified values?).
+
+Applied to programming language design, VSD asks: what values does a
+language's syntax make easy to express?  What values does it make
+invisible?  Most languages make \emph{efficiency}, \emph{correctness},
+and \emph{modularity} easy to express.  Few make \emph{consent},
+\emph{attribution}, or \emph{deliberation} expressible at all.
+
+\subsection{Feminist HCI and Care Ethics}
+
+Feminist HCI~\citep{bardzell2010feminist} offers a lens that
+foregrounds \emph{pluralism} (whose experience counts?),
+\emph{participation} (who gets to shape the design?),
+\emph{embodiment} (how does the technology relate to lived
+experience?), and \emph{ecology} (how does it fit into broader systems
+of power?).  \citet{light2011hci} extends this to consider how design
+can ``make space for the expression of values that are currently
+marginalized.''
+
+Care ethics~\citep{gilligan1982different,held2006ethics} emphasizes
+that moral reasoning is not (only) about abstract principles but about
+attending to the concrete needs of others within relationships of
+dependency.  Software development is shot through with such
+relationships: between developers and users, between maintainers and
+contributors, between the people who write code and the people
+affected by its execution.
+
+\WokeLang{} draws on these traditions to ask: what would a
+programming language look like if it were designed with
+\emph{care}---not as an afterthought, but as a structuring principle?
+
+\subsection{Prior Work on Human-Centered Language Design}
+
+Several languages have explored aspects of human-centered design.
+Inform~7~\citep{nelson2006natural} uses natural language syntax to
+make interactive fiction authoring accessible.  Scratch~\citep{resnick2009scratch}
+uses visual blocks to make programming accessible to children.
+F\#~\citep{syme2003units} introduced units of measure to the ML
+family.  Elm~\citep{czaplicki2012elm} prioritized helpful error
+messages.  Pyret~\citep{krishnamurthi2019pyret} integrated testing
+into the language itself.
+
+None of these languages, however, have attempted to embed
+\emph{ethical deliberation} as a semantic concept.  \WokeLang{} builds
+on their insights while pushing into new territory: the idea that
+consent, attribution, and emotional context are as worthy of language
+support as types, functions, and modules.
+
+% ============================================================================
+% 3. CONSENT GATES
+% ============================================================================
+\section{Consent Gates}
+\label{sec:consent}
+
+\subsection{Motivation}
+
+Consider a function that deletes a user's account and all associated
+data.  In most programming languages, this function is syntactically
+identical to a function that increments a counter.  Both are function
+calls; both return values; both can be composed with other functions.
+Nothing in the language distinguishes an operation that permanently
+destroys someone's personal data from one that adds one to an integer.
+
+This is, we argue, a design failure.  The two operations have
+profoundly different \emph{ethical weights}, and a language that treats
+them identically provides no affordance for recognizing this
+difference.  Developers must rely on comments, naming conventions, or
+institutional processes to mark the distinction---all of which are
+invisible to the compiler, the type checker, and the runtime.
+
+\WokeLang{} introduces \emph{consent gates} to address this gap.  A
+consent gate is a control flow construct that creates a mandatory
+deliberation point around an ethically significant operation:
+
+\begin{lstlisting}[caption={Consent gate for account deletion}]
+to delete_account(user) ->
+  only if okay "Permanently delete all data for {user.name}?" {
+    database.drop_user(user.id)
+    audit_log.record("deletion", user.id)
+    return "Account deleted"
+  }
+\end{lstlisting}
+
+The \texttt{only if okay} construct is not merely a confirmation
+dialog, though it may produce one at runtime.  It is a
+\emph{semantic marker} that the enclosed code path involves ethical
+weight.  This distinction has consequences at every level of the
+system:
+
+\begin{itemize}[leftmargin=*]
+  \item \textbf{Compilation:} The compiler tracks consent-gated paths
+    separately, enabling analyses such as ``what percentage of
+    destructive operations in this codebase are consent-gated?''
+
+  \item \textbf{Type checking:} Functions containing consent gates
+    have different types from those without, preventing silent
+    composition of gated and ungated operations.
+
+  \item \textbf{Runtime:} The consent mechanism is pluggable---in
+    interactive contexts it may prompt a human; in batch contexts it
+    may consult a policy file; in test contexts it may auto-approve.
+
+  \item \textbf{Auditing:} Every consent decision (granted or denied)
+    is logged with timestamps and the consent string, creating an
+    auditable trail of ethical decision points.
+\end{itemize}
+
+\subsection{Consent as Effect}
+
+We model consent as an \emph{effect} in the sense of algebraic
+effects~\citep{plotkin2009handlers,bauer2015programming}.  A consent
+gate introduces the $\consent$ effect, which must be handled by a
+consent handler in the calling context.
+
+\begin{definition}[Consent Effect]
+\label{def:consent-effect}
+The consent effect signature is:
+\[
+  \consent : \mathsf{String} \to \{\granted, \denied\}
+\]
+A consent gate \texttt{only if okay $s$ \{ $e$ \}} evaluates $e$
+only when the handler for $\consent(s)$ returns $\granted$.
+\end{definition}
+
+This formulation has several desirable properties.  First, consent
+effects \emph{compose}: a function that calls another consent-gated
+function propagates the consent effect upward, ensuring that the
+caller is aware of the ethical weight of the callee.  Second, consent
+handlers are explicit and auditable: the program must specify how
+consent is resolved, whether by user interaction, policy lookup, or
+testing mock.  Third, the effect system prevents consent from being
+silently swallowed: an unhandled consent effect is a type error.
+
+\subsection{Comparison with Capability-Based Security}
+
+Consent gates share a family resemblance with capability-based
+security~\citep{dennis1966programming,miller2006robust}, where access
+to a resource is mediated by possession of an unforgeable token.  In
+capability systems, the question is ``does this code have the
+\emph{right} to perform this operation?''  In consent-gated systems,
+the question is ``has a \emph{deliberation} occurred about whether
+this operation should happen?''
+
+The distinction matters.  A capability can be granted mechanically: a
+policy file says this service may access that database.  Consent
+requires \emph{engagement}: someone (a user, a reviewer, a governance
+process) must consider the specific operation and its consequences.
+Consent gates do not replace capability-based security; they
+\emph{complement} it by adding a deliberative layer that capabilities
+alone cannot provide.
+
+\begin{table}[t]
+\centering
+\caption{Comparison of access control paradigms}
+\label{tab:access-comparison}
+\begin{tabular}{@{}lccc@{}}
+\toprule
+Property & ACLs & Capabilities & Consent Gates \\
+\midrule
+Mediates access            & \checkmark & \checkmark & \checkmark \\
+Unforgeable tokens         &            & \checkmark &            \\
+Requires deliberation      &            &            & \checkmark \\
+Auditable decision trail   & Partial    & Partial    & \checkmark \\
+Composable (propagates)    &            & \checkmark & \checkmark \\
+Type-system integrated     &            & Partial    & \checkmark \\
+Human-centered framing     &            &            & \checkmark \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Consent Scoping and Revocation}
+
+Consent in \WokeLang{} is scoped and revocable.  A consent grant
+applies only within the lexical scope of the consent gate:
+
+\begin{lstlisting}[caption={Scoped consent}]
+only if okay "Process payment of {amount}?" {
+  // consent is active here
+  charge_card(user.card, amount)
+}
+// consent has expired; cannot call charge_card
+\end{lstlisting}
+
+Consent can also be revoked mid-scope using the \texttt{revoke
+consent} construct, modeling situations where circumstances change
+during an operation.  This is formalized as a control flow
+exception that unwinds the consent-gated block.
+
+\subsection{Nested Consent and Escalation}
+
+When consent gates nest, the inner gate must independently obtain
+consent, even if the outer gate has already been approved.  This
+models the real-world principle that consenting to one thing does not
+imply consenting to everything it entails:
+
+\begin{lstlisting}[caption={Nested consent gates}]
+only if okay "Migrate user data to new system?" {
+  copy_data(user, new_system)
+  only if okay "Delete original data after migration?" {
+    delete_original(user, old_system)
+  }
+}
+\end{lstlisting}
+
+The user may consent to migration without consenting to deletion.
+This nesting is semantically enforced: the compiler rejects attempts
+to hoist inner consent gates out of outer ones.
+
+% ============================================================================
+% 4. UNITS OF MEASURE
+% ============================================================================
+\section{Units of Measure}
+\label{sec:units}
+
+\subsection{Motivation: Communication, Not Just Safety}
+
+Units of measure in programming languages are typically motivated by
+safety: the Mars Climate Orbiter was lost because of a
+Newton-seconds versus pound-force-seconds confusion; the Ariane~5
+exploded partly due to a conversion error between 64-bit and 16-bit
+representations of a physical quantity~\citep{lions1996ariane}.  These
+are compelling reasons to build dimensional analysis into type systems.
+
+\WokeLang{} shares this safety motivation but extends it with a
+\emph{communicative} one.  Units of measure are not just constraints
+that prevent bugs; they are \emph{documentation} that makes programs
+legible as descriptions of physical and social reality.  When a
+programmer writes:
+
+\begin{lstlisting}[caption={Units as communication}]
+remember distance = 42 measured in km
+remember time = 3.5 measured in hours
+remember speed = distance / time  // inferred: km/hours
+\end{lstlisting}
+
+the units serve as a form of \emph{self-narration}: the code explains
+not just what it computes but what the computation \emph{means} in
+physical terms.  This aligns with \citeauthor{knuth1984literate}'s
+vision of literate programming, extended from prose annotations to the
+type system itself.
+
+\subsection{The Dimensional Type System}
+
+\WokeLang{}'s type system extends Hindley-Milner inference with
+dimensional analysis following \citet{kennedy1997relational}.  Each
+numeric type carries an associated \emph{dimension}, which is an
+element of the free abelian group generated by base dimensions.
+
+\begin{definition}[Dimensions]
+\label{def:dimensions}
+Let $\mathcal{B} = \{L, M, T, I, \Theta, N, J, \ldots\}$ be a set of
+base dimensions (length, mass, time, current, temperature, amount,
+luminous intensity, and user-defined dimensions).  A \emph{dimension}
+is an element of the free abelian group $\mathbb{Z}^{|\mathcal{B}|}$,
+written multiplicatively:
+\[
+  d = L^{a_1} \cdot M^{a_2} \cdot T^{a_3} \cdots
+\]
+The dimension of a dimensionless quantity is the identity element
+$\mathbf{1}$.
+\end{definition}
+
+\begin{definition}[Dimensioned Types]
+\label{def:dim-types}
+A \emph{dimensioned type} is a pair $\unitty{\tau, d}$ where $\tau$
+is a numeric type (\texttt{Int}, \texttt{Float}, \texttt{Decimal})
+and $d$ is a dimension.  The typing rules for arithmetic operations
+respect dimensional algebra:
+\begin{mathpar}
+  \inferrule{
+    \Gamma \vdash e_1 : \unitty{\tau, d_1} \\
+    \Gamma \vdash e_2 : \unitty{\tau, d_2}
+  }{
+    \Gamma \vdash e_1 + e_2 : \unitty{\tau, d_1}
+  }\;\text{if } d_1 = d_2
+  \and
+  \inferrule{
+    \Gamma \vdash e_1 : \unitty{\tau, d_1} \\
+    \Gamma \vdash e_2 : \unitty{\tau, d_2}
+  }{
+    \Gamma \vdash e_1 \times e_2 : \unitty{\tau, d_1 \cdot d_2}
+  }
+  \and
+  \inferrule{
+    \Gamma \vdash e_1 : \unitty{\tau, d_1} \\
+    \Gamma \vdash e_2 : \unitty{\tau, d_2}
+  }{
+    \Gamma \vdash e_1 \div e_2 : \unitty{\tau, d_1 \cdot d_2^{-1}}
+  }
+\end{mathpar}
+\end{definition}
+
+\subsection{User-Defined Dimensions}
+
+Beyond SI base units, \WokeLang{} allows user-defined dimensions for
+domain-specific quantities:
+
+\begin{lstlisting}[caption={User-defined dimensions}]
+type Currency is dimension
+type UserCount is dimension
+
+remember revenue = 50000 measured in Currency
+remember users = 1200 measured in UserCount
+remember arpu = revenue / users  // Currency/UserCount
+\end{lstlisting}
+
+This is particularly useful in domains where informal ``units'' are
+pervasive but rarely tracked: dollars per user, requests per second,
+students per classroom.  Making these units explicit turns tribal
+knowledge into type-checked documentation.
+
+\subsection{Integration with Consent Gates}
+
+The dimensional type system interacts with consent gates in a subtle
+way.  Certain unit conversions may themselves be consent-gated,
+particularly when the conversion involves a loss of precision or a
+change of meaning:
+
+\begin{lstlisting}[caption={Consent-gated conversion}]
+remember precise_value = 3.14159265 measured in radians
+// Lossy conversion requires consent
+only if okay "Convert to degrees (loses precision)?" {
+  remember approx = precise_value as degrees
+}
+\end{lstlisting}
+
+This models the real-world principle that unit conversions are not
+always innocent: converting between coordinate systems, currency
+denominations, or medical units can introduce errors that have ethical
+consequences.
+
+% ============================================================================
+% 5. GRATITUDE BLOCKS
+% ============================================================================
+\section{Gratitude Blocks}
+\label{sec:gratitude}
+
+\subsection{The Attribution Problem}
+
+Open source software depends on the unpaid labor of maintainers whose
+contributions are systematically
+undervalued~\citep{eghbal2020working}.  Attribution in current
+practice is handled through comments, \texttt{CONTRIBUTORS} files,
+commit histories, and social conventions---none of which are visible
+to the compiler, queryable at runtime, or auditable by automated
+tools.
+
+\WokeLang{} introduces \emph{gratitude blocks} to make attribution a
+first-class, executable construct:
+
+\begin{lstlisting}[caption={Gratitude block}]
+thanks to {
+  "Alice Chen"       -> "Designed the consent protocol"
+  "Bob Martinez"     -> "Fixed the race condition in gate resolution"
+  "Fatima Al-Rashid" -> "Reviewed the formal semantics"
+}
+
+to resolve_consent(gate) ->
+  // implementation that benefited from all three contributions
+  ...
+\end{lstlisting}
+
+\subsection{Semantics of Gratitude}
+
+A gratitude block is not a comment.  It is a program construct with
+runtime semantics: when a gratitude block is evaluated, it emits
+\emph{attribution events} that are recorded in the program's
+attribution graph.
+
+\begin{definition}[Attribution Graph]
+\label{def:attr-graph}
+The attribution graph $G = (V, E)$ is a directed graph where:
+\begin{itemize}
+  \item Vertices $V = V_P \cup V_C$ are partitioned into
+    \emph{person vertices} $V_P$ (contributors) and \emph{code
+    vertices} $V_C$ (modules, functions, blocks).
+  \item Edges $E \subseteq V_P \times V_C \times \Sigma^*$ are
+    labeled with attribution descriptions.
+\end{itemize}
+The graph is accumulated during program execution and can be queried
+at any point via the standard library:
+\end{definition}
+
+\begin{lstlisting}[caption={Querying the attribution graph}]
+remember contributors = attribution.query("resolve_consent")
+for each person in contributors {
+  say("{person.name}: {person.contribution}")
+}
+\end{lstlisting}
+
+\subsection{Attribution Propagation}
+
+When a function $f$ calls a function $g$ that contains a gratitude
+block, the attribution edges from $g$ are transitively visible from
+$f$.  This models the reality that when you use a library, you
+benefit from the work of its contributors even if you never see their
+names:
+
+\begin{lstlisting}[caption={Transitive attribution}]
+// In module authentication.woke
+thanks to { "Priya Sharma" -> "Implemented TOTP" }
+to verify_totp(code, secret) -> ...
+
+// In module login.woke
+to login(user, code) ->
+  // Priya's contribution is transitively attributed
+  if verify_totp(code, user.secret) { ... }
+
+// Query: attribution.transitive("login") includes Priya
+\end{lstlisting}
+
+\subsection{Social and Institutional Implications}
+
+The attribution graph has implications beyond individual programs.
+Organizations can aggregate attribution data across projects to
+understand contribution patterns, identify unacknowledged labor, and
+make invisible work visible.  Package managers can surface attribution
+information alongside dependency trees, so that \texttt{install
+http-server} also shows you who built the foundations you depend on.
+
+This is, explicitly, a \emph{political} design choice.  We believe
+that programming languages should make it easy to acknowledge the work
+of others, not because acknowledgment is technically necessary (the
+code runs either way) but because it is \emph{ethically necessary} in
+a field that systematically undervalues maintenance, documentation,
+and invisible labor~\citep{star1999ethnography,eghbal2020working}.
+
+% ============================================================================
+% 6. EMPATHY ANNOTATIONS
+% ============================================================================
+\section{Empathy Annotations}
+\label{sec:empathy}
+
+\subsection{The Confidence Gap}
+
+Code review is a social process~\citep{rigby2013convergent}.
+Reviewers attempt to understand not just \emph{what} the code does but
+\emph{how confident the author is} in their implementation.  This
+confidence information is typically conveyed through social signals:
+the tone of the pull request description, the number of ``TODO''
+comments, the developer's reputation, informal conversations.  None of
+this is captured in the code itself.
+
+\WokeLang{} introduces \emph{empathy annotations}, a metadata system
+that allows developers to attach confidence and emotional context
+directly to code:
+
+\begin{lstlisting}[caption={Empathy annotations}]
+@feeling(confident=true)
+to add(a, b) -> a + b
+
+@feeling(confident=false, note="Edge case handling is fragile")
+to parse_date(input) ->
+  // I think this handles leap years correctly...
+  ...
+
+@feeling(anxious=true, note="First time writing concurrent code")
+to worker_pool(size) ->
+  ...
+\end{lstlisting}
+
+\subsection{Annotation Semantics}
+
+Empathy annotations are structured metadata, not free-form comments.
+They have a defined schema:
+
+\begin{lstlisting}[caption={Empathy annotation schema}]
+type Feeling is {
+  confident: Boolean       // author's confidence in correctness
+  anxious: Boolean         // author's anxiety about the code
+  experimental: Boolean    // this is exploratory/prototype code
+  needs_review: Boolean    // explicitly requesting review
+  note: String             // free-form context
+}
+\end{lstlisting}
+
+Because the schema is fixed, empathy annotations are \emph{queryable}
+by tooling.  A code review tool can:
+
+\begin{itemize}[leftmargin=*]
+  \item Surface all functions marked \texttt{confident=false} for
+    priority review.
+  \item Highlight code marked \texttt{anxious=true} with additional
+    context about the author's concerns.
+  \item Track the ratio of confident to unconfident code as a project
+    health metric.
+  \item Generate reports showing where uncertainty concentrates in the
+    codebase.
+\end{itemize}
+
+\subsection{Making the Implicit Explicit}
+
+The design of empathy annotations is motivated by a simple
+observation: developers already have feelings about their code.  They
+already know which functions are solid and which are held together with
+hope and string.  But this knowledge is locked in their heads, shared
+only through informal channels that disappear when the developer
+leaves the project.
+
+By making this knowledge explicit and structured, empathy annotations
+create what \citet{star1999ethnography} calls
+\emph{infrastructure}---the boring, invisible substrate that makes
+coordination possible.  The annotation \texttt{@feeling(confident=%
+false)} is a tiny act of vulnerability that enables a more honest,
+more efficient review process.
+
+\subsection{Potential for Misuse}
+
+We acknowledge the potential for empathy annotations to be misused.
+An employer might penalize developers who mark code as unconfident.  A
+culture of toxic positivity might pressure developers to mark
+everything as confident.  These are real risks, and they are not
+solvable by technical means alone.
+
+Our position is that the \emph{option} to express uncertainty is
+better than the absence of that option.  A language that provides no
+way to say ``I am not sure about this'' is not neutral; it implicitly
+demands confidence, or at least the performance of confidence.
+\WokeLang{} provides the affordance; institutional and cultural
+practices must ensure it is used well.  We discuss this further in
+\S\ref{sec:discussion}.
+
+% ============================================================================
+% 7. THE HUMAN-READABLE DESIGN PHILOSOPHY
+% ============================================================================
+\section{The Human-Readable Design Philosophy}
+\label{sec:philosophy}
+
+\subsection{Language as Communication Medium}
+
+\WokeLang{}'s syntax is designed to read like prose.  This is not a
+superficial aesthetic choice; it reflects a specific theory of what
+programming languages \emph{are}.
+
+Most programming language design treats syntax as a notation for
+expressing computations to a machine, optimized for precision and
+conciseness.  This is a reasonable design goal, but it is not the only
+one.  \WokeLang{} treats syntax as a \emph{communication medium}
+between humans, optimized for readability, clarity, and the expression
+of intent.
+
+\begin{lstlisting}[caption={Human-readable syntax examples}]
+// Function definition reads as English prose
+to calculate_shipping(weight, destination) ->
+  remember base_cost = 5.99 measured in USD
+  remember per_kg = 2.50 measured in USD/kg
+  return base_cost + (weight * per_kg)
+
+// Pipelines read left to right
+remember result = raw_data
+  then validate
+  then normalize
+  then analyze
+
+// Pattern matching reads as case analysis
+match user.role with
+  when "admin"     -> grant_full_access(user)
+  when "moderator" -> grant_mod_access(user)
+  otherwise        -> grant_read_access(user)
+\end{lstlisting}
+
+\subsection{Design Principles}
+
+The human-readable design philosophy is guided by several principles:
+
+\paragraph{Principle 1: Keywords as Verbs.}
+Where most languages use symbols (\texttt{=>}, \texttt{|>},
+\texttt{::}), \WokeLang{} prefers English words (\texttt{then},
+\texttt{when}, \texttt{measured in}).  This slightly increases
+verbosity in exchange for dramatically increased readability for
+non-experts and for future maintainers encountering the code for the
+first time.
+
+\paragraph{Principle 2: Declarations as Statements of Intent.}
+\texttt{remember x = 5} is more evocative than \texttt{let x = 5} or
+\texttt{var x = 5}.  The word ``remember'' frames variable binding
+not as a machine operation (allocating a slot) but as a cognitive act
+(committing a fact to memory).  The word \texttt{to} before function
+definitions frames the function as a \emph{purpose}: ``to add $a$ and
+$b$'' rather than ``function add.''
+
+\paragraph{Principle 3: Pipelines as Narratives.}
+The \texttt{then} keyword creates data pipelines that read as
+narratives: ``take the raw data, \emph{then} validate it, \emph{then}
+normalize it, \emph{then} analyze it.''  This mirrors how humans
+describe processes in everyday language, reducing the cognitive
+distance between a natural-language description and its implementation.
+
+\paragraph{Principle 4: Consent as Conversation.}
+The \texttt{only if okay} construct frames potentially destructive
+operations as conversations between the program and its operator.
+This is deliberate: the phrasing invites the reader to imagine the
+ethical deliberation that should accompany the operation.
+
+\subsection{Readability as Ethical Choice}
+
+We argue that readability is not merely a convenience but an
+\emph{ethical} property of programming languages.  Code that is
+difficult to read is code that is difficult to review, difficult to
+audit, and difficult to hold accountable.  Obscure code concentrates
+power in the hands of those who can decode it.  Readable code
+distributes power more broadly, enabling more people to participate in
+the scrutiny and governance of software systems.
+
+This position is informed by \citet{nissenbaum2004privacy}'s concept
+of \emph{contextual integrity}: the ethical assessment of a technology
+depends not just on what it does but on how it fits into existing
+social contexts and norms.  A programming language that is legible
+only to specialists creates a context in which software governance is
+delegated to specialists.  A language that is legible to a broader
+audience creates a context in which governance can be more broadly
+shared.
+
+% ============================================================================
+% 8. FORMAL SEMANTICS
+% ============================================================================
+\section{Formal Semantics}
+\label{sec:semantics}
+
+We now provide operational semantics for the consent gate calculus,
+which is the most technically novel aspect of \WokeLang{}'s design.
+
+\subsection{Syntax}
+
+We define a core calculus $\lambda_{\consent}$ that extends the simply
+typed lambda calculus with consent gates:
+
+\begin{definition}[Syntax of $\lambda_{\consent}$]
+\label{def:syntax}
+\begin{align*}
+  e ::=\; & x \mid \lambda x:\tau.\, e \mid e_1\; e_2 \mid n \mid
+    e_1 + e_2 \mid \\
+    & \mathbf{only\_if\_okay}\; s\; e \mid
+    \mathbf{consent\_handler}\; h\; e \mid \\
+    & \mathbf{attr}\; p\; d\; e \mid
+    \mathbf{feel}\; f\; e \\[0.5em]
+  v ::=\; & \lambda x:\tau.\, e \mid n \mid
+    \mathbf{granted} \mid \mathbf{denied} \\[0.5em]
+  \tau ::=\; & \mathsf{Int} \mid \mathsf{String} \mid
+    \mathsf{Bool} \mid \tau_1 \to \tau_2 \mid
+    \unitty{\tau, d} \mid \\
+    & \mathsf{Consent}[\tau] \\[0.5em]
+  h ::=\; & \mathsf{interactive} \mid
+    \mathsf{policy}(P) \mid
+    \mathsf{auto}(\granted) \mid
+    \mathsf{auto}(\denied)
+\end{align*}
+\end{definition}
+
+The key new forms are $\mathbf{only\_if\_okay}\; s\; e$, which
+creates a consent gate with prompt string $s$ guarding expression $e$;
+and $\mathbf{consent\_handler}\; h\; e$, which installs a consent
+handler $h$ for the duration of $e$.
+
+\subsection{Typing Rules}
+
+\begin{definition}[Typing for consent gates]
+\label{def:consent-typing}
+We extend the typing judgment $\Gamma; \Sigma \vdash e : \tau$ with a
+consent context $\Sigma$ that tracks whether we are inside a consent
+handler.
+
+\begin{mathpar}
+  \inferrule[\textsc{T-Consent}]{
+    \Gamma; \Sigma \vdash e : \tau \\
+    s : \mathsf{String}
+  }{
+    \Gamma; \Sigma \vdash
+    \mathbf{only\_if\_okay}\; s\; e : \mathsf{Consent}[\tau]
+  }
+  \and
+  \inferrule[\textsc{T-Handler}]{
+    \Gamma; \Sigma, h \vdash e : \tau
+  }{
+    \Gamma; \Sigma \vdash
+    \mathbf{consent\_handler}\; h\; e : \tau
+  }
+  \and
+  \inferrule[\textsc{T-Attr}]{
+    \Gamma; \Sigma \vdash e : \tau \\
+    p : \mathsf{String} \\
+    d : \mathsf{String}
+  }{
+    \Gamma; \Sigma \vdash
+    \mathbf{attr}\; p\; d\; e : \tau
+  }
+  \and
+  \inferrule[\textsc{T-Feel}]{
+    \Gamma; \Sigma \vdash e : \tau \\
+    f : \mathsf{Feeling}
+  }{
+    \Gamma; \Sigma \vdash
+    \mathbf{feel}\; f\; e : \tau
+  }
+\end{mathpar}
+\end{definition}
+
+The type $\mathsf{Consent}[\tau]$ wraps the result type to indicate
+that the value may not be available (if consent is denied).  This
+forces callers to handle the possibility of denial.
+
+\subsection{Operational Semantics}
+
+\begin{definition}[Small-step semantics for consent gates]
+\label{def:consent-opsem}
+We define the reduction relation $\langle e, H, A \rangle \step
+\langle e', H', A' \rangle$ where $H$ is the consent handler stack
+and $A$ is the attribution accumulator.
+
+\begin{mathpar}
+  \inferrule[\textsc{E-ConsentGranted}]{
+    H = h :: H' \\
+    h(s) = \granted
+  }{
+    \langle \mathbf{only\_if\_okay}\; s\; e,\; H,\; A \rangle
+    \step
+    \langle e,\; H,\; A \cdot \mathsf{log}(\granted, s, t) \rangle
+  }
+  \and
+  \inferrule[\textsc{E-ConsentDenied}]{
+    H = h :: H' \\
+    h(s) = \denied
+  }{
+    \langle \mathbf{only\_if\_okay}\; s\; e,\; H,\; A \rangle
+    \step
+    \langle \denied,\; H,\; A \cdot \mathsf{log}(\denied, s, t) \rangle
+  }
+  \and
+  \inferrule[\textsc{E-Handler}]{
+    \langle e,\; h :: H,\; A \rangle \step
+    \langle e',\; h :: H,\; A' \rangle
+  }{
+    \langle \mathbf{consent\_handler}\; h\; e,\; H,\; A \rangle
+    \step
+    \langle \mathbf{consent\_handler}\; h\; e',\; H,\; A' \rangle
+  }
+  \and
+  \inferrule[\textsc{E-HandlerDone}]{
+    v \text{ is a value}
+  }{
+    \langle \mathbf{consent\_handler}\; h\; v,\; H,\; A \rangle
+    \step
+    \langle v,\; H,\; A \rangle
+  }
+  \and
+  \inferrule[\textsc{E-Attr}]{
+    \langle e,\; H,\; A \cdot (p, d) \rangle \step
+    \langle e',\; H,\; A' \rangle
+  }{
+    \langle \mathbf{attr}\; p\; d\; e,\; H,\; A \rangle \step
+    \langle e',\; H,\; A' \rangle
+  }
+  \and
+  \inferrule[\textsc{E-Feel}]{
+    \langle e,\; H,\; A \rangle \step
+    \langle e',\; H,\; A' \rangle
+  }{
+    \langle \mathbf{feel}\; f\; e,\; H,\; A \rangle \step
+    \langle e',\; H,\; A' \rangle
+  }
+\end{mathpar}
+\end{definition}
+
+Note that the \textsc{E-Feel} rule is an identity on the computation:
+empathy annotations do not affect the operational behavior of the
+program.  They are ``phantom'' metadata---present in the source,
+erased at runtime, but available to static analysis tools.  The
+attribution rule \textsc{E-Attr} accumulates attribution edges in $A$
+but similarly does not affect the computational result.
+
+\subsection{Properties}
+
+\begin{theorem}[Progress]
+\label{thm:progress}
+If $\Gamma; \Sigma \vdash e : \tau$ and $e$ is not a value, then
+there exists $e'$, $H'$, $A'$ such that $\langle e, H, A \rangle
+\step \langle e', H', A' \rangle$, provided $H$ contains a handler
+for any consent effect in $e$.
+\end{theorem}
+
+\begin{proof}[Proof sketch]
+By structural induction on the typing derivation.  The critical case
+is \textsc{T-Consent}: the typing rule ensures that consent-gated
+expressions occur within a handler context ($\Sigma$ is non-empty),
+and the handler $h$ is total (it returns either $\granted$ or
+$\denied$ for any string $s$), so one of \textsc{E-ConsentGranted} or
+\textsc{E-ConsentDenied} always applies.
+\end{proof}
+
+\begin{theorem}[Preservation]
+\label{thm:preservation}
+If $\Gamma; \Sigma \vdash e : \tau$ and $\langle e, H, A \rangle
+\step \langle e', H', A' \rangle$, then $\Gamma; \Sigma \vdash e' :
+\tau'$ where $\tau' = \tau$ or $\tau' = \mathsf{Consent}[\tau]$
+resolves to $\tau$ (in the granted case) or $\denied$ (in the denied
+case).
+\end{theorem}
+
+\begin{proof}[Proof sketch]
+By structural induction on the reduction.  The consent cases follow
+from the handler totality and the fact that the body of a consent gate
+is typed at $\tau$ while the gate as a whole is typed at
+$\mathsf{Consent}[\tau]$.
+\end{proof}
+
+\begin{theorem}[Consent Non-Evasion]
+\label{thm:non-evasion}
+In a well-typed $\lambda_{\consent}$ program, it is not possible to
+evaluate the body of a consent gate without the corresponding consent
+handler producing either $\granted$ or $\denied$ and logging the
+decision.
+\end{theorem}
+
+\begin{proof}[Proof sketch]
+The only reduction rules that step into a consent gate body are
+\textsc{E-ConsentGranted} and \textsc{E-ConsentDenied}, both of which
+require a handler response and produce a log entry in $A$.  The typing
+rule \textsc{T-Consent} ensures that the body is not directly
+accessible outside the gate construct.  Exhaustiveness of the handler
+(it must return $\granted$ or $\denied$) ensures a decision is always
+made.
+\end{proof}
+
+This theorem is the core safety property of the consent system: you
+cannot execute ethically weighted code without going through the
+deliberation step.
+
+% ============================================================================
+% 9. IMPLEMENTATION
+% ============================================================================
+\section{Implementation}
+\label{sec:implementation}
+
+\subsection{Architecture}
+
+\WokeLang{} is implemented as a multi-stage compiler with the
+following pipeline:
+
+\begin{enumerate}
+  \item \textbf{Lexer} (Rust, using \texttt{logos}): Tokenizes
+    \WokeLang{} source files into a stream of typed tokens, handling
+    the natural-language keywords (\texttt{remember}, \texttt{to},
+    \texttt{only if okay}, etc.) and empathy annotations.
+
+  \item \textbf{Parser} (Rust, hand-written recursive descent):
+    Produces an abstract syntax tree (AST) that includes consent gate
+    nodes, gratitude blocks, unit annotations, and empathy metadata as
+    first-class AST nodes (not comments or pragmas).
+
+  \item \textbf{Type Checker} (Rust): Implements Hindley-Milner type
+    inference extended with dimensional analysis and consent effects.
+    The type checker maintains a consent context stack and rejects
+    programs with unhandled consent effects.
+
+  \item \textbf{Bytecode Compiler} (Rust): Compiles the typed AST
+    to a custom bytecode format (\texttt{.wbc}) with dedicated
+    opcodes for consent gates, attribution emission, and unit
+    propagation.
+
+  \item \textbf{Virtual Machine} (Rust): A stack-based VM that
+    executes the bytecode, with a pluggable consent handler interface
+    and a built-in attribution accumulator.
+
+  \item \textbf{WebAssembly Backend} (planned): Compilation to WASM
+    for browser-based execution, with consent handlers bridged to the
+    host environment via the WASM component model.
+\end{enumerate}
+
+\subsection{Consent Handler Interface}
+
+The runtime provides a trait-based consent handler interface:
+
+\begin{lstlisting}[language=Rust,caption={Consent handler trait (Rust)}]
+/// Consent handler determines how consent gates are resolved.
+pub trait ConsentHandler {
+    /// Called when a consent gate is encountered.
+    /// Returns true (granted) or false (denied).
+    fn request_consent(&mut self, prompt: &str) -> bool;
+
+    /// Called after consent resolution for audit logging.
+    fn log_decision(
+        &self, prompt: &str, granted: bool, timestamp: u64
+    );
+}
+
+pub struct InteractiveHandler;  // prompts user via stdin
+pub struct PolicyHandler { policy: PolicyFile; }  // consults file
+pub struct TestHandler { responses: Vec<bool>; }  // for testing
+\end{lstlisting}
+
+This design allows the same \WokeLang{} program to run in different
+consent contexts without modification: interactively during
+development, policy-driven in production, auto-approving in tests.
+
+\subsection{Attribution Accumulator}
+
+The attribution accumulator is implemented as an append-only log that
+records every attribution event during program execution.  It can be
+serialized to JSON, queried at runtime through the standard library,
+and aggregated across multiple program runs.
+
+\begin{lstlisting}[language=Rust,caption={Attribution event structure}]
+/// A single attribution event in the program trace.
+pub struct AttributionEvent {
+    pub contributor: String,
+    pub description: String,
+    pub source_location: SourceSpan,
+    pub timestamp: u64,
+    pub transitive_from: Option<Vec<AttributionEvent>>,
+}
+\end{lstlisting}
+
+\subsection{Empathy Annotations in the Toolchain}
+
+Empathy annotations are preserved in the AST but erased during
+bytecode compilation (they have no runtime semantics).  They are
+available to:
+
+\begin{itemize}[leftmargin=*]
+  \item The \textbf{LSP server}, which can display confidence
+    information inline in the editor.
+  \item The \textbf{code review integration}, which surfaces
+    \texttt{confident=false} annotations in pull request views.
+  \item The \textbf{project health dashboard}, which aggregates
+    empathy metadata across the codebase to show confidence
+    distribution.
+  \item The \textbf{documentation generator}, which can include
+    empathy information in API docs (``the author notes that edge case
+    handling in this function is fragile'').
+\end{itemize}
+
+\subsection{Performance Considerations}
+
+Consent gates introduce a potential runtime cost: each gate invokes
+the consent handler, which may involve I/O (user prompts, policy file
+reads, network calls).  We mitigate this through:
+
+\begin{itemize}[leftmargin=*]
+  \item \textbf{Consent caching:} Within a single execution, repeated
+    consent requests with the same prompt can be cached (configurable
+    per handler).
+  \item \textbf{Batch consent:} Multiple consent gates can be
+    collected and presented as a single batch prompt.
+  \item \textbf{Compile-time consent elimination:} When the consent
+    handler is statically known (e.g., \texttt{auto(granted)} in test
+    mode), the compiler can eliminate the consent gate entirely.
+\end{itemize}
+
+Attribution accumulation has negligible overhead (append-only log).
+Empathy annotations have zero runtime cost (erased at compilation).
+Unit checking is entirely compile-time; the runtime representation of
+\texttt{5 measured in km} is simply the integer \texttt{5}.
+
+% ============================================================================
+% 10. DISCUSSION
+% ============================================================================
+\section{Discussion}
+\label{sec:discussion}
+
+\subsection{Should Programming Languages Encode Values?}
+
+The most fundamental objection to \WokeLang{} is that programming
+languages should be \emph{value-neutral}---that they should provide
+general-purpose computation facilities and leave ethical questions to
+the humans using them.
+
+We reject this framing on both descriptive and normative grounds.
+\emph{Descriptively}, no programming language is value-neutral.  C
+values programmer autonomy over safety.  Rust values memory safety
+over ease of use.  Python values readability over performance.  These
+are not accidental properties; they are conscious design
+choices that shape how millions of people write software.  The
+question is not whether a language embeds values, but \emph{which}
+values it embeds and whether it does so \emph{transparently}.
+
+\emph{Normatively}, we argue that language designers have a
+responsibility to consider the ethical implications of their design
+choices, just as architects have a responsibility to consider the
+social implications of building
+design~\citep{winner1980artifacts,flanagan2005values}.  A language
+that makes it syntactically trivial to delete user data and
+syntactically impossible to acknowledge the contributor who wrote the
+deletion safeguards has made an ethical choice---it has just made it
+invisibly.
+
+\subsection{The Risk of Ethical Theater}
+
+A legitimate concern is that consent gates, gratitude blocks, and
+empathy annotations could become empty rituals---box-checking
+exercises that provide the \emph{appearance} of ethical deliberation
+without the substance.  A developer might write \texttt{only if okay
+"Delete?"} and then configure the consent handler to auto-approve
+everything.
+
+This risk is real, but it is not unique to \WokeLang{}.  Type systems
+can be circumvented with unsafe casts.  Tests can be written to pass
+without testing anything.  Code reviews can be rubber-stamped.  The
+existence of a mechanism does not guarantee its good-faith use; it
+only \emph{creates the possibility}.
+
+What \WokeLang{} provides that comments and institutional processes do
+not is \emph{auditability}.  Because consent decisions are logged,
+auto-approve configurations are \emph{visible} in the audit trail.
+Because gratitude blocks are executable, their absence is detectable
+by tooling.  Because empathy annotations have a fixed schema, their
+distribution across a codebase is measurable.  These properties do not
+prevent bad faith, but they make it harder to sustain invisibly.
+
+\subsection{Cultural and Linguistic Considerations}
+
+\WokeLang{}'s English keywords raise questions about linguistic
+inclusion.  The choice to use English words like ``remember,'' ``only
+if okay,'' and ``thanks to'' privileges English speakers.  We
+acknowledge this limitation and note that it is shared by virtually
+every mainstream programming language.
+
+Future work could explore localization of keywords (as
+AppleScript once attempted) or a keyword-agnostic intermediate
+representation that could be presented in different natural languages.
+We consider this important but orthogonal to the core semantic
+contributions of this paper.
+
+\subsection{Relationship to Regulation}
+
+\WokeLang{}'s consent gates have a natural affinity with regulatory
+frameworks like the GDPR's requirement for informed
+consent~\citep{gdpr2016} and the EU AI Act's requirements for
+human oversight of high-risk AI
+systems~\citep{euaiact2024}.  A consent-gated
+codebase provides built-in evidence of deliberation that may be
+relevant to regulatory compliance.
+
+We caution, however, against treating consent gates as a
+\emph{compliance tool}.  Their purpose is to create affordances for
+ethical deliberation, not to generate audit trails for regulators.
+If consent gates are adopted primarily for compliance, they risk
+becoming exactly the kind of empty ritual we warned against in the
+previous section.
+
+\subsection{Scalability of Consent}
+
+A practical concern is \emph{consent fatigue}: if too many operations
+are consent-gated, developers will habituate to the prompts and
+approve without deliberation.  This mirrors the well-known
+``alert fatigue'' problem in
+security~\citep{anderson2008security,akhawe2013alice}.
+
+\WokeLang{} mitigates this through design guidance: consent gates
+should be reserved for operations with genuine ethical weight, not for
+routine computations.  The type system helps enforce this by making
+consent a visible cost in function signatures, creating social
+pressure to use it judiciously.  We also note that consent fatigue is
+a problem with \emph{overuse}, not with the concept itself; the
+appropriate number of consent gates in a program is a design judgment,
+not a technical parameter.
+
+% ============================================================================
+% 11. RELATED WORK
+% ============================================================================
+\section{Related Work}
+\label{sec:related}
+
+\subsection{Units of Measure in Type Systems}
+
+F\#'s units of measure~\citep{syme2003units,kennedy1997relational}
+are the most mature implementation of dimensional analysis in a
+mainstream language.  \WokeLang{} follows F\#'s approach in modeling
+dimensions as elements of a free abelian group but differs in
+treating units as primarily \emph{communicative} rather than
+primarily \emph{preventive}.  Frink~\citep{frink2002} takes an
+even more aggressive approach, making unit conversion a fundamental
+operation.
+
+\subsection{Natural Language Programming}
+
+Inform~7~\citep{nelson2006natural} demonstrated that natural language
+syntax can work in a production language, at least for the domain of
+interactive fiction.  AppleScript~\citep{cook2007applescript}
+attempted English-like syntax for scripting but was widely criticized
+for being neither natural enough to read easily nor formal enough to
+write without consulting documentation.  \WokeLang{}'s approach is
+more modest: it uses English keywords where they aid readability
+(\texttt{remember}, \texttt{then}, \texttt{only if okay}) but retains
+conventional syntax for expressions and types.
+
+\subsection{Values-Sensitive Design in Software}
+
+\citet{friedman2013value} provide the theoretical framework for VSD.
+\citet{flanagan2005values} specifically address values in
+design and argue that technology is never value-neutral.
+\citet{nissenbaum2004privacy} introduces contextual integrity as a
+framework for evaluating privacy-affecting technologies.
+\citet{winner1980artifacts} famously argued that artifacts have
+politics.  \WokeLang{} is, to our knowledge, the first programming
+language to explicitly engage with this literature in its design.
+
+\subsection{Feminist HCI}
+
+\citet{bardzell2010feminist} established the field of feminist HCI.
+\citet{light2011hci} extended it to consider how design can challenge
+existing power structures.  \citet{dantec2009infrastructuring}
+explored how design can create the conditions for participation.
+\WokeLang{}'s emphasis on readability, attribution, and the
+expression of uncertainty draws on these perspectives.
+
+\subsection{Ethics in Computing}
+
+\citet{green2019good} warns against ``ethics-washing'' in AI, where
+ethical language is adopted without substantive change.
+\citet{selbst2019fairness} identifies ``abstraction traps'' in
+fairness research, where formal definitions of fairness fail to
+capture social context.  \WokeLang{} takes these warnings seriously:
+consent gates are not a solution to ethical problems in computing,
+but an \emph{affordance} that makes ethical deliberation cheaper and
+more visible.
+
+\subsection{Capability-Based Security}
+
+The capability model~\citep{dennis1966programming,miller2006robust}
+mediates access through unforgeable tokens.  Object-capability
+languages like E~\citep{miller2006robust} and
+Pony~\citep{clebsch2015deny} integrate capabilities into the type
+system.  Consent gates complement capabilities by adding a
+deliberative dimension that pure capability systems lack (see
+\S\ref{sec:consent}).
+
+\subsection{Algebraic Effects and Handlers}
+
+The consent effect system draws on algebraic effects and
+handlers~\citep{plotkin2009handlers,bauer2015programming}, as
+implemented in languages like
+Eff~\citep{bauer2012programming},
+Koka~\citep{leijen2017type}, and
+Multicore OCaml~\citep{sivaramakrishnan2021retrofitting}.  Our
+contribution is not a new effect system but a novel \emph{application}
+of effects to model ethical deliberation.
+
+\subsection{Literate Programming and Documentation}
+
+\citet{knuth1984literate} introduced literate programming as the
+idea that programs should be written for human readers.
+\citet{gabriel1996patterns} explored the relationship between
+software and architecture.  Doctest systems in
+Python~\citep{doctest2004} and Rust blur the line between
+documentation and executable code.  \WokeLang{}'s gratitude blocks
+and empathy annotations push further: they make social metadata
+(attribution, confidence) part of the program itself, not just its
+documentation.
+
+\subsection{Emotional and Social Aspects of Programming}
+
+\citet{graziotin2014happy} found that happy developers are more
+productive.  \citet{muller2015stuck} studied how developers experience
+and cope with being stuck.  \citet{ford2015paradise} examined how
+affective states influence debugging.  Empathy annotations make these
+well-studied emotional dimensions of programming \emph{visible} in
+the source code, creating a bridge between the social science of
+software development and the artifacts it studies.
+
+% ============================================================================
+% 12. FUTURE WORK
+% ============================================================================
+\section{Future Work}
+\label{sec:future}
+
+Several directions warrant further investigation:
+
+\paragraph{Consent Delegation Protocols.}
+In large systems, consent decisions may need to be delegated across
+organizational boundaries.  We plan to explore formal protocols for
+consent delegation, drawing on work in distributed authorization.
+
+\paragraph{Attribution and Supply Chain Security.}
+The attribution graph could be extended to support software supply
+chain integrity, connecting gratitude blocks to SBOM (Software Bill of
+Materials) generation and provenance tracking.
+
+\paragraph{Empirical Evaluation.}
+We have not yet conducted user studies to evaluate whether consent
+gates, gratitude blocks, and empathy annotations improve ethical
+deliberation, attribution practices, or code review quality in
+practice.  Controlled experiments with professional developers are a
+priority.
+
+\paragraph{Formal Verification.}
+The $\lambda_{\consent}$ calculus presented here covers a simplified
+core language.  Extending the formal treatment to cover the full
+\WokeLang{} language---including higher-order functions, mutation,
+concurrency, and module systems---is ongoing work.  We are exploring
+mechanized proofs in Idris~2~\citep{brady2021idris2} to ensure the
+correctness of our compiler's consent tracking.
+
+\paragraph{Localization.}
+Exploring multilingual keyword support while maintaining semantic
+precision is an open design challenge.
+
+\paragraph{Integration with Existing Ecosystems.}
+\WokeLang{}'s consent gates and attribution system could be exposed
+as a library or language extension for existing languages (e.g., a
+Rust procedural macro, an OCaml PPX extension), lowering the barrier
+to adoption.
+
+% ============================================================================
+% 13. CONCLUSION
+% ============================================================================
+\section{Conclusion}
+\label{sec:conclusion}
+
+Programming languages are not neutral.  They embody assumptions about
+what matters, and those assumptions shape the software that billions
+of people depend on.  For fifty years, the dominant assumption has
+been that what matters is computation---correctness, performance,
+modularity.  These are real and important values, and we do not
+propose to abandon them.
+
+But they are not the only values that matter.  Consent matters:
+software should not perform ethically significant actions without
+deliberation.  Attribution matters: the people who build and maintain
+software deserve acknowledgment.  Confidence matters: the implicit
+social signals that pervade code review should be made explicit and
+queryable.  Readability matters: code is a communication medium
+between humans, and clarity is an ethical property, not just an
+aesthetic one.
+
+\WokeLang{} demonstrates that these values can be embedded in
+language semantics without sacrificing the computational power that
+programmers expect.  Consent gates create mandatory deliberation
+points with formal safety guarantees.  Units of measure communicate
+physical meaning through the type system.  Gratitude blocks make
+attribution executable and auditable.  Empathy annotations surface
+the social reality of development.  All of this is grounded in a
+human-readable syntax designed for communication between people.
+
+We do not claim that \WokeLang{} solves the ethical problems of
+computing.  Technical solutions to ethical problems are a category
+error~\citep{green2019good}.  What \WokeLang{} does is make ethical
+deliberation \emph{syntactically cheap} and \emph{semantically
+meaningful}, creating affordances where current languages create blind
+spots.  If programming languages shape how programmers think, then a
+language that makes consent, attribution, and care visible in its
+syntax may---modestly, incrementally---shape programmers to think
+about those things more often.
+
+That seems worth doing.
+
+% ============================================================================
+% REFERENCES
+% ============================================================================
+\bibliographystyle{plainnat}
+
+\begin{thebibliography}{99}
+
+\bibitem[Akhawe and Felt(2013)]{akhawe2013alice}
+Akhawe, D. and Felt, A.~P. (2013).
+\newblock Alice in warningland: A large-scale field study of browser security
+  warning effectiveness.
+\newblock In \emph{Proceedings of the 22nd USENIX Security Symposium}, pages
+  257--272.
+
+\bibitem[Anderson(2008)]{anderson2008security}
+Anderson, R. (2008).
+\newblock \emph{Security Engineering: A Guide to Building Dependable
+  Distributed Systems}.
+\newblock Wiley, 2nd edition.
+
+\bibitem[Bardzell(2010)]{bardzell2010feminist}
+Bardzell, S. (2010).
+\newblock Feminist {HCI}: Taking stock and outlining an agenda for design.
+\newblock In \emph{Proceedings of the SIGCHI Conference on Human Factors in
+  Computing Systems}, CHI '10, pages 1301--1310. ACM.
+
+\bibitem[Bauer and Pretnar(2012)]{bauer2012programming}
+Bauer, A. and Pretnar, M. (2012).
+\newblock Programming with algebraic effects and handlers.
+\newblock \emph{Journal of Logical and Algebraic Methods in Programming},
+  84(1):108--123.
+
+\bibitem[Bauer and Pretnar(2015)]{bauer2015programming}
+Bauer, A. and Pretnar, M. (2015).
+\newblock An effect system for algebraic effects and handlers.
+\newblock \emph{Logical Methods in Computer Science}, 10(4).
+
+\bibitem[Brady(2021)]{brady2021idris2}
+Brady, E. (2021).
+\newblock Idris~2: Quantitative type theory in practice.
+\newblock In \emph{Proceedings of the 35th European Conference on
+  Object-Oriented Programming (ECOOP)}.
+
+\bibitem[Clebsch et~al.(2015)]{clebsch2015deny}
+Clebsch, S., Drossopoulou, S., Blessing, S., and McNeil, A. (2015).
+\newblock Deny capabilities for safe, fast actors.
+\newblock In \emph{Proceedings of the 5th International Workshop on Programming
+  Based on Actors, Agents, and Decentralized Control}, pages 1--12.
+
+\bibitem[Cook(2007)]{cook2007applescript}
+Cook, W.~R. (2007).
+\newblock {AppleScript}.
+\newblock In \emph{Proceedings of the Third ACM SIGPLAN Conference on History
+  of Programming Languages}, HOPL III, pages 1--21.
+
+\bibitem[Czaplicki(2012)]{czaplicki2012elm}
+Czaplicki, E. (2012).
+\newblock Elm: Concurrent {FRP} for functional {GUIs}.
+\newblock Senior thesis, Harvard University.
+
+\bibitem[{Dantec and DiSalvo}(2013)]{dantec2009infrastructuring}
+{Le~Dantec}, C.~A. and DiSalvo, C. (2013).
+\newblock Infrastructuring and the formation of publics in participatory
+  design.
+\newblock \emph{Social Studies of Science}, 43(2):241--264.
+
+\bibitem[Dennis and Van~Horn(1966)]{dennis1966programming}
+Dennis, J.~B. and Van~Horn, E.~C. (1966).
+\newblock Programming semantics for multiprogrammed computations.
+\newblock \emph{Communications of the ACM}, 9(3):143--155.
+
+\bibitem[{Doctest}(2004)]{doctest2004}
+{Python Software Foundation} (2004).
+\newblock doctest --- Test interactive {Python} examples.
+\newblock Python standard library documentation.
+
+\bibitem[Eghbal(2020)]{eghbal2020working}
+Eghbal, N. (2020).
+\newblock \emph{Working in Public: The Making and Maintenance of Open Source
+  Software}.
+\newblock Stripe Press.
+
+\bibitem[{European Parliament}(2016)]{gdpr2016}
+{European Parliament} (2016).
+\newblock Regulation ({EU}) 2016/679 ({General Data Protection Regulation}).
+\newblock \emph{Official Journal of the European Union}, L119:1--88.
+
+\bibitem[{European Parliament}(2024)]{euaiact2024}
+{European Parliament} (2024).
+\newblock Regulation ({EU}) 2024/1689 ({Artificial Intelligence Act}).
+\newblock \emph{Official Journal of the European Union}, L2024/1689.
+
+\bibitem[Flanagan et~al.(2005)]{flanagan2005values}
+Flanagan, M., Howe, D.~C., and Nissenbaum, H. (2005).
+\newblock Values at play: Design tradeoffs in socially-oriented game design.
+\newblock In \emph{Proceedings of the SIGCHI Conference on Human Factors in
+  Computing Systems}, CHI '05, pages 751--760.
+
+\bibitem[Ford et~al.(2015)]{ford2015paradise}
+Ford, D., Parnin, C., and Hearst, M.~A. (2015).
+\newblock Paradise unplugged: Identifying themes for understanding decision
+  making and affect among developers.
+\newblock In \emph{Proceedings of the 8th International Workshop on Cooperative
+  and Human Aspects of Software Engineering}, pages 16--19.
+
+\bibitem[Friedman(1996)]{friedman1996value}
+Friedman, B. (1996).
+\newblock Value-sensitive design.
+\newblock \emph{interactions}, 3(6):16--23.
+
+\bibitem[Friedman et~al.(2013)]{friedman2013value}
+Friedman, B., Kahn, P.~H., and Borning, A. (2013).
+\newblock Value sensitive design and information systems.
+\newblock In Doorn, N., Schuurbiers, D., van~de~Poel, I., and Gorman, M.~E.,
+  editors, \emph{Early Engagement and New Technologies: Opening Up the
+  Laboratory}, pages 55--95. Springer.
+
+\bibitem[{Frink}(2002)]{frink2002}
+Eliasen, A. (2002).
+\newblock Frink: A practical calculating tool and programming language.
+\newblock \url{https://frinklang.org/}.
+
+\bibitem[Gabriel(1996)]{gabriel1996patterns}
+Gabriel, R.~P. (1996).
+\newblock \emph{Patterns of Software: Tales from the Software Community}.
+\newblock Oxford University Press.
+
+\bibitem[Gilligan(1982)]{gilligan1982different}
+Gilligan, C. (1982).
+\newblock \emph{In a Different Voice: Psychological Theory and Women's
+  Development}.
+\newblock Harvard University Press.
+
+\bibitem[Graziotin et~al.(2014)]{graziotin2014happy}
+Graziotin, D., Wang, X., and Abrahamsson, P. (2014).
+\newblock Happy software developers solve problems better: Psychological
+  measurements in empirical software engineering.
+\newblock \emph{PeerJ}, 2:e289.
+
+\bibitem[Green(2019)]{green2019good}
+Green, B. (2019).
+\newblock ``{Good}'' isn't good enough.
+\newblock In \emph{AI for Social Good Workshop, NeurIPS 2019}.
+
+\bibitem[Held(2006)]{held2006ethics}
+Held, V. (2006).
+\newblock \emph{The Ethics of Care: Personal, Political, and Global}.
+\newblock Oxford University Press.
+
+\bibitem[Iverson(1980)]{iverson1980notation}
+Iverson, K.~E. (1980).
+\newblock Notation as a tool of thought.
+\newblock \emph{Communications of the ACM}, 23(8):444--465.
+
+\bibitem[Kennedy(1997)]{kennedy1997relational}
+Kennedy, A.~J. (1997).
+\newblock Relational parametricity and units of measure.
+\newblock In \emph{Proceedings of the 24th ACM SIGPLAN-SIGACT Symposium on
+  Principles of Programming Languages}, POPL '97, pages 442--455.
+
+\bibitem[Knuth(1984)]{knuth1984literate}
+Knuth, D.~E. (1984).
+\newblock Literate programming.
+\newblock \emph{The Computer Journal}, 27(2):97--111.
+
+\bibitem[Ko et~al.(2017)]{ko2017past}
+Ko, A.~J., Abraham, R., Beckwith, L., Blackwell, A., Burnett, M.,~M., Erwig,
+  Scaffidi, C., Lawrance, J., Lieberman, H., Myers, B., Rosson, M.~B.,
+  Rothermel, G., Shaw, M., and Wiedenbeck, S. (2017).
+\newblock The state of the art in end-user software engineering.
+\newblock \emph{ACM Computing Surveys}, 43(3):21:1--21:44.
+
+\bibitem[Krishnamurthi and Lerner(2019)]{krishnamurthi2019pyret}
+Krishnamurthi, S. and Lerner, B.~S. (2019).
+\newblock Pyret: A principled, pragmatic, and teachable programming language.
+\newblock \emph{SPLASH-E}, pages 1--10.
+
+\bibitem[Leijen(2017)]{leijen2017type}
+Leijen, D. (2017).
+\newblock Type directed compilation of row-typed algebraic effects.
+\newblock In \emph{Proceedings of the 44th ACM SIGPLAN Symposium on Principles
+  of Programming Languages}, POPL '17, pages 486--499.
+
+\bibitem[Light(2011)]{light2011hci}
+Light, A. (2011).
+\newblock {HCI} as heterodoxy: Technologies of identity and the queering of
+  interaction with computers.
+\newblock \emph{Interacting with Computers}, 23(5):430--438.
+
+\bibitem[Lions(1996)]{lions1996ariane}
+Lions, J.-L. (1996).
+\newblock {Ariane 5 Flight 501} failure: Report by the inquiry board.
+\newblock Technical report, European Space Agency.
+
+\bibitem[Miller(2006)]{miller2006robust}
+Miller, M.~S. (2006).
+\newblock \emph{Robust Composition: Towards a Unified Approach to Access
+  Control and Concurrency Control}.
+\newblock PhD thesis, Johns Hopkins University.
+
+\bibitem[M{\"u}ller and Fritz(2015)]{muller2015stuck}
+M{\"u}ller, S.~C. and Fritz, T. (2015).
+\newblock Stuck and frustrated or in flow and happy: Sensing developers'
+  emotions and progress.
+\newblock In \emph{Proceedings of the 37th International Conference on Software
+  Engineering}, pages 688--699.
+
+\bibitem[Nelson(2006)]{nelson2006natural}
+Nelson, G. (2006).
+\newblock Natural language, semantic analysis and interactive fiction.
+\newblock \emph{IF Theory Reader}, pages 141--188.
+
+\bibitem[Nissenbaum(2004)]{nissenbaum2004privacy}
+Nissenbaum, H. (2004).
+\newblock Privacy as contextual integrity.
+\newblock \emph{Washington Law Review}, 79(1):119--158.
+
+\bibitem[Plotkin and Power(2009)]{plotkin2009handlers}
+Plotkin, G. and Power, J. (2009).
+\newblock Handlers of algebraic effects.
+\newblock In \emph{Programming Languages and Systems}, LNCS 5502, pages
+  80--94. Springer.
+
+\bibitem[Resnick et~al.(2009)]{resnick2009scratch}
+Resnick, M., Maloney, J., Monroy-Hern{\'a}ndez, A., Rusk, N., Eastmond, E.,
+  Brennan, K., Millner, A., Rosenbaum, E., Silver, J., Silverman, B., and
+  Kafai, Y. (2009).
+\newblock Scratch: Programming for all.
+\newblock \emph{Communications of the ACM}, 52(11):60--67.
+
+\bibitem[Rigby and Bird(2013)]{rigby2013convergent}
+Rigby, P.~C. and Bird, C. (2013).
+\newblock Convergent contemporary software peer review practices.
+\newblock In \emph{Proceedings of the 2013 9th Joint Meeting on Foundations of
+  Software Engineering}, pages 202--212.
+
+\bibitem[Sapir(1929)]{sapir1929status}
+Sapir, E. (1929).
+\newblock The status of linguistics as a science.
+\newblock \emph{Language}, 5(4):207--214.
+
+\bibitem[Selbst et~al.(2019)]{selbst2019fairness}
+Selbst, A.~D., Boyd, D., Friedler, S.~A., Venkatasubramanian, S., and
+  Vertesi, J. (2019).
+\newblock Fairness and abstraction in sociotechnical systems.
+\newblock In \emph{Proceedings of the Conference on Fairness, Accountability,
+  and Transparency}, FAT* '19, pages 59--68.
+
+\bibitem[Sivaramakrishnan et~al.(2021)]{sivaramakrishnan2021retrofitting}
+Sivaramakrishnan, K., Dolan, S., White, L., Kelly, T., Jaffer, S., and
+  Madhavapeddy, A. (2021).
+\newblock Retrofitting effect handlers onto {OCaml}.
+\newblock In \emph{Proceedings of the 42nd ACM SIGPLAN International Conference
+  on Programming Language Design and Implementation}, PLDI '21, pages 206--221.
+
+\bibitem[Star(1999)]{star1999ethnography}
+Star, S.~L. (1999).
+\newblock The ethnography of infrastructure.
+\newblock \emph{American Behavioral Scientist}, 43(3):377--391.
+
+\bibitem[Syme(2003)]{syme2003units}
+Syme, D. (2003).
+\newblock The {F\#} approach to units of measure.
+\newblock In \emph{Trends in Functional Programming}, volume 6, pages 1--16.
+
+\bibitem[Trist(1981)]{trist1981evolution}
+Trist, E. (1981).
+\newblock The evolution of socio-technical systems.
+\newblock \emph{Occasional Paper}, Ontario Quality of Working Life Centre.
+
+\bibitem[Whorf(1956)]{whorf1956language}
+Whorf, B.~L. (1956).
+\newblock \emph{Language, Thought, and Reality: Selected Writings of Benjamin
+  Lee Whorf}.
+\newblock MIT Press.
+
+\bibitem[Winner(1980)]{winner1980artifacts}
+Winner, L. (1980).
+\newblock Do artifacts have politics?
+\newblock \emph{Daedalus}, 109(1):121--136.
+
+\end{thebibliography}
+
+% ============================================================================
+% APPENDIX
+% ============================================================================
+\appendix
+
+\section{Complete WokeLang Example}
+\label{app:complete-example}
+
+The following program demonstrates all four novel constructs in a
+realistic scenario: a user data export service that must handle
+consent, units, attribution, and confidence.
+
+\begin{lstlisting}[caption={Complete WokeLang program demonstrating all four constructs},label=lst:complete]
+// SPDX-License-Identifier: PMPL-1.0-or-later
+// A user data export service with ethical scaffolding
+
+module DataExport
+
+thanks to {
+  "Maria Gonzalez"   -> "Designed the GDPR-compliant export format"
+  "James Okonkwo"    -> "Implemented the streaming pipeline"
+  "Li Wei"           -> "Security review and consent protocol"
+}
+
+// Units for data sizes and transfer rates
+remember chunk_size = 1024 measured in KB
+remember max_export = 5 measured in GB
+remember timeout = 30 measured in seconds
+
+@feeling(confident=true)
+to validate_export_request(user, format) ->
+  remember allowed_formats = ["json", "csv", "xml"]
+  match format with
+    when f if f in allowed_formats -> true
+    otherwise -> false
+
+@feeling(confident=false, note="Rate limiting logic needs review")
+to check_rate_limit(user) ->
+  remember recent = db.count_exports(user.id, 24 measured in hours)
+  return recent < 10
+
+to export_user_data(user, format) ->
+  // Validate inputs (no consent needed - read-only check)
+  if not validate_export_request(user, format) {
+    return error("Invalid export format")
+  }
+
+  // Consent gate: this operation accesses personal data
+  only if okay "Export all personal data for {user.name}?" {
+    remember data = db.query_user_data(user.id)
+
+    // Pipeline: process the data through stages
+    remember result = data
+      then filter_sensitive_fields
+      then format_as(format)
+      then compress
+
+    // Nested consent: sharing data externally is a separate decision
+    only if okay "Send export to {user.email}?" {
+      email.send(user.email, result)
+      audit_log.record("export_sent", user.id, timestamp())
+    }
+
+    return result
+  }
+
+@feeling(anxious=true, note="Deletion is irreversible")
+to delete_after_export(user) ->
+  only if okay "PERMANENTLY delete all data for {user.name}?" {
+    only if okay "This action is IRREVERSIBLE. Confirm deletion?" {
+      db.delete_user(user.id)
+      audit_log.record("user_deleted", user.id, timestamp())
+      return "Data deleted"
+    }
+  }
+\end{lstlisting}
+
+\section{Consent Gate Derivation Example}
+\label{app:derivation}
+
+We show a complete typing derivation for a simple consent-gated
+expression.  Let $\Gamma = \{x : \mathsf{Int}\}$, $\Sigma = \{h\}$,
+and consider the expression:
+
+\[
+  e = \mathbf{consent\_handler}\; h\;
+  (\mathbf{only\_if\_okay}\; \text{``delete?''}\; (x + 1))
+\]
+
+\begin{mathpar}
+  \inferrule[\textsc{T-Handler}]{
+    \inferrule[\textsc{T-Consent}]{
+      \inferrule[\textsc{T-Add}]{
+        \inferrule[\textsc{T-Var}]{x : \mathsf{Int} \in \Gamma}
+          {\Gamma; \Sigma, h \vdash x : \mathsf{Int}}
+        \\
+        \inferrule[\textsc{T-Int}]{}
+          {\Gamma; \Sigma, h \vdash 1 : \mathsf{Int}}
+      }
+      {\Gamma; \Sigma, h \vdash x + 1 : \mathsf{Int}}
+    }
+    {\Gamma; \Sigma, h \vdash
+      \mathbf{only\_if\_okay}\; \text{``delete?''}\; (x + 1) :
+      \mathsf{Consent}[\mathsf{Int}]}
+  }
+  {\Gamma; \Sigma \vdash e : \mathsf{Consent}[\mathsf{Int}]}
+\end{mathpar}
+
+\section{Comparison of Language Features}
+\label{app:comparison}
+
+\begin{table}[h]
+\centering
+\caption{Feature comparison with related languages}
+\label{tab:feature-comparison}
+\small
+\begin{tabular}{@{}lcccccc@{}}
+\toprule
+Feature & \WokeLang{} & F\# & Inform~7 & Elm & Pyret & Pony \\
+\midrule
+Units of measure         & \checkmark & \checkmark &            &            &            &            \\
+Natural-lang keywords    & \checkmark &            & \checkmark &            &            &            \\
+Consent gates            & \checkmark &            &            &            &            &            \\
+Attribution blocks       & \checkmark &            &            &            &            &            \\
+Empathy annotations      & \checkmark &            &            &            &            &            \\
+Helpful error messages   & \checkmark &            &            & \checkmark & \checkmark &            \\
+Integrated testing       &            &            &            &            & \checkmark &            \\
+Capability-based types   &            &            &            &            &            & \checkmark \\
+Effect system            & Partial    &            &            &            &            & \checkmark \\
+HM type inference        & \checkmark & \checkmark &            & \checkmark &            &            \\
+WASM target              & Planned    &            &            & \checkmark &            &            \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\end{document}

@@ -153,9 +153,9 @@ wokelang/
 ├── .tool-versions      # asdf tool versions (rust, deno, idris2, zig)
 ├── AI.a2ml             # AI assistant instructions
 ├── Cargo.toml          # Rust dependencies
-├── ECOSYSTEM.scm       # Ecosystem relationships
-├── META.scm            # Architectural decisions
-├── STATE.scm           # Current project state
+├── .machine_readable/6a2/ECOSYSTEM.a2ml       # Ecosystem relationships
+├── .machine_readable/6a2/META.a2ml            # Architectural decisions
+├── .machine_readable/6a2/STATE.a2ml           # Current project state
 └── README.adoc         # This file
 
 ## 🛠 Development
