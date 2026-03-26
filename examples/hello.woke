@@ -1,0 +1,47 @@
+// A simple WokeLang program demonstrating key features
+
+thanks to {
+    "Rust Community" → "For the amazing language tooling";
+    "You" → "For trying WokeLang";
+}
+
+@enthusiastic
+to greet(name: String) → String {
+    hello "Starting the greeting ritual";
+
+    remember message = "Hello, " + name + "!";
+
+    give back message;
+
+    goodbye "Greeting complete";
+}
+
+to main() {
+    // Consent-based camera access
+    only if okay "camera_access" {
+        remember photo = takePhoto();
+    }
+
+    // Safe error handling
+    attempt safely {
+        remember result = riskyOperation();
+    } or reassure "Don't worry, we handled that gracefully";
+
+    // Loop with natural language
+    repeat 3 times {
+        greet("World");
+    }
+
+    // Pattern matching
+    decide based on mood {
+        "happy" → { celebrate(); }
+        "sad" → { comfort(); }
+        _ → { acknowledge(); }
+    }
+}
+
+// Worker for background tasks
+worker dataProcessor {
+    remember data = fetchData();
+    processInBackground(data);
+}

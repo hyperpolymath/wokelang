@@ -1,0 +1,14 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+// Conformance: when/otherwise conditional branching
+
+to main() {
+    remember x = 10;
+
+    when x > 0 {
+        print("positive");
+    } otherwise {
+        print("non-positive");
+    }
+
+    give back 0;
+}

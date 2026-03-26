@@ -1,0 +1,249 @@
+(* WokeLang Common Library - Core Operations *)
+(* Implementation of aggregate-library specifications *)
+(* https://github.com/hyperpolymath/aggregate-library *)
+
+#care on;
+
+(* ===================================================================== *)
+(* ARITHMETIC OPERATIONS (5)                                             *)
+(* Spec: aggregate-library/specs/arithmetic/                             *)
+(* ===================================================================== *)
+
+(* add: Number, Number -> Number *)
+(* Computes the sum of two numbers *)
+(* Properties: Commutative, Associative, Identity element = 0 *)
+to add(a: Number, b: Number) -> Number {
+    give back a + b;
+}
+
+(* subtract: Number, Number -> Number *)
+(* Computes the difference of two numbers *)
+(* Properties: Non-commutative, Right identity = 0 *)
+to subtract(a: Number, b: Number) -> Number {
+    give back a - b;
+}
+
+(* multiply: Number, Number -> Number *)
+(* Computes the product of two numbers *)
+(* Properties: Commutative, Associative, Identity element = 1, Zero element = 0 *)
+to multiply(a: Number, b: Number) -> Number {
+    give back a * b;
+}
+
+(* divide: Number, Number -> Result[Number, String] *)
+(* Computes the quotient of two numbers *)
+(* WokeLang uses Result type for safe division *)
+@careful(level=3)
+to divide(a: Number, b: Number) -> Result[Number, String] {
+    when b == 0 {
+        give back Oops("Division by zero is not allowed");
+    }
+    give back Okay(a / b);
+}
+
+(* modulo: Number, Number -> Result[Number, String] *)
+(* Computes the remainder of division *)
+(* Properties: Related to division by a = b * (a / b) + (a % b) *)
+@careful(level=3)
+to modulo(a: Number, b: Number) -> Result[Number, String] {
+    when b == 0 {
+        give back Oops("Modulo by zero is not allowed");
+    }
+    give back Okay(a % b);
+}
+
+(* ===================================================================== *)
+(* COMPARISON OPERATIONS (6)                                             *)
+(* Spec: aggregate-library/specs/comparison/                             *)
+(* ===================================================================== *)
+
+(* less_than: A, A -> Bool *)
+(* Returns true if a < b *)
+(* Properties: Irreflexive, Asymmetric, Transitive *)
+to less_than(a: Comparable, b: Comparable) -> Bool {
+    give back a < b;
+}
+
+(* greater_than: A, A -> Bool *)
+(* Returns true if a > b *)
+(* Properties: Irreflexive, Asymmetric, Transitive *)
+to greater_than(a: Comparable, b: Comparable) -> Bool {
+    give back a > b;
+}
+
+(* equal: A, A -> Bool *)
+(* Returns true if a == b *)
+(* Properties: Reflexive, Symmetric, Transitive *)
+to equal(a: Comparable, b: Comparable) -> Bool {
+    give back a == b;
+}
+
+(* not_equal: A, A -> Bool *)
+(* Returns true if a != b *)
+(* Properties: Negation of equal *)
+to not_equal(a: Comparable, b: Comparable) -> Bool {
+    give back a != b;
+}
+
+(* less_equal: A, A -> Bool *)
+(* Returns true if a <= b *)
+(* Properties: Reflexive, Antisymmetric, Transitive *)
+to less_equal(a: Comparable, b: Comparable) -> Bool {
+    give back a <= b;
+}
+
+(* greater_equal: A, A -> Bool *)
+(* Returns true if a >= b *)
+(* Properties: Reflexive, Antisymmetric, Transitive *)
+to greater_equal(a: Comparable, b: Comparable) -> Bool {
+    give back a >= b;
+}
+
+(* ===================================================================== *)
+(* LOGICAL OPERATIONS (3)                                                *)
+(* Spec: aggregate-library/specs/logical/                                *)
+(* ===================================================================== *)
+
+(* logical_and: Bool, Bool -> Bool *)
+(* Returns true if both arguments are true *)
+(* Properties: Commutative, Associative, Identity = true, Zero = false *)
+to logical_and(a: Bool, b: Bool) -> Bool {
+    give back a and b;
+}
+
+(* logical_or: Bool, Bool -> Bool *)
+(* Returns true if at least one argument is true *)
+(* Properties: Commutative, Associative, Identity = false, Zero = true *)
+to logical_or(a: Bool, b: Bool) -> Bool {
+    give back a or b;
+}
+
+(* logical_not: Bool -> Bool *)
+(* Returns the negation of the argument *)
+(* Properties: Involution (not(not(a)) = a) *)
+to logical_not(a: Bool) -> Bool {
+    give back not a;
+}
+
+(* ===================================================================== *)
+(* STRING OPERATIONS (3)                                                 *)
+(* Spec: aggregate-library/specs/string/                                 *)
+(* ===================================================================== *)
+
+(* concat: String, String -> String *)
+(* Concatenates two strings *)
+(* Properties: Associative, Identity element = "" *)
+to concat(a: String, b: String) -> String {
+    give back a + b;
+}
+
+(* string_length: String -> Int *)
+(* Returns the length of a string *)
+(* Properties: Non-negative, length("") = 0 *)
+to string_length(s: String) -> Int {
+    give back len(s);
+}
+
+(* substring: String, Int, Int -> Result[String, String] *)
+(* Extracts a substring from start index (inclusive) to end index (exclusive) *)
+(* WokeLang uses Result type for safe bounds checking *)
+@careful(level=2)
+to substring(s: String, start: Int, end: Int) -> Result[String, String] {
+    when start < 0 {
+        give back Oops("Start index cannot be negative");
+    }
+    when end < start {
+        give back Oops("End index cannot be less than start index");
+    }
+    when end > len(s) {
+        give back Oops("End index exceeds string length");
+    }
+
+    remember result = "";
+    remember i = start;
+    repeat end - start times {
+        result = result + s[i];
+        i = i + 1;
+    }
+
+    give back Okay(result);
+}
+
+(* ===================================================================== *)
+(* COLLECTION OPERATIONS (4)                                             *)
+(* Spec: aggregate-library/specs/collection/                             *)
+(* ===================================================================== *)
+
+(* map: Collection[A], Function[A -> B] -> Collection[B] *)
+(* Transforms each element of a collection by applying a function *)
+(* Properties: Preserves length, Preserves order, Identity: map(c, id) = c *)
+to map(collection: [A], fn: (A) -> B) -> [B] {
+    remember result = [];
+    repeat len(collection) times {
+        result = append(result, fn(collection[__i__]));
+    }
+    give back result;
+}
+
+(* filter: Collection[A], Function[A -> Bool] -> Collection[A] *)
+(* Selects elements that satisfy a predicate *)
+(* Properties: Preserves order, length(filter(c, p)) <= length(c) *)
+to filter(collection: [A], predicate: (A) -> Bool) -> [A] {
+    remember result = [];
+    repeat len(collection) times {
+        when predicate(collection[__i__]) {
+            result = append(result, collection[__i__]);
+        }
+    }
+    give back result;
+}
+
+(* fold: Collection[A], B, Function[B, A -> B] -> B *)
+(* Reduces a collection to a single value (left-to-right) *)
+(* Also known as: reduce, accumulate, aggregate *)
+to fold(collection: [A], initial: B, fn: (B, A) -> B) -> B {
+    remember accumulator = initial;
+    repeat len(collection) times {
+        accumulator = fn(accumulator, collection[__i__]);
+    }
+    give back accumulator;
+}
+
+(* contains: Collection[A], A -> Bool *)
+(* Checks if an element exists in the collection *)
+(* Properties: contains([], x) = false for all x *)
+to contains(collection: [A], element: A) -> Bool {
+    repeat len(collection) times {
+        when collection[__i__] == element {
+            give back true;
+        }
+    }
+    give back false;
+}
+
+(* ===================================================================== *)
+(* CONDITIONAL OPERATION (1)                                             *)
+(* Spec: aggregate-library/specs/conditional/                            *)
+(* ===================================================================== *)
+
+(* if_then_else: Bool, A, A -> A *)
+(* Conditional branching - returns first value if true, second otherwise *)
+(* Note: WokeLang typically uses 'when/otherwise' syntax instead *)
+to if_then_else(condition: Bool, then_value: A, else_value: A) -> A {
+    when condition {
+        give back then_value;
+    } otherwise {
+        give back else_value;
+    }
+}
+
+(* ===================================================================== *)
+(* GRATITUDE                                                             *)
+(* ===================================================================== *)
+
+thanks to {
+    "aggregate-library" → "Defining common operations across seven languages";
+    "Seven Language Communities" → "WokeLang, Duet, Eclexia, Oblíbený, RT-Lang, Phronesis, Julia the Viper";
+    "Functional Programming" → "Foundational patterns for collection operations";
+    "Mathematical Foundations" → "Properties that ensure correctness";
+}

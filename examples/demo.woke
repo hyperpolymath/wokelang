@@ -1,0 +1,92 @@
+// WokeLang Demo - showing interpreter capabilities
+
+thanks to {
+    "You" -> "For trying WokeLang!";
+}
+
+to greet(name: String) -> String {
+    hello "Starting greeting";
+    remember message = "Hello, " + name + "!";
+    give back message;
+    goodbye "Greeting complete";
+}
+
+to factorial(n: Int) -> Int {
+    when n <= 1 {
+        give back 1;
+    }
+    give back n * factorial(n - 1);
+}
+
+to fizzbuzz(n: Int) {
+    repeat n times {
+        remember i = n;
+        when i % 15 == 0 {
+            print("FizzBuzz");
+        } otherwise {
+            when i % 3 == 0 {
+                print("Fizz");
+            } otherwise {
+                when i % 5 == 0 {
+                    print("Buzz");
+                } otherwise {
+                    print(i);
+                }
+            }
+        }
+    }
+}
+
+to main() {
+    // Basic output
+    print("Welcome to WokeLang!");
+    print("");
+
+    // Function calls
+    remember greeting = greet("World");
+    print(greeting);
+    print("");
+
+    // Arithmetic and loops
+    print("Counting to 5:");
+    remember count = 0;
+    repeat 5 times {
+        count = count + 1;
+        print(count);
+    }
+    print("");
+
+    // Conditionals
+    remember x = 10;
+    when x > 5 {
+        print("x is greater than 5");
+    } otherwise {
+        print("x is 5 or less");
+    }
+    print("");
+
+    // Pattern matching
+    remember mood = "happy";
+    decide based on mood {
+        "happy" -> { print("Celebrating!"); }
+        "sad" -> { print("Sending comfort..."); }
+        _ -> { print("Acknowledged."); }
+    }
+    print("");
+
+    // Recursive function
+    print("Factorial of 5:");
+    remember fact = factorial(5);
+    print(fact);
+    print("");
+
+    // Arrays
+    remember numbers = [1, 2, 3, 4, 5];
+    print("Array:");
+    print(numbers);
+    print("Length:");
+    print(len(numbers));
+
+    print("");
+    print("WokeLang demo complete!");
+}

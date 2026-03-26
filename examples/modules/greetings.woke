@@ -1,0 +1,21 @@
+// Greetings module - provides greeting utilities
+
+share sayHello;
+share sayGoodbye;
+share greet;
+
+to sayHello(name: String) {
+    print("Hello, " + name + "!");
+}
+
+to sayGoodbye(name: String) {
+    print("Goodbye, " + name + "!");
+}
+
+to greet(name: String, formal: Bool) {
+    when formal {
+        print("Good day, " + name + ".");
+    } otherwise {
+        print("Hey, " + name + "!");
+    }
+}

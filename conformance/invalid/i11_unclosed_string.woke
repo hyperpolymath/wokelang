@@ -1,0 +1,7 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+// Conformance (INVALID): unterminated string literal
+
+to main() {
+    remember x = "hello;
+    give back 0;
+}

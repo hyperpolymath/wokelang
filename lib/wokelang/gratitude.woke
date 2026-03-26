@@ -1,0 +1,246 @@
+(* WokeLang Specific Library - Gratitude Utilities *)
+(* Acknowledgment patterns and attribution management *)
+
+#care on;
+
+(* ===================================================================== *)
+(* GRATITUDE TYPES                                                       *)
+(* ===================================================================== *)
+
+type Acknowledgment = {
+    recipient: String,
+    reason: String,
+    category: AckCategory,
+    date: Int
+};
+
+type AckCategory =
+    Inspiration       (* Ideas and concepts *)
+  | Implementation    (* Code and technical help *)
+  | Design            (* Architecture and patterns *)
+  | Testing           (* Quality assurance *)
+  | Documentation     (* Docs and examples *)
+  | Community         (* Community contributions *)
+  | Mentorship        (* Teaching and guidance *)
+  | Funding           (* Financial support *)
+  | Infrastructure ;  (* Hosting, CI/CD, etc. *)
+
+type GratitudeRegistry = {
+    acknowledgments: [Acknowledgment],
+    projectName: String,
+    maintainers: [String]
+};
+
+(* ===================================================================== *)
+(* GRATITUDE REGISTRY MANAGEMENT                                         *)
+(* ===================================================================== *)
+
+to createGratitudeRegistry(projectName: String, maintainers: [String]) -> GratitudeRegistry {
+    give back {
+        acknowledgments: [],
+        projectName: projectName,
+        maintainers: maintainers
+    };
+}
+
+@mindful(importance=8)
+to acknowledge(registry: GratitudeRegistry, recipient: String, reason: String, category: AckCategory) -> GratitudeRegistry {
+    hello "Recording acknowledgment for: " + recipient;
+
+    remember ack = {
+        recipient: recipient,
+        reason: reason,
+        category: category,
+        date: now()
+    };
+
+    give back {
+        acknowledgments: append(registry.acknowledgments, ack),
+        projectName: registry.projectName,
+        maintainers: registry.maintainers
+    };
+
+    goodbye "Acknowledgment recorded";
+}
+
+to getAcknowledgmentsByCategory(registry: GratitudeRegistry, category: AckCategory) -> [Acknowledgment] {
+    give back filter(registry.acknowledgments, to (ack: Acknowledgment) -> Bool {
+        give back ack.category == category;
+    });
+}
+
+(* ===================================================================== *)
+(* ATTRIBUTION GENERATION                                                *)
+(* ===================================================================== *)
+
+@thoughtful(consideration=5)
+to generateCredits(registry: GratitudeRegistry) -> String {
+    hello "Generating credits";
+
+    remember credits = "=== " + registry.projectName + " Credits ===\n\n";
+
+    (* Maintainers *)
+    credits = credits + "Maintainers:\n";
+    repeat len(registry.maintainers) times {
+        credits = credits + "  • " + registry.maintainers[__i__] + "\n";
+    }
+    credits = credits + "\n";
+
+    (* Group by category *)
+    remember categories = [
+        [Inspiration, "Inspiration"],
+        [Implementation, "Implementation"],
+        [Design, "Design"],
+        [Testing, "Testing"],
+        [Documentation, "Documentation"],
+        [Community, "Community"],
+        [Mentorship, "Mentorship"],
+        [Funding, "Funding"],
+        [Infrastructure, "Infrastructure"]
+    ];
+
+    repeat len(categories) times {
+        remember cat = categories[__i__][0];
+        remember catName = categories[__i__][1];
+        remember acks = getAcknowledgmentsByCategory(registry, cat);
+
+        when len(acks) > 0 {
+            credits = credits + catName + ":\n";
+            repeat len(acks) times {
+                remember ack = acks[__j__];
+                credits = credits + "  • " + ack.recipient + " - " + ack.reason + "\n";
+            }
+            credits = credits + "\n";
+        }
+    }
+
+    credits = credits + "================================\n";
+
+    give back credits;
+
+    goodbye "Credits generated";
+}
+
+to generateThankYouNote(recipient: String, reason: String) -> String {
+    give back "Dear " + recipient + ",\n\n" +
+              "Thank you for your contribution to this project.\n" +
+              "Your " + reason + " has made a meaningful difference.\n\n" +
+              "With gratitude,\n" +
+              "The WokeLang Community";
+}
+
+(* ===================================================================== *)
+(* DEPENDENCY ACKNOWLEDGMENT                                             *)
+(* ===================================================================== *)
+
+type DependencyAck = {
+    name: String,
+    version: String,
+    license: String,
+    authors: [String],
+    purpose: String
+};
+
+@mindful(importance=7)
+to acknowledgeDependency(name: String, version: String, license: String, authors: [String], purpose: String) -> DependencyAck {
+    give back {
+        name: name,
+        version: version,
+        license: license,
+        authors: authors,
+        purpose: purpose
+    };
+}
+
+to generateLicenseNotices(deps: [DependencyAck]) -> String {
+    hello "Generating license notices";
+
+    remember notice = "=== Third-Party License Notices ===\n\n";
+
+    repeat len(deps) times {
+        remember dep = deps[__i__];
+        notice = notice + dep.name + " v" + dep.version + "\n";
+        notice = notice + "  License: " + dep.license + "\n";
+        notice = notice + "  Authors: " + join(dep.authors, ", ") + "\n";
+        notice = notice + "  Used for: " + dep.purpose + "\n\n";
+    }
+
+    notice = notice + "===================================\n";
+
+    give back notice;
+
+    goodbye "License notices generated";
+}
+
+(* ===================================================================== *)
+(* GRATITUDE EXPRESSIONS                                                 *)
+(* ===================================================================== *)
+
+to expressGratitude(level: Int) -> String {
+    give back decide based on level {
+        1 -> { give back "Thanks"; }
+        2 -> { give back "Thank you"; }
+        3 -> { give back "Many thanks"; }
+        4 -> { give back "Thank you so much"; }
+        5 -> { give back "I deeply appreciate this"; }
+        6 -> { give back "I am truly grateful"; }
+        7 -> { give back "Words cannot express my gratitude"; }
+        8 -> { give back "I am forever indebted"; }
+        9 -> { give back "This means the world to me"; }
+        10 -> { give back "I am overwhelmed with gratitude"; }
+        _ -> { give back "Thank you"; }
+    };
+}
+
+to randomGratitudeQuote() -> String {
+    remember quotes = [
+        "Gratitude turns what we have into enough. - Anonymous",
+        "The roots of all goodness lie in the soil of appreciation. - Dalai Lama",
+        "Feeling gratitude and not expressing it is like wrapping a present and not giving it. - William Arthur Ward",
+        "Gratitude is the healthiest of all human emotions. - Zig Ziglar",
+        "When we give cheerfully and accept gratefully, everyone is blessed. - Maya Angelou"
+    ];
+
+    remember index = random() % len(quotes);
+    give back quotes[index];
+}
+
+(* ===================================================================== *)
+(* CONTRIBUTOR RECOGNITION                                               *)
+(* ===================================================================== *)
+
+type Contributor = {
+    name: String,
+    github: String,
+    contributions: [String],
+    firstContribution: Int,
+    totalContributions: Int
+};
+
+to recognizeContributor(contributor: Contributor) -> String {
+    remember recognition = "🌟 Contributor Spotlight: " + contributor.name + " 🌟\n\n";
+    recognition = recognition + "GitHub: @" + contributor.github + "\n";
+    recognition = recognition + "Total Contributions: " + toString(contributor.totalContributions) + "\n";
+    recognition = recognition + "Areas:\n";
+
+    repeat len(contributor.contributions) times {
+        recognition = recognition + "  • " + contributor.contributions[__i__] + "\n";
+    }
+
+    recognition = recognition + "\n" + expressGratitude(min(contributor.totalContributions, 10)) + "!\n";
+
+    give back recognition;
+}
+
+(* ===================================================================== *)
+(* GRATITUDE BLOCK HELPERS                                               *)
+(* ===================================================================== *)
+
+(* Standard gratitude block for new WokeLang projects *)
+thanks to {
+    "Open Source Community" → "Building on shared knowledge";
+    "Language Designers" → "Inspiring human-centered syntax";
+    "Early Adopters" → "Testing and providing feedback";
+    "Documentation Writers" → "Making learning accessible";
+    "Bug Reporters" → "Helping improve quality";
+}

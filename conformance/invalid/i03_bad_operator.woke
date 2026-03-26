@@ -1,0 +1,7 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+// Conformance (INVALID): invalid operator token
+
+to main() {
+    remember x = 5 <=> 3;
+    give back x;
+}

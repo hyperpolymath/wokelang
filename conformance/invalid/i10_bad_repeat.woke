@@ -1,0 +1,10 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+// Conformance (INVALID): repeat without count
+
+to main() {
+    repeat {
+        print("loop");
+    }
+
+    give back 0;
+}

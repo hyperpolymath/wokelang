@@ -1,0 +1,309 @@
+(* WokeLang Common Library - Collections *)
+(* Higher-order functions for working with collections *)
+
+(* ===================================================================== *)
+(* MAP, FILTER, REDUCE                                                   *)
+(* ===================================================================== *)
+
+to map(arr: [a], f: (a) -> b) -> [b] {
+    hello "Mapping over collection";
+    remember result = [];
+    repeat len(arr) times {
+        result = append(result, f(arr[__i__]));
+    }
+    give back result;
+    goodbye "Map complete";
+}
+
+to filter(arr: [a], predicate: (a) -> Bool) -> [a] {
+    hello "Filtering collection";
+    remember result = [];
+    repeat len(arr) times {
+        when predicate(arr[__i__]) {
+            result = append(result, arr[__i__]);
+        }
+    }
+    give back result;
+    goodbye "Filter complete";
+}
+
+to reduce(arr: [a], initial: b, f: (b, a) -> b) -> b {
+    hello "Reducing collection";
+    remember acc = initial;
+    repeat len(arr) times {
+        acc = f(acc, arr[__i__]);
+    }
+    give back acc;
+    goodbye "Reduce complete";
+}
+
+to reduceRight(arr: [a], initial: b, f: (b, a) -> b) -> b {
+    remember acc = initial;
+    remember i = len(arr) - 1;
+    repeat len(arr) times {
+        acc = f(acc, arr[i]);
+        i = i - 1;
+    }
+    give back acc;
+}
+
+(* ===================================================================== *)
+(* SEARCHING                                                             *)
+(* ===================================================================== *)
+
+to find(arr: [a], predicate: (a) -> Bool) -> Result[a, String] {
+    repeat len(arr) times {
+        when predicate(arr[__i__]) {
+            give back Okay(arr[__i__]);
+        }
+    }
+    give back Oops("No element satisfying predicate found");
+}
+
+to findIndex(arr: [a], predicate: (a) -> Bool) -> Result[Int, String] {
+    repeat len(arr) times {
+        when predicate(arr[__i__]) {
+            give back Okay(__i__);
+        }
+    }
+    give back Oops("No element satisfying predicate found");
+}
+
+to all(arr: [a], predicate: (a) -> Bool) -> Bool {
+    repeat len(arr) times {
+        when not predicate(arr[__i__]) {
+            give back false;
+        }
+    }
+    give back true;
+}
+
+to any(arr: [a], predicate: (a) -> Bool) -> Bool {
+    repeat len(arr) times {
+        when predicate(arr[__i__]) {
+            give back true;
+        }
+    }
+    give back false;
+}
+
+to none(arr: [a], predicate: (a) -> Bool) -> Bool {
+    give back not any(arr, predicate);
+}
+
+(* ===================================================================== *)
+(* TRANSFORMATION                                                        *)
+(* ===================================================================== *)
+
+to flatten(arr: [[a]]) -> [a] {
+    remember result = [];
+    repeat len(arr) times {
+        remember inner = arr[__i__];
+        repeat len(inner) times {
+            result = append(result, inner[__j__]);
+        }
+    }
+    give back result;
+}
+
+to flatMap(arr: [a], f: (a) -> [b]) -> [b] {
+    give back flatten(map(arr, f));
+}
+
+to zip(arr1: [a], arr2: [b]) -> [[a, b]] {
+    remember minLen = min(len(arr1), len(arr2));
+    remember result = [];
+    repeat minLen times {
+        result = append(result, [arr1[__i__], arr2[__i__]]);
+    }
+    give back result;
+}
+
+to unzip(pairs: [[a, b]]) -> [[a], [b]] {
+    remember firsts = [];
+    remember seconds = [];
+    repeat len(pairs) times {
+        firsts = append(firsts, pairs[__i__][0]);
+        seconds = append(seconds, pairs[__i__][1]);
+    }
+    give back [firsts, seconds];
+}
+
+to partition(arr: [a], predicate: (a) -> Bool) -> [[a], [a]] {
+    remember passing = [];
+    remember failing = [];
+    repeat len(arr) times {
+        when predicate(arr[__i__]) {
+            passing = append(passing, arr[__i__]);
+        } otherwise {
+            failing = append(failing, arr[__i__]);
+        }
+    }
+    give back [passing, failing];
+}
+
+to groupBy(arr: [a], keyFn: (a) -> String) -> Record {
+    (* Returns a record/map of key -> [values] *)
+    remember groups = {};
+    repeat len(arr) times {
+        remember key = keyFn(arr[__i__]);
+        remember existing = get(groups, key);
+        decide based on existing {
+            Okay(list) -> {
+                groups = set(groups, key, append(list, arr[__i__]));
+            }
+            Oops(_) -> {
+                groups = set(groups, key, [arr[__i__]]);
+            }
+        }
+    }
+    give back groups;
+}
+
+(* ===================================================================== *)
+(* SLICING                                                               *)
+(* ===================================================================== *)
+
+to take(arr: [a], n: Int) -> [a] {
+    remember count = min(n, len(arr));
+    remember result = [];
+    repeat count times {
+        result = append(result, arr[__i__]);
+    }
+    give back result;
+}
+
+to drop(arr: [a], n: Int) -> [a] {
+    remember result = [];
+    remember start = min(n, len(arr));
+    remember i = start;
+    repeat len(arr) - start times {
+        result = append(result, arr[i]);
+        i = i + 1;
+    }
+    give back result;
+}
+
+to takeWhile(arr: [a], predicate: (a) -> Bool) -> [a] {
+    remember result = [];
+    repeat len(arr) times {
+        when not predicate(arr[__i__]) {
+            give back result;
+        }
+        result = append(result, arr[__i__]);
+    }
+    give back result;
+}
+
+to dropWhile(arr: [a], predicate: (a) -> Bool) -> [a] {
+    remember started = false;
+    remember result = [];
+    repeat len(arr) times {
+        when started or not predicate(arr[__i__]) {
+            started = true;
+            result = append(result, arr[__i__]);
+        }
+    }
+    give back result;
+}
+
+to slice(arr: [a], start: Int, end: Int) -> [a] {
+    remember result = [];
+    remember i = max(0, start);
+    remember stop = min(end, len(arr));
+    repeat stop - i times {
+        result = append(result, arr[i]);
+        i = i + 1;
+    }
+    give back result;
+}
+
+(* ===================================================================== *)
+(* COUNTING & STATISTICS                                                 *)
+(* ===================================================================== *)
+
+to count(arr: [a], predicate: (a) -> Bool) -> Int {
+    remember total = 0;
+    repeat len(arr) times {
+        when predicate(arr[__i__]) {
+            total = total + 1;
+        }
+    }
+    give back total;
+}
+
+to sum(arr: [Int]) -> Int {
+    give back reduce(arr, 0, to (acc: Int, x: Int) -> Int { give back acc + x; });
+}
+
+to sumFloat(arr: [Float]) -> Float {
+    give back reduce(arr, 0.0, to (acc: Float, x: Float) -> Float { give back acc + x; });
+}
+
+to product(arr: [Int]) -> Int {
+    give back reduce(arr, 1, to (acc: Int, x: Int) -> Int { give back acc * x; });
+}
+
+to average(arr: [Float]) -> Result[Float, String] {
+    when len(arr) == 0 {
+        give back Oops("Cannot average empty array");
+    }
+    give back Okay(sumFloat(arr) / len(arr));
+}
+
+(* ===================================================================== *)
+(* SORTING (Simple insertion sort for demonstration)                     *)
+(* ===================================================================== *)
+
+to sortInts(arr: [Int]) -> [Int] {
+    remember result = arr;
+    remember n = len(result);
+    repeat n times {
+        remember j = __i__;
+        repeat __i__ times {
+            when result[j] < result[j - 1] {
+                remember temp = result[j];
+                result[j] = result[j - 1];
+                result[j - 1] = temp;
+            }
+            j = j - 1;
+        }
+    }
+    give back result;
+}
+
+(* ===================================================================== *)
+(* UNIQUE & DISTINCT                                                     *)
+(* ===================================================================== *)
+
+to unique(arr: [a]) -> [a] {
+    remember result = [];
+    repeat len(arr) times {
+        when not contains(result, arr[__i__]) {
+            result = append(result, arr[__i__]);
+        }
+    }
+    give back result;
+}
+
+to distinctBy(arr: [a], keyFn: (a) -> b) -> [a] {
+    remember seen = [];
+    remember result = [];
+    repeat len(arr) times {
+        remember key = keyFn(arr[__i__]);
+        when not contains(seen, key) {
+            seen = append(seen, key);
+            result = append(result, arr[__i__]);
+        }
+    }
+    give back result;
+}
+
+(* ===================================================================== *)
+(* GRATITUDE                                                             *)
+(* ===================================================================== *)
+
+thanks to {
+    "Higher-Order Functions" → "Enabling powerful data transformations";
+    "Functional Programming" → "Making code composable and reusable";
+}

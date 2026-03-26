@@ -1,0 +1,334 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+# WokeLang Compiler Roadmap
+
+## Current Status (2026-01-31)
+
+**Overall Progress: 60%** (was 25%)
+
+### ✅ Completed (100%)
+
+1. **AST Definition** - Complete type system for WokeLang syntax
+2. **Lexer** - Token generation with logos
+3. **ABI Layer** - Idris2 ABI with dependent type proofs
+4. **FFI Layer** - Zig FFI implementation with C compatibility
+5. **Bytecode Specification** - Complete OpCode instruction set (50+ instructions)
+6. **VM Optimizer** - Bytecode optimization passes
+
+### 🚧 Implemented (Functional but needs expansion)
+
+#### VM Compiler (80%)
+**Location**: `src/vm/compiler.rs`
+
+**What Works:**
+- Variable declarations (`remember x = expr`)
+- Assignments (`x = expr`)
+- Binary operations (`+`, `-`, `*`, `/`, `%`, `==`, `!=`, `<`, `<=`, `>`, `>=`, `and`, `or`)
+- Unary operations (`-`, `not`)
+- Function calls
+- Conditionals (`when`/`otherwise`)
+- Loops (`repeat N times`)
+- Return statements
+- Local variable management
+- Array literals
+
+**What's Missing:**
+- Lambda/closure compilation
+- Pattern matching (`decide based on`)
+- Consent blocks (`only if okay`)
+- Attempt blocks (`attempt safely`/`or reassure`)
+- Worker spawn
+- Unit measurements
+- Gratitude blocks
+- Module imports
+- Type definitions
+
+#### VM Machine (85%)
+**Location**: `src/vm/machine.rs`
+
+**What Works:**
+- Stack-based execution
+- All arithmetic operations
+- All comparison operations
+- All logical operations
+- Control flow (jumps, conditionals)
+- Local and global variables
+- Function calls with stack frames
+- Array creation
+- Error handling and recovery
+
+**What's Missing:**
+- Closure execution
+- Channel operations (Go-style concurrency)
+- Result type handling (Okay/Oops)
+- Record/object operations
+- Index operations
+- String concatenation
+- Built-in function calls (print, toString, etc.)
+
+#### Interpreter (50%)
+**Location**: `src/interpreter/mod.rs`
+
+**What Works:**
+- Environment management
+- Function registration
+- Basic function execution
+- Closure support (via Value type)
+
+**What's Missing:**
+- Statement execution (all types)
+- Expression evaluation (all types)
+- Stdlib integration
+- Security/capability checking
+
+#### Parser (40%)
+**Location**: `src/parser/mod.rs`
+
+**What Exists:**
+- Parser structure
+- Error types
+- Token stream management
+
+**What's Missing:**
+- Complete syntax parsing for all WokeLang constructs
+- Currently returns stub functions only
+- Needs full implementation
+
+#### Type Checker (30%)
+**Location**: `src/typechecker/mod.rs`
+
+**What Exists:**
+- Type system definition (Int, Float, String, Bool, Array, Function, etc.)
+- Type environment
+- Fresh type variable generation
+
+**What's Missing:**
+- Type inference algorithm
+- Constraint solving
+- Type checking for all expressions
+- Type checking for all statements
+- Unit-of-measure type system
+- Result type checking
+
+#### REPL (60%)
+**Location**: `src/repl.rs`
+
+**What Works:**
+- Interactive loop
+- History support
+- Basic input/output
+- Integration with lexer/parser/interpreter
+
+**What's Missing:**
+- Better error messages
+- Multi-line input
+- Tab completion
+- Syntax highlighting
+
+### 📦 Standard Library (75%)
+
+**Implemented Modules:**
+- ✅ `array` - Array operations (length, push, pop, slice, etc.)
+- ✅ `chan` - Go-style channels for concurrency
+- ✅ `io` - File I/O with consent checking
+- ✅ `math` - Mathematical operations
+- ✅ `net` - HTTP operations with consent
+- ✅ `string` - String manipulation
+- ✅ `time` - Time operations
+- ❌ `json` - Needs implementation
+
+### 🎯 Next Steps (Priority Order)
+
+#### Phase 1: Complete Core Functionality (2-3 weeks)
+
+**1. Parser Implementation**
+- [ ] Parse function definitions
+- [ ] Parse all statement types
+- [ ] Parse all expression types
+- [ ] Parse consent blocks
+- [ ] Parse gratitude blocks
+- [ ] Parse worker definitions
+- [ ] Parse type definitions
+- [ ] Error recovery and reporting
+
+**2. Interpreter Implementation**
+- [ ] Execute all statement types
+- [ ] Evaluate all expression types
+- [ ] Integrate with stdlib
+- [ ] Security capability checking
+- [ ] Proper error handling
+
+**3. Type Checker Implementation**
+- [ ] Hindley-Milner type inference
+- [ ] Constraint generation
+- [ ] Constraint solving
+- [ ] Unit-of-measure checking
+- [ ] Result type checking
+- [ ] Type error messages
+
+**4. VM Compiler Extensions**
+- [ ] Lambda/closure compilation
+- [ ] Pattern matching compilation
+- [ ] Consent block compilation
+- [ ] Worker spawn compilation
+- [ ] Module system compilation
+
+**5. VM Machine Extensions**
+- [ ] Closure execution
+- [ ] Channel operations
+- [ ] Result type operations
+- [ ] Record/object operations
+- [ ] Index operations
+- [ ] Built-in functions
+
+#### Phase 2: Testing & Documentation (1-2 weeks)
+
+**6. Test Suite**
+- [ ] Lexer tests
+- [ ] Parser tests (all syntax forms)
+- [ ] Type checker tests
+- [ ] Compiler tests (bytecode generation)
+- [ ] VM tests (execution correctness)
+- [ ] End-to-end tests
+- [ ] WokeLang feature tests (consent, units, gratitude)
+- [ ] Performance benchmarks
+
+**7. Documentation**
+- [ ] Language specification
+- [ ] Compiler architecture docs
+- [ ] Bytecode instruction reference
+- [ ] Type system documentation
+- [ ] Standard library reference
+- [ ] Example programs
+- [ ] Tutorial
+
+**8. Tooling**
+- [ ] Syntax highlighting (VS Code, vim)
+- [ ] Language server protocol (LSP)
+- [ ] Debugger
+- [ ] Profiler
+
+#### Phase 3: Advanced Features (2-3 weeks)
+
+**9. CLI Enhancement**
+- [ ] `woke compile <file>` - Compile to bytecode
+- [ ] `woke run-vm <file>` - Run on VM
+- [ ] `woke disasm <file>` - Show bytecode
+- [ ] `woke typecheck <file>` - Type check only
+- [ ] `woke build <file> -o <output>` - Native compilation
+- [ ] `woke build-wasm <file>` - WebAssembly compilation
+
+**10. Optimization**
+- [ ] Dead code elimination
+- [ ] Constant folding
+- [ ] Inline expansion
+- [ ] Tail call optimization
+- [ ] Register allocation (if targeting native)
+
+**11. Code Generation Backends**
+- [ ] WASM backend (via wasm-pack)
+- [ ] Native backend (via LLVM/Cranelift)
+- [ ] JavaScript backend (for browser)
+
+#### Phase 4: Ecosystem (1-2 weeks)
+
+**12. Package Manager**
+- [ ] Package format
+- [ ] Dependency resolution
+- [ ] Package registry
+
+**13. Build System**
+- [ ] Project configuration
+- [ ] Multi-file compilation
+- [ ] Incremental compilation
+
+## Architecture Overview
+
+```
+Source Code (.woke)
+       ↓
+   Lexer (logos)
+       ↓
+   Tokens (Vec<Spanned<Token>>)
+       ↓
+   Parser
+       ↓
+   AST (Abstract Syntax Tree)
+       ↓
+   Type Checker
+       ↓
+   Typed AST
+       ↓
+   ┌─────────┬──────────┬──────────┐
+   ↓         ↓          ↓          ↓
+Interpreter  VM       WASM      Native
+(tree-walk) (bytecode) (codegen) (codegen)
+```
+
+## Bytecode Pipeline (Current Focus)
+
+```
+AST
+ ↓
+BytecodeCompiler (src/vm/compiler.rs)
+ ↓
+CompiledProgram (bytecode + constants)
+ ↓
+Optimizer (src/vm/optimizer.rs)
+ ↓
+Optimized Bytecode
+ ↓
+VirtualMachine (src/vm/machine.rs)
+ ↓
+Execution Result
+```
+
+## Testing the Current Compiler
+
+```bash
+# Build the compiler
+cargo build --release
+
+# The following features work:
+# - Basic arithmetic
+# - Variable declarations
+# - Conditionals
+# - Loops
+# - Function calls (partial)
+
+# Coming soon:
+# - Full parser
+# - Type checking
+# - Complete language support
+```
+
+## Contributing
+
+See the task list above for areas that need work. The highest priority items are:
+
+1. **Parser** - Convert tokens to full AST
+2. **Type Checker** - Implement type inference
+3. **VM Extensions** - Closures, channels, pattern matching
+4. **Tests** - Comprehensive test coverage
+
+## Resources
+
+- **ABI/FFI Documentation**: `docs/ABI-FFI-README.adoc`
+- **Bytecode Specification**: `src/vm/bytecode.rs`
+- **Example Programs**: `examples/`
+- **Language Specification**: `docs/` (TODO)
+- **proven Integration**: `docs/PROVEN.md`
+- **Project State**: `STATE.scm`
+- **Ecosystem**: `ECOSYSTEM.scm`
+- **Architecture Decisions**: `META.scm`
+- **Development Sessions**: `docs/sessions/`
+
+## Estimated Timeline to v0.1
+
+- **Parser + Type Checker**: 2-3 weeks
+- **VM Extensions**: 1-2 weeks
+- **Testing + Docs**: 1-2 weeks
+- **Total**: 4-7 weeks to working compiler
+
+## Questions?
+
+See `STATE.scm` for current project state or check the task list in the development session.

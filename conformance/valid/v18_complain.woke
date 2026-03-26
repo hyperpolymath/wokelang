@@ -1,0 +1,14 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+// Conformance: complain keyword for error signalling
+
+to validate(value) {
+    when value < 0 {
+        complain "something went wrong";
+    }
+    give back value;
+}
+
+to main() {
+    validate(10);
+    give back 0;
+}

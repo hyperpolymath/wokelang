@@ -1,0 +1,7 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+// Conformance (INVALID): unclosed function body (missing closing brace)
+
+to greet() {
+    print("hello");
+    give back 0;
+

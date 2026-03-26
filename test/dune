@@ -1,0 +1,14 @@
+; SPDX-License-Identifier: PMPL-1.0-or-later
+; SPDX-FileCopyrightText: 2026 Hyperpolymath
+
+(test
+ (name test_wokelang)
+ (libraries wokelang_core))
+
+(test
+ (name test_lexer)
+ (libraries wokelang_core alcotest))
+
+(test
+ (name test_parser)
+ (libraries wokelang_core alcotest))

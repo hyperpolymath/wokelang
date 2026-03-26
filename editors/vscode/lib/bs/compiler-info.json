@@ -1,0 +1,8 @@
+{
+  "version": "12.1.0",
+  "bsc_path": "/var/home/hyper/.local/lib/node_modules/rescript/node_modules/@rescript/linux-x64/bin/bsc.exe",
+  "bsc_hash": "e71a4b341d54d39d77ed040eac08d002633dac2437fe69da2e0aa643219947ff",
+  "rescript_config_hash": "d6431ed02b6bb256367d12b4984ae134498b3cc367a2013c679564aaf60b59b9",
+  "runtime_path": "/var/home/hyper/.local/lib/node_modules/rescript/node_modules/@rescript/runtime",
+  "generated_at": "1769918070488"
+}

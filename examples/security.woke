@@ -1,0 +1,81 @@
+// Example: Capability-based Security (Superpowers) in WokeLang
+// Demonstrates permission requests and consent-driven operations
+
+thanks to {
+    "WokeLang" → "For security-first design";
+}
+
+// Define a superpower for file operations
+superpower fileAccess {
+    print("Requesting file access permission...");
+    // In a real implementation, this would trigger a consent dialog
+}
+
+// Define a superpower for network access
+superpower networkAccess {
+    print("Requesting network access permission...");
+}
+
+// Sensitive function that requires file read permission
+to readConfig() {
+    only if okay "file:read:/etc/config" {
+        print("Reading configuration file...");
+        // File reading would happen here
+        give back "config data";
+    }
+    give back "no permission";
+}
+
+// Sensitive function that requires network access
+to fetchData(url: String) {
+    only if okay "network:http" {
+        print("Fetching data from: " + url);
+        // Network fetch would happen here
+        give back "fetched data";
+    }
+    give back "no permission";
+}
+
+// Safe function with explicit consent block
+to processData() {
+    print("Processing data safely...");
+
+    // Only execute sensitive operations with explicit consent
+    only if okay "data:write" {
+        print("Writing processed results...");
+    }
+}
+
+to main() {
+    hello "Security & Superpowers Demo";
+
+    print("=== Consent-based Operations ===");
+    print("");
+
+    // Try to read config (requires permission)
+    print("1. Attempting to read config:");
+    remember config = readConfig();
+    print("   Result: " + config);
+
+    print("");
+
+    // Try to fetch data (requires permission)
+    print("2. Attempting network fetch:");
+    remember data = fetchData("https://api.example.com");
+    print("   Result: " + data);
+
+    print("");
+
+    // Process data with consent blocks
+    print("3. Processing with consent blocks:");
+    processData();
+
+    print("");
+    print("=== Superpower Declarations ===");
+
+    // Declare superpower usage
+    superpower fileAccess;
+    superpower networkAccess;
+
+    goodbye "Security demo complete!";
+}

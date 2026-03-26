@@ -1,0 +1,265 @@
+# WokeLang ABI/FFI Architecture
+
+This document describes the WokeLang ABI (Application Binary Interface) and FFI (Foreign Function Interface) architecture.
+
+## Architecture Overview
+
+WokeLang follows the **Idris2 ABI + Zig FFI** universal standard:
+
+```
+┌─────────────────────────────────────────────┐
+│ Idris2 ABI Layer (src/abi/)                 │
+│ - Type definitions with proofs              │
+│ - Memory layout verification                │
+│ - Platform-specific ABI guarantees          │
+└─────────────────────────────────────────────┘
+                    ↓
+┌─────────────────────────────────────────────┐
+│ Zig FFI Layer (ffi/zig/)                    │
+│ - C-compatible implementation               │
+│ - Zero-cost abstractions                    │
+│ - Cross-platform compilation                │
+└─────────────────────────────────────────────┘
+                    ↓
+┌─────────────────────────────────────────────┐
+│ Rust Core (src/ffi/c_api.rs)                │
+│ - Core interpreter implementation           │
+│ - Memory management                         │
+│ - Language semantics                        │
+└─────────────────────────────────────────────┘
+```
+
+## Directory Structure
+
+```
+wokelang/
+├── src/
+│   └── abi/                    # Idris2 ABI definitions
+│       ├── Types.idr           # Type definitions with dependent type proofs
+│       ├── Layout.idr          # Memory layout verification
+│       └── Foreign.idr         # FFI declarations
+│
+├── ffi/
+│   └── zig/                    # Zig FFI implementation
+│       ├── build.zig           # Build configuration
+│       ├── src/
+│       │   └── main.zig        # C-compatible FFI functions
+│       └── test/
+│           └── integration_test.zig
+│
+├── generated/
+│   └── abi/                    # Auto-generated C headers
+│       └── wokelang.h          # (Generated from Idris2)
+│
+└── bindings/                   # Language-specific wrappers (future)
+    ├── rescript/
+    └── julia/
+```
+
+## Layer Responsibilities
+
+### 1. Idris2 ABI Layer (`src/abi/`)
+
+**Purpose**: Formal specification with compile-time proofs
+
+**Guarantees**:
+- Non-null pointer types (using dependent types)
+- Correct memory layout across platforms
+- ABI compatibility between versions
+- Type-safe foreign function declarations
+
+**Files**:
+- `Types.idr`: Core type definitions (`InterpreterHandle`, `ValueHandle`, `Result`, `ValueType`)
+- `Layout.idr`: Platform-specific layout proofs
+- `Foreign.idr`: FFI function declarations
+
+**Example Proof**:
+```idris
+-- Non-null pointer guaranteed at type level
+data InterpreterHandle : Type where
+  MkInterpreterHandle : (ptr : Bits64) -> {auto 0 nonNull : So (ptr /= 0)} -> InterpreterHandle
+```
+
+### 2. Zig FFI Layer (`ffi/zig/`)
+
+**Purpose**: C-compatible implementation with safety
+
+**Features**:
+- Native C ABI compatibility
+- Memory-safe by default
+- Cross-compilation support
+- Zero runtime overhead
+
+**Functions**:
+- Interpreter lifecycle: `woke_interpreter_new`, `woke_interpreter_free`
+- Execution: `woke_exec`, `woke_eval`
+- Value operations: `woke_value_*` functions
+- Utility: `woke_version`, `woke_last_error`
+
+**Example**:
+```zig
+export fn woke_interpreter_new() ?*InterpreterHandle {
+    return rust_woke_interpreter_new();
+}
+```
+
+### 3. Rust Core (`src/ffi/c_api.rs`)
+
+**Purpose**: Core language implementation
+
+**Responsibilities**:
+- Lexer, parser, interpreter
+- Memory management (Box allocation)
+- Error handling
+- Value representation
+
+## Building
+
+### Build Rust Core
+```bash
+cargo build --release
+```
+
+### Build Zig FFI
+```bash
+cd ffi/zig
+zig build
+zig build test      # Run integration tests
+zig build example   # Run example
+```
+
+### Verify ABI Compliance
+```bash
+# Compile Idris2 ABI (generates C headers)
+cd src/abi
+idris2 --build wokelang-abi.ipkg
+```
+
+## API Reference
+
+### Interpreter Lifecycle
+
+```c
+// Create interpreter (returns NULL on failure)
+InterpreterHandle* woke_interpreter_new(void);
+
+// Free interpreter
+void woke_interpreter_free(InterpreterHandle* interp);
+```
+
+### Execution
+
+```c
+// Execute code (returns Result code)
+Result woke_exec(InterpreterHandle* interp, const char* source);
+
+// Evaluate expression and get value
+Result woke_eval(InterpreterHandle* interp, const char* source, ValueHandle** out_value);
+```
+
+### Value Operations
+
+```c
+// Free value
+void woke_value_free(ValueHandle* value);
+
+// Get value type
+ValueType woke_value_type(const ValueHandle* value);
+
+// Extract values
+Result woke_value_as_int(const ValueHandle* value, long long* out);
+Result woke_value_as_float(const ValueHandle* value, double* out);
+Result woke_value_as_bool(const ValueHandle* value, int* out);
+char* woke_value_as_string(const ValueHandle* value);  // Must free with woke_string_free
+
+// Create values
+ValueHandle* woke_value_from_int(long long n);
+ValueHandle* woke_value_from_float(double f);
+ValueHandle* woke_value_from_bool(int b);
+ValueHandle* woke_value_from_string(const char* s);
+```
+
+### Utility
+
+```c
+// Get version string
+const char* woke_version(void);
+
+// Get last error message (NULL if no error)
+const char* woke_last_error(void);
+```
+
+## Example Usage
+
+### Zig
+```zig
+const woke = @import("wokelang");
+
+pub fn main() !void {
+    var interp = woke.woke_interpreter_new() orelse return error.InitFailed;
+    defer woke.woke_interpreter_free(interp);
+
+    const result = woke.woke_exec(interp,
+        \\to greet(name: String) -> String {
+        \\    give back "Hello, " + name + "!";
+        \\}
+        \\to main() {
+        \\    hello greet("World");
+        \\}
+    );
+
+    if (result != .ok) return error.ExecutionFailed;
+}
+```
+
+### C
+```c
+#include "wokelang.h"
+
+int main(void) {
+    InterpreterHandle* interp = woke_interpreter_new();
+    if (!interp) return 1;
+
+    Result result = woke_exec(interp, "remember x = 42;");
+
+    woke_interpreter_free(interp);
+    return (result == Ok) ? 0 : 1;
+}
+```
+
+## Safety Guarantees
+
+### Compile-Time (Idris2)
+- Non-null pointers
+- Correct struct alignment
+- Platform ABI compatibility
+- Type-safe foreign calls
+
+### Runtime (Zig)
+- Null pointer checks
+- Memory safety
+- No undefined behavior
+
+### Implementation (Rust)
+- Memory safety via ownership
+- No data races
+- Safe FFI boundary
+
+## Migration from Old FFI
+
+The old FFI (`zig/wokelang.zig`) is deprecated. Use the new structure:
+
+**Old**: `zig/wokelang.zig` (wrapper around Rust)
+**New**: `ffi/zig/src/main.zig` (proper FFI layer with ABI definitions)
+
+The new structure provides:
+- Formal ABI guarantees (Idris2 proofs)
+- Better separation of concerns
+- Cross-platform compatibility
+- Standard directory layout
+
+## References
+
+- [ABI/FFI Universal Standard](../../ffi-migration-guide.md)
+- [Idris2 FFI Documentation](https://idris2.readthedocs.io/en/latest/ffi/ffi.html)
+- [Zig FFI Guide](https://ziglang.org/documentation/master/#C)

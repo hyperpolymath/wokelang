@@ -1,0 +1,99 @@
+// Pattern Matching Examples
+
+to test_literal_patterns() {
+    remember x = 42;
+
+    decide based on x {
+        0 -> {
+            print("Zero");
+        }
+        42 -> {
+            print("The answer!");
+        }
+        100 -> {
+            print("Century");
+        }
+        _ -> {
+            print("Other number");
+        }
+    }
+}
+
+to test_identifier_pattern() {
+    remember x = 99;
+
+    decide based on x {
+        value -> {
+            print("Matched! Value is " + toString(value));
+        }
+    }
+}
+
+to test_result_patterns() {
+    remember result = Okay(42);
+
+    decide based on result {
+        Okay(value) -> {
+            print("Success! Got " + toString(value));
+        }
+        Oops(err) -> {
+            print("Error: " + err);
+        }
+    }
+}
+
+to test_nested_patterns() {
+    remember nested = Okay(Okay(123));
+
+    decide based on nested {
+        Okay(Okay(num)) -> {
+            print("Deeply nested success: " + toString(num));
+        }
+        Okay(Oops(err)) -> {
+            print("Nested error: " + err);
+        }
+        Oops(_) -> {
+            print("Top-level error");
+        }
+    }
+}
+
+to safe_divide(a, b) {
+    when b == 0 {
+        give back Oops("Division by zero");
+    }
+
+    give back Okay(a / b);
+}
+
+to main() {
+    print("=== Literal Patterns ===");
+    test_literal_patterns();
+
+    print("");
+    print("=== Identifier Pattern ===");
+    test_identifier_pattern();
+
+    print("");
+    print("=== Result Patterns ===");
+    test_result_patterns();
+
+    print("");
+    print("=== Nested Patterns ===");
+    test_nested_patterns();
+
+    print("");
+    print("=== Practical Example ===");
+    remember div_result = safe_divide(10, 2);
+
+    decide based on div_result {
+        Okay(quotient) -> {
+            print("10 / 2 = " + toString(quotient));
+        }
+        Oops(error) -> {
+            print("Error: " + error);
+        }
+    }
+
+    give back 0;
+}

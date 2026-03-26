@@ -1,0 +1,22 @@
+// Hello and Goodbye example
+// Demonstrates function entry/exit messages
+
+to greet(name: String) {
+    hello "Starting to greet";
+
+    print("Hello, " + name + "!");
+    print("How are you today?");
+
+    goodbye "Finished greeting";
+}
+
+to main() {
+    hello "Program starting up";
+
+    print("Testing hello and goodbye messages");
+    greet("Alice");
+    greet("Bob");
+    print("All done!");
+
+    goodbye "Program shutting down";
+}

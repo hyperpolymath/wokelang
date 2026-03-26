@@ -1,0 +1,31 @@
+// Emote tags example
+// Demonstrates function emotion/tone annotations
+
+#verbose on;
+
+@cheerful(intensity=high)
+to greet() {
+    print("Hello! What a wonderful day!");
+    give back 0;
+}
+
+@serious(tone=formal)
+to processData() {
+    print("Processing critical data...");
+    print("Analysis complete.");
+    give back 0;
+}
+
+@excited(level=maximum)
+to celebrate() {
+    print("Hooray! Success!");
+    give back 0;
+}
+
+to main() {
+    print("Emote tags demonstration:");
+    greet();
+    processData();
+    celebrate();
+    give back 0;
+}

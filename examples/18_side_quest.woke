@@ -1,0 +1,14 @@
+// Side quest example
+// Demonstrates side quest definitions
+
+side quest cleanup {
+    print("Running cleanup side quest...");
+    print("Cleaning temporary files");
+    print("Freeing resources");
+}
+
+to main() {
+    print("Main program starting");
+    print("Main program complete");
+    give back 0;
+}

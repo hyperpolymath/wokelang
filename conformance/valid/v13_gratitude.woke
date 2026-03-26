@@ -1,0 +1,12 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+// Conformance: gratitude block with thanks to
+
+to main() {
+    thanks to {
+        "Author" -> "original implementation";
+        "Reviewer" -> "code review";
+        "Community" -> "testing and feedback";
+    }
+
+    give back 0;
+}

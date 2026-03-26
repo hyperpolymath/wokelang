@@ -1,0 +1,11 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+// Conformance: consent block with 'only if okay'
+
+to main() {
+    only if okay "file.read" {
+        remember data = "contents";
+        give back 1;
+    }
+
+    give back 0;
+}

@@ -1,0 +1,298 @@
+(* WokeLang Common Library - Prelude *)
+(* Core utilities shared across all WokeLang projects *)
+
+(* ===================================================================== *)
+(* IDENTITY & BASIC UTILITIES                                            *)
+(* ===================================================================== *)
+
+to identity(x: a) -> a {
+    hello "Identity function";
+    give back x;
+    goodbye "Identity complete";
+}
+
+to constant(x: a, y: b) -> a {
+    give back x;
+}
+
+to flip(f: (a, b) -> c, x: b, y: a) -> c {
+    give back f(y, x);
+}
+
+(* ===================================================================== *)
+(* BOOLEAN OPERATIONS                                                    *)
+(* ===================================================================== *)
+
+to negate(b: Bool) -> Bool {
+    give back not b;
+}
+
+to allTrue(values: [Bool]) -> Bool {
+    remember result = true;
+    repeat len(values) times {
+        when not values[__i__] {
+            result = false;
+        }
+    }
+    give back result;
+}
+
+to anyTrue(values: [Bool]) -> Bool {
+    remember result = false;
+    repeat len(values) times {
+        when values[__i__] {
+            result = true;
+        }
+    }
+    give back result;
+}
+
+(* ===================================================================== *)
+(* NUMERIC UTILITIES                                                     *)
+(* ===================================================================== *)
+
+to clamp(value: Int, minVal: Int, maxVal: Int) -> Int {
+    when value < minVal {
+        give back minVal;
+    }
+    when value > maxVal {
+        give back maxVal;
+    }
+    give back value;
+}
+
+to inRange(value: Int, minVal: Int, maxVal: Int) -> Bool {
+    give back value >= minVal and value <= maxVal;
+}
+
+to sign(n: Int) -> Int {
+    when n > 0 {
+        give back 1;
+    }
+    when n < 0 {
+        give back -1;
+    }
+    give back 0;
+}
+
+to isEven(n: Int) -> Bool {
+    give back n % 2 == 0;
+}
+
+to isOdd(n: Int) -> Bool {
+    give back n % 2 != 0;
+}
+
+to gcd(a: Int, b: Int) -> Int {
+    when b == 0 {
+        give back a;
+    }
+    give back gcd(b, a % b);
+}
+
+to lcm(a: Int, b: Int) -> Int {
+    give back (a * b) / gcd(a, b);
+}
+
+(* ===================================================================== *)
+(* STRING UTILITIES                                                      *)
+(* ===================================================================== *)
+
+to isEmpty(s: String) -> Bool {
+    give back len(s) == 0;
+}
+
+to isNotEmpty(s: String) -> Bool {
+    give back len(s) > 0;
+}
+
+to repeat(s: String, n: Int) -> String {
+    remember result = "";
+    repeat n times {
+        result = result + s;
+    }
+    give back result;
+}
+
+to startsWith(s: String, prefix: String) -> Bool {
+    when len(prefix) > len(s) {
+        give back false;
+    }
+    remember i = 0;
+    repeat len(prefix) times {
+        when s[i] != prefix[i] {
+            give back false;
+        }
+        i = i + 1;
+    }
+    give back true;
+}
+
+to endsWith(s: String, suffix: String) -> Bool {
+    when len(suffix) > len(s) {
+        give back false;
+    }
+    remember offset = len(s) - len(suffix);
+    remember i = 0;
+    repeat len(suffix) times {
+        when s[offset + i] != suffix[i] {
+            give back false;
+        }
+        i = i + 1;
+    }
+    give back true;
+}
+
+(* ===================================================================== *)
+(* ARRAY UTILITIES                                                       *)
+(* ===================================================================== *)
+
+to head(arr: [a]) -> Result[a, String] {
+    when len(arr) == 0 {
+        give back Oops("Cannot get head of empty array");
+    }
+    give back Okay(arr[0]);
+}
+
+to tail(arr: [a]) -> [a] {
+    remember result = [];
+    remember i = 1;
+    repeat len(arr) - 1 times {
+        result = append(result, arr[i]);
+        i = i + 1;
+    }
+    give back result;
+}
+
+to last(arr: [a]) -> Result[a, String] {
+    when len(arr) == 0 {
+        give back Oops("Cannot get last of empty array");
+    }
+    give back Okay(arr[len(arr) - 1]);
+}
+
+to init(arr: [a]) -> [a] {
+    remember result = [];
+    repeat len(arr) - 1 times {
+        result = append(result, arr[__i__]);
+    }
+    give back result;
+}
+
+to reverse(arr: [a]) -> [a] {
+    remember result = [];
+    remember i = len(arr) - 1;
+    repeat len(arr) times {
+        result = append(result, arr[i]);
+        i = i - 1;
+    }
+    give back result;
+}
+
+to contains(arr: [a], item: a) -> Bool {
+    repeat len(arr) times {
+        when arr[__i__] == item {
+            give back true;
+        }
+    }
+    give back false;
+}
+
+to indexOf(arr: [a], item: a) -> Result[Int, String] {
+    repeat len(arr) times {
+        when arr[__i__] == item {
+            give back Okay(__i__);
+        }
+    }
+    give back Oops("Item not found in array");
+}
+
+(* ===================================================================== *)
+(* RESULT UTILITIES                                                      *)
+(* ===================================================================== *)
+
+to isOkay(result: Result[a, e]) -> Bool {
+    decide based on result {
+        Okay(_) -> { give back true; }
+        Oops(_) -> { give back false; }
+    }
+}
+
+to isOops(result: Result[a, e]) -> Bool {
+    give back not isOkay(result);
+}
+
+to getOrDefault(result: Result[a, e], default: a) -> a {
+    decide based on result {
+        Okay(value) -> { give back value; }
+        Oops(_) -> { give back default; }
+    }
+}
+
+to mapResult(result: Result[a, e], f: (a) -> b) -> Result[b, e] {
+    decide based on result {
+        Okay(value) -> { give back Okay(f(value)); }
+        Oops(err) -> { give back Oops(err); }
+    }
+}
+
+(* ===================================================================== *)
+(* COMPARISON UTILITIES                                                  *)
+(* ===================================================================== *)
+
+to min(a: Int, b: Int) -> Int {
+    when a < b {
+        give back a;
+    }
+    give back b;
+}
+
+to max(a: Int, b: Int) -> Int {
+    when a > b {
+        give back a;
+    }
+    give back b;
+}
+
+to minFloat(a: Float, b: Float) -> Float {
+    when a < b {
+        give back a;
+    }
+    give back b;
+}
+
+to maxFloat(a: Float, b: Float) -> Float {
+    when a > b {
+        give back a;
+    }
+    give back b;
+}
+
+(* ===================================================================== *)
+(* DEBUGGING & INTROSPECTION                                             *)
+(* ===================================================================== *)
+
+@curious(level=1)
+to debug(label: String, value: a) -> a {
+    hello "Debug output";
+    print(label + ": " + toString(value));
+    give back value;
+    goodbye "Debug complete";
+}
+
+to assert(condition: Bool, message: String) -> Result[Bool, String] {
+    when not condition {
+        give back Oops("Assertion failed: " + message);
+    }
+    give back Okay(true);
+}
+
+(* ===================================================================== *)
+(* GRATITUDE                                                             *)
+(* ===================================================================== *)
+
+thanks to {
+    "Functional Programming" → "Inspiring pure, composable utilities";
+    "Rust Standard Library" → "Reference for Result types";
+    "Haskell Prelude" → "Foundation for functional patterns";
+}
