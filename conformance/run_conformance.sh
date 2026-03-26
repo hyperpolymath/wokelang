@@ -10,7 +10,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PARSER="${1:-cargo run --manifest-path "${SCRIPT_DIR}/../Cargo.toml" --quiet -- --parse-only}"
+PARSER="${1:-cargo run --manifest-path "${SCRIPT_DIR}/../Cargo.toml" --quiet -- parse}"
 
 PASS=0
 FAIL=0
