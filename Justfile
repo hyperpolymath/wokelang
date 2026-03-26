@@ -25,3 +25,7 @@ clean:
 validate:
     @echo "Checking SPDX headers..."
     @grep -rL "SPDX-License-Identifier" src/ --include='*.rs' || echo "All files have SPDX headers"
+
+# Run panic-attacker pre-commit scan
+assail:
+    @command -v panic-attack >/dev/null 2>&1 && panic-attack assail . || echo "panic-attack not found — install from https://github.com/hyperpolymath/panic-attacker"
