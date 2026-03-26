@@ -1,37 +1,57 @@
 # SPDX-License-Identifier: PMPL-1.0-or-later
+# RSR-compliant .gitignore
 
-# Rust/Cargo
-/target/
-Cargo.lock
-**/*.rs.bk
-*.pdb
-
-# IDE
-.vscode/
-.idea/
+# OS & Editor
+.DS_Store
+Thumbs.db
 *.swp
 *.swo
 *~
-.DS_Store
+.idea/
+.vscode/
+.directory
 
-# Build artifacts
-*.wasm
-*.so
-*.dylib
-*.dll
+# Rust
+/target/
+**/target/
+**/*.rs.bk
 
-# Testing
-.coverage/
-*.profraw
-*.profdata
+# Idris2
+build/
+*.ibc
 
-# OS
-Thumbs.db
-.Trash-*/
+# Zig
+**/zig-out/
+**/.zig-cache/
 
-# Temporary
-*.tmp
+# ReScript
+/lib/bs/
+/.bsb.lock
+
+# Dependencies
+/node_modules/
+/vendor/
+/deps/
+
+# Secrets
+.env
+.env.*
+*.pem
+*.key
+secrets/
+
+# Test/Coverage
+/coverage/
+htmlcov/
+
+# Logs
 *.log
+/logs/
+
+# Temp
+/tmp/
+*.tmp
+*.bak
 
 # Crash recovery artifacts
 ai-cli-crash-capture/

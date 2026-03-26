@@ -1,68 +1,19 @@
-# SPDX-License-Identifier: PMPL-1.0-or-later
-# 0-AI-MANIFEST.a2ml — wokelang
-# Universal AI Agent Gateway — Read This First
-# Generated: 2026-03-14
+;; SPDX-License-Identifier: PMPL-1.0-or-later
+;; 0-AI-MANIFEST.a2ml — AI Agent Entry Point
+;; Repository: hyperpolymath/wokelang
 
-## Identity
+@abstract:
+AI manifest for wokelang. Read this file first before any other work.
+@end
 
-project: wokelang
-type: programming-language
-owner: hyperpolymath
-description: >
-  Social-justice-aware programming language with OCaml toolchain, Zig FFI, and consent-based resource management.
-license: PMPL-1.0-or-later
+;; === CANONICAL LOCATIONS ===
+;; Machine-readable state: .machine_readable/
+;; Documentation: docs/
+;; Source code: src/
+;; Tests: verification/tests/ or tests/
 
-## Critical Invariants
-
-- SCM files ONLY in `.machine_readable/` (root copies are symlinks)
-- NEVER delete spec files: grammar, SPEC.core.scm
-- NEVER use banned languages: TypeScript, Node.js, npm, Go, Python
-- All GitHub Actions must be SHA-pinned
-- All source files must have SPDX headers
-- Root symlinks MUST be maintained when moving files
-
-## Canonical File Locations
-
-### Machine-Readable Metadata (.machine_readable/)
-- `.machine_readable/AGENTIC.scm`
-- `.machine_readable/ECOSYSTEM.scm`
-- `.machine_readable/META.scm`
-- `.machine_readable/NEUROSYM.scm`
-- `.machine_readable/PLAYBOOK.scm`
-- `.machine_readable/STATE.scm`
-- `.machine_readable/bot_directives/` — gitbot-fleet directives
-
-### Specification (spec/)
-- `spec/grammar.ebnf` — Canonical EBNF grammar (@taxonomy: spec/grammar)
-- `spec/SPEC.core.scm` — Core specification (@taxonomy: spec/core)
-- `spec/README.adoc` — Specification index
-
-### Verification (verification/)
-- `verification/proofs/` — Formal proofs ../docs/proofs
-(symlink)
-- `verification/tests/` — Test suite ../tests
-(symlink)
-- `verification/conformance/` — Conformance tests ../conformance
-(symlink)
-- `verification/benchmarks/` — Performance benchmarks ../bench
-(symlink)
-- `verification/fuzzing/` — Fuzz targets ../fuzz
-(symlink)
-- `verification/README.adoc` — Verification index
-
-## Taxonomy Index
-
-- `spec/grammar.ebnf` — @taxonomy: spec/grammar
-- `spec/SPEC.core.scm` — @taxonomy: spec/core
-- `spec/README.adoc` — @taxonomy: spec/index
-- `verification/README.adoc` — @taxonomy: verification/index
-- `core/lexer.mll` — @taxonomy: compiler/lexer
-- `core/parser.mly` — @taxonomy: compiler/parser
-- `editors/wokelang.tmLanguage.json` — @taxonomy: editors/textmate-grammar
-
-## Session Startup Sequence
-
-1. Read this manifest (0-AI-MANIFEST.a2ml)
-2. Read `.machine_readable/STATE.scm` for current progress
-3. Read `.machine_readable/META.scm` for architecture decisions
-4. Read `.machine_readable/ECOSYSTEM.scm` for ecosystem context
+;; === CRITICAL INVARIANTS ===
+;; - SPDX headers on ALL files (PMPL-1.0-or-later)
+;; - No believe_me, assert_total, sorry, Admitted, unsafeCoerce, Obj.magic
+;; - SCM files ONLY in .machine_readable/ (never root)
+;; - Author: Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
