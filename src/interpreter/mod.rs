@@ -119,6 +119,7 @@ pub struct Interpreter {
     environment: Rc<RefCell<Environment>>,
     functions: HashMap<String, FunctionDef>,
     control_flow: ControlFlow,
+    in_loop_context: bool,  // Track whether we're inside a loop
     capabilities: crate::security::CapabilityRegistry,
     pragmas: PragmaSettings,
     worker_defs: HashMap<String, Vec<Statement>>,
@@ -131,6 +132,7 @@ impl Interpreter {
             environment: Rc::new(RefCell::new(Environment::new())),
             functions: HashMap::new(),
             control_flow: ControlFlow::None,
+            in_loop_context: false,
             capabilities: crate::security::CapabilityRegistry::new(),
             pragmas: PragmaSettings::default(),
             worker_defs: HashMap::new(),
@@ -315,6 +317,7 @@ impl Interpreter {
                 };
 
                 let mut result = Value::Unit;
+                self.in_loop_context = true;
                 for _ in 0..iterations {
                     for stmt in &loop_stmt.body {
                         result = self.execute_statement(stmt)?;
@@ -332,11 +335,13 @@ impl Interpreter {
                         }
                     }
                 }
+                self.in_loop_context = false;
                 Ok(result)
             }
 
             Statement::While(while_loop) => {
                 let mut result = Value::Unit;
+                self.in_loop_context = true;
                 loop {
                     let condition = self.eval_expr(&while_loop.condition)?;
                     if !condition.is_truthy() {
@@ -359,15 +364,26 @@ impl Interpreter {
                         }
                     }
                 }
+                self.in_loop_context = false;
                 Ok(result)
             }
 
             Statement::Break(_) => {
+                if !self.in_loop_context {
+                    return Err(RuntimeError::new(
+                        "break statement used outside of loop context".to_string()
+                    ));
+                }
                 self.control_flow = ControlFlow::Break;
                 Ok(Value::Unit)
             }
 
             Statement::Continue(_) => {
+                if !self.in_loop_context {
+                    return Err(RuntimeError::new(
+                        "continue statement used outside of loop context".to_string()
+                    ));
+                }
                 self.control_flow = ControlFlow::Continue;
                 Ok(Value::Unit)
             }
