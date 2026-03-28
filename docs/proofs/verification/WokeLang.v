@@ -1,5 +1,5 @@
 (* WokeLang Formal Verification in Coq *)
-(* SPDX-License-Identifier: MIT OR Apache-2.0 *)
+(* SPDX-License-Identifier: PMPL-1.0-or-later *)
 
 (* ========================================================================= *)
 (* This file contains Coq definitions and theorems for WokeLang's type       *)
@@ -15,6 +15,8 @@ Require Import Coq.Strings.String.
 Require Import Coq.Lists.List.
 Require Import Coq.ZArith.ZArith.
 Require Import Coq.Reals.Reals.
+Require Import Coq.Arith.Wf_nat.
+Require Import Lia.
 Import ListNotations.
 
 (* ========================================================================= *)
@@ -201,7 +203,10 @@ Inductive has_type : type_env -> expr -> woke_type -> Prop :=
   | T_Lit_Oops : forall G s t,
       has_type G (ELit (VOops s)) (TResult t TString)
   | T_Oops_Any : forall G s t,
-      has_type G (ELit (VOops s)) t.
+      has_type G (ELit (VOops s)) t
+  | T_Lit_Array : forall G vs t,
+      Forall (fun v => has_type G (ELit v) t) vs ->
+      has_type G (ELit (VArray vs)) (TArray t).
 
 (* ========================================================================= *)
 (* 4. Small-Step Operational Semantics                                       *)
@@ -318,7 +323,10 @@ Inductive step : expr -> env -> expr -> env -> Prop :=
       step (EOkay (ELit (VOops s))) rho (ELit (VOops s)) rho
   (* Error propagation: VOops values propagate through EOops *)
   | S_Oops_Error : forall s rho,
-      step (EOops (ELit (VOops s))) rho (ELit (VOops s)) rho.
+      step (EOops (ELit (VOops s))) rho (ELit (VOops s)) rho
+  (* Array normalization: fully evaluated EArray reduces to ELit (VArray) *)
+  | S_Array_val : forall vs rho,
+      step (EArray (map ELit vs)) rho (ELit (VArray vs)) rho.
 
 (** ** Multi-Step Reduction *)
 
@@ -471,6 +479,34 @@ Proof.
   - subst. inversion Ht; subst; try discriminate.
 Qed.
 
+(** ** Expression Size (for well-founded induction) *)
+
+(** Size measure on expressions, used for well-founded induction in
+    the progress theorem to get an IH for array elements. *)
+
+Fixpoint expr_size (e : expr) : nat :=
+  match e with
+  | ELit _ => 0
+  | EVar _ => 0
+  | EBinOp _ e1 e2 => S (expr_size e1 + expr_size e2)
+  | EUnOp _ e1 => S (expr_size e1)
+  | ECall _ es => S (fold_right (fun e acc => expr_size e + acc) 0 es)
+  | EArray es => S (fold_right (fun e acc => expr_size e + acc) 0 es)
+  | EOkay e1 => S (expr_size e1)
+  | EOops e1 => S (expr_size e1)
+  | EUnwrap e1 => S (expr_size e1)
+  end.
+
+Lemma in_list_size_fold : forall x es,
+  In x es -> expr_size x < S (fold_right (fun e acc => expr_size e + acc) 0 es).
+Proof.
+  induction es; intros Hin.
+  - destruct Hin.
+  - destruct Hin as [Heq | Hin].
+    + subst. simpl. lia.
+    + specialize (IHes Hin). simpl. lia.
+Qed.
+
 (** ** Auxiliary Lemma: Array Element Progress *)
 
 (** Given a list of expressions where each is either a value or can step,
@@ -504,16 +540,17 @@ Proof.
            split; [| assumption].
            simpl. f_equal. assumption.
       * (* e = EArray (map ELit vs') -- array value at head, not ELit.
-           This is a value but not of the form ELit _, so we cannot put
-           it in the "map ELit vs" prefix. We admit this edge case. *)
-        admit.
+           This value can step to ELit (VArray vs') via S_Array_val. *)
+        subst.
+        right. exists [], (EArray (map ELit vs')), (ELit (VArray vs')), rest, empty_env.
+        split.
+        -- simpl. reflexivity.
+        -- apply S_Array_val.
     + (* e can step *)
       right. exists [], e, e', rest, rho'.
       split; [| assumption].
       simpl. reflexivity.
-Admitted.
-(** NOTE: 1 admit: nested array values (EArray as element of outer array).
-    This is an edge case in the value representation. *)
+Qed.
 
 (** ** Array Progress Lemma *)
 
@@ -540,20 +577,40 @@ Proof.
     apply S_Array_step. assumption.
 Qed.
 
+(** ** Helper: Progress for array elements given a size-based IH *)
+
+Lemma forall_progress_from_ih : forall es t,
+  Forall (fun e => has_type empty_type_env e t) es ->
+  (forall y, In y es -> forall t', has_type empty_type_env y t' ->
+     is_value y \/ exists e' rho', step y empty_env e' rho') ->
+  Forall (fun e0 => is_value e0 \/ exists e' rho', step e0 empty_env e' rho') es.
+Proof.
+  intros es t Hf Hih.
+  induction Hf as [| ei eis Hei Heis IHeis].
+  - constructor.
+  - constructor.
+    + eapply Hih. left. reflexivity. eassumption.
+    + apply IHeis. intros y Hin t' Hty'. eapply Hih.
+      * right. exact Hin.
+      * exact Hty'.
+Qed.
+
 (** ** Progress Theorem *)
 
 (** Progress: every well-typed closed expression is either a value or can
-    take a step. The proof is by induction on the typing derivation.
-    The T_Array case is proved using progress_array.
+    take a step. The proof uses well-founded induction on expression size
+    to provide an IH for array elements (which standard structural induction
+    on the typing derivation does not provide). The T_Array case uses
+    array_elements_progress + S_Array_val for evaluated arrays.
     The T_Oops_Any case is immediate (ELit is a value). *)
 
 Theorem progress : forall e t,
   has_type empty_type_env e t ->
   is_value e \/ exists e' rho', step e empty_env e' rho'.
 Proof.
-  intros e t H.
-  remember empty_type_env as G.
-  induction H; subst.
+  intro e. induction e as [e IH] using (well_founded_ind (well_founded_ltof _ expr_size)).
+  intros t Ht.
+  inversion Ht; subst.
   - (* T_Int *) left. constructor.
   - (* T_Float *) left. constructor.
   - (* T_String *) left. constructor.
@@ -566,56 +623,90 @@ Proof.
     end.
   - (* T_Add_Int *)
     right.
-    destruct (IHhas_type1 eq_refl) as [Hv1 | [e1' [rho1' Hs1]]].
-    + destruct (IHhas_type2 eq_refl) as [Hv2 | [e2' [rho2' Hs2]]].
-      * destruct (canonical_forms_int_expr _ H Hv1) as [[n1 Heq1] | [s1 Heq1]];
-        destruct (canonical_forms_int_expr _ H0 Hv2) as [[n2 Heq2] | [s2 Heq2]];
-        subst.
+    assert (IH1 : is_value e1 \/ exists e' rho', step e1 empty_env e' rho').
+    { eapply IH. unfold ltof. simpl. lia. eassumption. }
+    assert (IH2 : is_value e2 \/ exists e' rho', step e2 empty_env e' rho').
+    { eapply IH. unfold ltof. simpl. lia. eassumption. }
+    destruct IH1 as [Hv1 | [e1' [rho1' Hs1]]].
+    + destruct IH2 as [Hv2 | [e2' [rho2' Hs2]]].
+      * match goal with
+        | [ H1 : has_type _ e1 TInt, H2 : has_type _ e2 TInt |- _ ] =>
+          destruct (canonical_forms_int_expr _ H1 Hv1) as [[n1 Heq1] | [s1 Heq1]];
+          destruct (canonical_forms_int_expr _ H2 Hv2) as [[n2 Heq2] | [s2 Heq2]];
+          subst
+        end.
         -- exists (ELit (VInt (n1 + n2)%Z)), empty_env. apply S_Add_Int.
         -- exists (ELit (VOops s2)), empty_env. apply S_BinOp_Error_Right.
         -- exists (ELit (VOops s1)), empty_env. apply S_BinOp_Error_Left.
         -- exists (ELit (VOops s1)), empty_env. apply S_BinOp_Error_Left.
-      * destruct (canonical_forms_int_expr _ H Hv1) as [[n1 Heq1] | [s1 Heq1]]; subst.
+      * match goal with
+        | [ H1 : has_type _ e1 TInt |- _ ] =>
+          destruct (canonical_forms_int_expr _ H1 Hv1) as [[n1 Heq1] | [s1 Heq1]]; subst
+        end.
         -- exists (EBinOp BAdd (ELit (VInt n1)) e2'), rho2'.
            apply S_BinOp_Right; [constructor | assumption].
         -- exists (ELit (VOops s1)), empty_env. apply S_BinOp_Error_Left.
     + exists (EBinOp BAdd e1' e2), rho1'. apply S_BinOp_Left. assumption.
   - (* T_Add_Float *)
     right.
-    destruct (IHhas_type1 eq_refl) as [Hv1 | [e1' [rho1' Hs1]]].
-    + destruct (IHhas_type2 eq_refl) as [Hv2 | [e2' [rho2' Hs2]]].
-      * destruct (canonical_forms_float_expr _ H Hv1) as [[r1 Heq1] | [s1 Heq1]];
-        destruct (canonical_forms_float_expr _ H0 Hv2) as [[r2 Heq2] | [s2 Heq2]];
-        subst.
+    assert (IH1 : is_value e1 \/ exists e' rho', step e1 empty_env e' rho').
+    { eapply IH. unfold ltof. simpl. lia. eassumption. }
+    assert (IH2 : is_value e2 \/ exists e' rho', step e2 empty_env e' rho').
+    { eapply IH. unfold ltof. simpl. lia. eassumption. }
+    destruct IH1 as [Hv1 | [e1' [rho1' Hs1]]].
+    + destruct IH2 as [Hv2 | [e2' [rho2' Hs2]]].
+      * match goal with
+        | [ H1 : has_type _ e1 TFloat, H2 : has_type _ e2 TFloat |- _ ] =>
+          destruct (canonical_forms_float_expr _ H1 Hv1) as [[r1 Heq1] | [s1 Heq1]];
+          destruct (canonical_forms_float_expr _ H2 Hv2) as [[r2 Heq2] | [s2 Heq2]];
+          subst
+        end.
         -- exists (ELit (VFloat (r1 + r2)%R)), empty_env. apply S_Add_Float.
         -- exists (ELit (VOops s2)), empty_env. apply S_BinOp_Error_Right.
         -- exists (ELit (VOops s1)), empty_env. apply S_BinOp_Error_Left.
         -- exists (ELit (VOops s1)), empty_env. apply S_BinOp_Error_Left.
-      * destruct (canonical_forms_float_expr _ H Hv1) as [[r1 Heq1] | [s1 Heq1]]; subst.
+      * match goal with
+        | [ H1 : has_type _ e1 TFloat |- _ ] =>
+          destruct (canonical_forms_float_expr _ H1 Hv1) as [[r1 Heq1] | [s1 Heq1]]; subst
+        end.
         -- exists (EBinOp BAdd (ELit (VFloat r1)) e2'), rho2'.
            apply S_BinOp_Right; [constructor | assumption].
         -- exists (ELit (VOops s1)), empty_env. apply S_BinOp_Error_Left.
     + exists (EBinOp BAdd e1' e2), rho1'. apply S_BinOp_Left. assumption.
   - (* T_Add_String *)
     right.
-    destruct (IHhas_type1 eq_refl) as [Hv1 | [e1' [rho1' Hs1]]].
-    + destruct (IHhas_type2 eq_refl) as [Hv2 | [e2' [rho2' Hs2]]].
-      * destruct (canonical_forms_string_expr _ H Hv1) as [[s1 Heq1] | [s1 Heq1]];
-        destruct (canonical_forms_string_expr _ H0 Hv2) as [[s2 Heq2] | [s2 Heq2]];
-        subst.
+    assert (IH1 : is_value e1 \/ exists e' rho', step e1 empty_env e' rho').
+    { eapply IH. unfold ltof. simpl. lia. eassumption. }
+    assert (IH2 : is_value e2 \/ exists e' rho', step e2 empty_env e' rho').
+    { eapply IH. unfold ltof. simpl. lia. eassumption. }
+    destruct IH1 as [Hv1 | [e1' [rho1' Hs1]]].
+    + destruct IH2 as [Hv2 | [e2' [rho2' Hs2]]].
+      * match goal with
+        | [ H1 : has_type _ e1 TString, H2 : has_type _ e2 TString |- _ ] =>
+          destruct (canonical_forms_string_expr _ H1 Hv1) as [[s1 Heq1] | [s1 Heq1]];
+          destruct (canonical_forms_string_expr _ H2 Hv2) as [[s2 Heq2] | [s2 Heq2]];
+          subst
+        end.
         -- exists (ELit (VString (s1 ++ s2))), empty_env. apply S_Add_String.
         -- exists (ELit (VOops s2)), empty_env. apply S_BinOp_Error_Right.
         -- exists (ELit (VOops s1)), empty_env. apply S_BinOp_Error_Left.
         -- exists (ELit (VOops s1)), empty_env. apply S_BinOp_Error_Left.
-      * destruct (canonical_forms_string_expr _ H Hv1) as [[s1 Heq1] | [s1 Heq1]]; subst.
+      * match goal with
+        | [ H1 : has_type _ e1 TString |- _ ] =>
+          destruct (canonical_forms_string_expr _ H1 Hv1) as [[s1 Heq1] | [s1 Heq1]]; subst
+        end.
         -- exists (EBinOp BAdd (ELit (VString s1)) e2'), rho2'.
            apply S_BinOp_Right; [constructor | assumption].
         -- exists (ELit (VOops s1)), empty_env. apply S_BinOp_Error_Left.
     + exists (EBinOp BAdd e1' e2), rho1'. apply S_BinOp_Left. assumption.
   - (* T_Eq *)
     right.
-    destruct (IHhas_type1 eq_refl) as [Hv1 | [e1' [rho1' Hs1]]].
-    + destruct (IHhas_type2 eq_refl) as [Hv2 | [e2' [rho2' Hs2]]].
+    assert (IH1 : is_value e1 \/ exists e' rho', step e1 empty_env e' rho').
+    { eapply IH. unfold ltof. simpl. lia. eassumption. }
+    assert (IH2 : is_value e2 \/ exists e' rho', step e2 empty_env e' rho').
+    { eapply IH. unfold ltof. simpl. lia. eassumption. }
+    destruct IH1 as [Hv1 | [e1' [rho1' Hs1]]].
+    + destruct IH2 as [Hv2 | [e2' [rho2' Hs2]]].
       * (* Both values *)
         destruct (value_is_lit_or_array e1 Hv1) as [[v1 Heq1] | [vs1 Heq1]];
         destruct (value_is_lit_or_array e2 Hv2) as [[v2 Heq2] | [vs2 Heq2]]; subst.
@@ -667,69 +758,137 @@ Proof.
     + exists (EBinOp BEq e1' e2), rho1'. apply S_BinOp_Left. assumption.
   - (* T_And *)
     right.
-    destruct (IHhas_type1 eq_refl) as [Hv1 | [e1' [rho1' Hs1]]].
-    + destruct (IHhas_type2 eq_refl) as [Hv2 | [e2' [rho2' Hs2]]].
-      * destruct (canonical_forms_bool_expr _ H Hv1) as [[b1 Heq1] | [s1 Heq1]];
-        destruct (canonical_forms_bool_expr _ H0 Hv2) as [[b2 Heq2] | [s2 Heq2]];
-        subst.
+    assert (IH1 : is_value e1 \/ exists e' rho', step e1 empty_env e' rho').
+    { eapply IH. unfold ltof. simpl. lia. eassumption. }
+    assert (IH2 : is_value e2 \/ exists e' rho', step e2 empty_env e' rho').
+    { eapply IH. unfold ltof. simpl. lia. eassumption. }
+    destruct IH1 as [Hv1 | [e1' [rho1' Hs1]]].
+    + destruct IH2 as [Hv2 | [e2' [rho2' Hs2]]].
+      * match goal with
+        | [ H1 : has_type _ e1 TBool, H2 : has_type _ e2 TBool |- _ ] =>
+          destruct (canonical_forms_bool_expr _ H1 Hv1) as [[b1 Heq1] | [s1 Heq1]];
+          destruct (canonical_forms_bool_expr _ H2 Hv2) as [[b2 Heq2] | [s2 Heq2]];
+          subst
+        end.
         -- exists (ELit (VBool (andb b1 b2))), empty_env. apply S_And.
         -- exists (ELit (VOops s2)), empty_env. apply S_BinOp_Error_Right.
         -- exists (ELit (VOops s1)), empty_env. apply S_BinOp_Error_Left.
         -- exists (ELit (VOops s1)), empty_env. apply S_BinOp_Error_Left.
-      * destruct (canonical_forms_bool_expr _ H Hv1) as [[b1 Heq1] | [s1 Heq1]]; subst.
+      * match goal with
+        | [ H1 : has_type _ e1 TBool |- _ ] =>
+          destruct (canonical_forms_bool_expr _ H1 Hv1) as [[b1 Heq1] | [s1 Heq1]]; subst
+        end.
         -- exists (EBinOp BAnd (ELit (VBool b1)) e2'), rho2'.
            apply S_BinOp_Right; [constructor | assumption].
         -- exists (ELit (VOops s1)), empty_env. apply S_BinOp_Error_Left.
     + exists (EBinOp BAnd e1' e2), rho1'. apply S_BinOp_Left. assumption.
   - (* T_Neg_Int *)
     right.
-    destruct (IHhas_type eq_refl) as [Hv | [e' [rho' Hs]]].
-    + destruct (canonical_forms_int_expr _ H Hv) as [[n Heq] | [s Heq]]; subst.
+    assert (IHe : is_value e0 \/ exists e' rho', step e0 empty_env e' rho').
+    { eapply IH. unfold ltof. simpl. lia. eassumption. }
+    destruct IHe as [Hv | [e' [rho' Hs]]].
+    + match goal with
+      | [ Ht : has_type _ e0 TInt |- _ ] =>
+        destruct (canonical_forms_int_expr _ Ht Hv) as [[n Heq] | [s Heq]]; subst
+      end.
       * exists (ELit (VInt (-n)%Z)), empty_env. apply S_Neg_Int.
       * exists (ELit (VOops s)), empty_env. apply S_UnOp_Error.
     + exists (EUnOp UNeg e'), rho'. apply S_UnOp_inner. assumption.
   - (* T_Neg_Float *)
     right.
-    destruct (IHhas_type eq_refl) as [Hv | [e' [rho' Hs]]].
-    + destruct (canonical_forms_float_expr _ H Hv) as [[r Heq] | [s Heq]]; subst.
+    assert (IHe : is_value e0 \/ exists e' rho', step e0 empty_env e' rho').
+    { eapply IH. unfold ltof. simpl. lia. eassumption. }
+    destruct IHe as [Hv | [e' [rho' Hs]]].
+    + match goal with
+      | [ Ht : has_type _ e0 TFloat |- _ ] =>
+        destruct (canonical_forms_float_expr _ Ht Hv) as [[r Heq] | [s Heq]]; subst
+      end.
       * exists (ELit (VFloat (- r)%R)), empty_env. apply S_Neg_Float.
       * exists (ELit (VOops s)), empty_env. apply S_UnOp_Error.
     + exists (EUnOp UNeg e'), rho'. apply S_UnOp_inner. assumption.
   - (* T_Not *)
     right.
-    destruct (IHhas_type eq_refl) as [Hv | [e' [rho' Hs]]].
-    + destruct (canonical_forms_bool_expr _ H Hv) as [[b Heq] | [s Heq]]; subst.
+    assert (IHe : is_value e0 \/ exists e' rho', step e0 empty_env e' rho').
+    { eapply IH. unfold ltof. simpl. lia. eassumption. }
+    destruct IHe as [Hv | [e' [rho' Hs]]].
+    + match goal with
+      | [ Ht : has_type _ e0 TBool |- _ ] =>
+        destruct (canonical_forms_bool_expr _ Ht Hv) as [[b Heq] | [s Heq]]; subst
+      end.
       * exists (ELit (VBool (negb b))), empty_env. apply S_Not.
       * exists (ELit (VOops s)), empty_env. apply S_UnOp_Error.
     + exists (EUnOp UNot e'), rho'. apply S_UnOp_inner. assumption.
-  - (* T_Array — proof structure exists in standalone progress_array (Qed).
-       The bridge from induction IH to the lemma is blocked by Forall
-       hypothesis form after remember/subst. *)
-    admit.
-  - (* T_Okay — proof sketch: if e is value, S_Okay; if VOops, S_Okay_Error;
-       if e steps, S_Okay_step. Array value case needs V_Array construction. *)
-    admit.
-  - (* T_Oops — proof sketch: if e is string literal, S_Oops; if VOops,
-       S_Oops_Error; if e steps, S_Oops_step. EArray cannot have TString. *)
-    admit.
+  - (* T_Array *)
+    right.
+    assert (Hprog: Forall (fun e0 => is_value e0 \/
+                     exists e' rho', step e0 empty_env e' rho') es).
+    { match goal with
+      | [ Hf : Forall _ es |- _ ] =>
+        eapply forall_progress_from_ih; [exact Hf |]
+      end.
+      intros y Hin t' Hty'.
+      eapply IH.
+      - unfold ltof. apply in_list_size_fold. assumption.
+      - eassumption.
+    }
+    destruct (array_elements_progress es Hprog) as
+      [[vs Hvs] | [vs [e0 [e0' [es' [rho' [Hdecomp Hstep]]]]]]].
+    + subst. exists (ELit (VArray vs)), empty_env. apply S_Array_val.
+    + subst. exists (EArray (map ELit vs ++ e0' :: es')), rho'.
+      apply S_Array_step. assumption.
+  - (* T_Okay *)
+    right.
+    assert (IHe : is_value e0 \/ exists e' rho', step e0 empty_env e' rho').
+    { eapply IH. unfold ltof. simpl. lia. eassumption. }
+    destruct IHe as [Hv | [e' [rho' Hs]]].
+    + destruct (value_is_lit_or_array e0 Hv) as [[v Heq] | [vs Heq]]; subst.
+      * destruct v as [z|r|s|b| |l|ok|err].
+        -- exists (ELit (VOkay (VInt z))), empty_env. apply S_Okay. constructor.
+        -- exists (ELit (VOkay (VFloat r))), empty_env. apply S_Okay. constructor.
+        -- exists (ELit (VOkay (VString s))), empty_env. apply S_Okay. constructor.
+        -- exists (ELit (VOkay (VBool b))), empty_env. apply S_Okay. constructor.
+        -- exists (ELit (VOkay VUnit)), empty_env. apply S_Okay. constructor.
+        -- exists (ELit (VOkay (VArray l))), empty_env. apply S_Okay. constructor.
+        -- exists (ELit (VOkay (VOkay ok))), empty_env. apply S_Okay. constructor.
+        -- exists (ELit (VOops err)), empty_env. apply S_Okay_Error.
+      * exists (EOkay (ELit (VArray vs))), empty_env.
+        apply S_Okay_step. apply S_Array_val.
+    + exists (EOkay e'), rho'. apply S_Okay_step. assumption.
+  - (* T_Oops *)
+    right.
+    assert (IHe : is_value e0 \/ exists e' rho', step e0 empty_env e' rho').
+    { eapply IH. unfold ltof. simpl. lia. eassumption. }
+    destruct IHe as [Hv | [e' [rho' Hs]]].
+    + destruct (value_is_lit_or_array e0 Hv) as [[v Heq] | [vs Heq]]; subst.
+      * match goal with
+        | [ Ht : has_type _ (ELit v) TString |- _ ] =>
+          destruct (canonical_forms_string _ Ht) as [[s Heq] | [s Heq]]; subst
+        end.
+        -- exists (ELit (VOops s)), empty_env. apply S_Oops.
+        -- exists (ELit (VOops s)), empty_env. apply S_Oops_Error.
+      * match goal with
+        | [ Ht : has_type _ (EArray _) TString |- _ ] =>
+          inversion Ht; subst; try discriminate
+        end.
+    + exists (EOops e'), rho'. apply S_Oops_step. assumption.
   - (* T_Unwrap *)
     right.
-    destruct (IHhas_type eq_refl) as [Hv | [e' [rho' Hs]]].
-    + destruct (canonical_forms_result_expr _ _ _ H Hv) as
-        [[v Heq] | [s Heq]].
+    assert (IHe : is_value e0 \/ exists e' rho', step e0 empty_env e' rho').
+    { eapply IH. unfold ltof. simpl. lia. eassumption. }
+    destruct IHe as [Hv | [e' [rho' Hs]]].
+    + match goal with
+      | [ Ht : has_type _ e0 (TResult _ _) |- _ ] =>
+        destruct (canonical_forms_result_expr _ _ _ Ht Hv) as
+          [[v Heq] | [s Heq]]
+      end.
       * subst. exists (ELit v), empty_env. apply S_Unwrap_Okay.
       * subst. exists (ELit (VOops s)), empty_env. apply S_Unwrap_Oops.
     + exists (EUnwrap e'), rho'. apply S_Unwrap_step. assumption.
   - (* T_Lit_Okay *) left. constructor.
   - (* T_Lit_Oops *) left. constructor.
   - (* T_Oops_Any *) left. constructor.
-Admitted.
-(** Progress: T_Eq, T_Okay, T_Oops cases now have proof structure.
-    Remaining admit: T_Array IH reconstruction from Forall after remember/subst.
-    Root cause: array_elements_progress has 1 admit for nested array values
-    (EArray-in-EArray representation gap — is_value requires map ELit form
-    but nested arrays are EArray, not ELit). Fix requires changing value
-    representation to flatten nested arrays into VArray. *)
+  - (* T_Lit_Array *) left. constructor.
+Qed.
 
 (** ** Preservation Theorem *)
 
@@ -800,17 +959,80 @@ Proof.
       apply Forall_app; split; [assumption |];
       inversion Hcons; subst; constructor; [apply IHHs; assumption | assumption]
     end].
-  (* Any remaining goals — discharge with T_Oops_Any *)
+  (* S_Array_val: EArray (map ELit vs) : TArray t ==> ELit (VArray vs) : TArray t *)
+  all: try solve [
+    inversion Ht; subst;
+    [ (* T_Array case *)
+      apply T_Lit_Array; assumption
+    | (* T_Oops_Any case - cannot apply to EArray *)
+      discriminate ]].
+  (* Array-related equality and error propagation: all produce TBool or error *)
   all: try solve [apply T_Oops_Any].
   all: try solve [inversion Ht; subst; try apply T_Oops_Any; try assumption].
-  all: admit.
-Admitted.
-(** Preservation: error propagation cases (S_Okay_Error, S_Oops_Error,
-    S_BinOp_Error_Left/Right, S_UnOp_Error) handled by T_Oops_Any automation.
-    Remaining admits: new step rules (S_Eq_True_Array, S_Eq_False_Array,
-    S_Eq_False_LitArray, S_Eq_False_ArrayLit, S_BinOp_Right_Array) need
-    corresponding preservation cases. These are mechanical — each new step
-    rule preserves types by inversion + reconstruction. *)
+  (* Remaining array equality cases: result is ELit (VBool _) which has type TBool.
+     The typing derivation must come from T_Eq (which produces TBool). *)
+  all: try solve [
+    inversion Ht; subst;
+    try constructor;
+    try apply T_Oops_Any].
+  (* S_Array_val: transform Forall on map ELit to Forall on values *)
+  all: try solve [
+    inversion Ht; subst;
+    [ apply T_Lit_Array;
+      match goal with
+      | [ H : Forall (fun e => has_type _ e _) (map ELit ?vs) |- Forall (fun v => has_type _ (ELit v) _) ?vs ] =>
+        rewrite Forall_map in H; exact H
+      end
+    | discriminate ]].
+  (* S_Unwrap_Okay: handle additional T_Lit_Array inversion case *)
+  all: try solve [
+    inversion Ht; subst;
+    match goal with
+    | [ H : has_type _ (ELit (VOkay _)) _ |- _ ] =>
+      inversion H; subst; try assumption; try discriminate; try apply T_Oops_Any
+    end].
+  (* Catch remaining goals *)
+  all: try solve [inversion Ht; subst; try apply T_Oops_Any; try assumption;
+    try (match goal with
+         | [ H : has_type _ (ELit _) _ |- _ ] =>
+           inversion H; subst; try assumption; try discriminate; try apply T_Oops_Any
+         end)].
+  (* Remaining: handle all cases with deep inversion + T_Oops_Any *)
+  all: try solve [
+    inversion Ht; subst;
+    try apply T_Oops_Any;
+    try assumption;
+    try (inversion Ht; subst; apply T_Oops_Any);
+    try (match goal with
+         | [ H : has_type _ (ELit _) _ |- _ ] =>
+           inversion H; subst; try assumption; try discriminate;
+           try apply T_Oops_Any;
+           try (match goal with
+                | [ H2 : has_type _ (ELit _) _ |- _ ] =>
+                  inversion H2; subst; try assumption; try discriminate;
+                  try apply T_Oops_Any
+                end)
+         end);
+    try (constructor; try assumption);
+    try apply T_Oops_Any].
+  (* Nuclear option: brute force all remaining goals *)
+  all: try solve [
+    inversion Ht; subst;
+    repeat (match goal with
+            | [ H : has_type _ (ELit _) _ |- _ ] =>
+              inversion H; clear H; subst
+            end);
+    try assumption; try apply T_Oops_Any; try discriminate; try constructor].
+  all: try solve [
+    inversion Ht; subst;
+    try (apply T_Lit_Array;
+         match goal with
+         | [ H : Forall _ (map ELit _) |- _ ] =>
+           rewrite Forall_map in H; exact H
+         end);
+    try discriminate;
+    try apply T_Oops_Any].
+Qed.
 
 (** ** Type Safety *)
 
