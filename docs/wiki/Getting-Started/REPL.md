@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: PMPL-1.0-or-later -->
 # REPL Guide
 
 The WokeLang REPL (Read-Eval-Print Loop) provides an interactive environment for experimenting with the language.

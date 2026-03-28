@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: PMPL-1.0-or-later -->
 # Consent System
 
 WokeLang's consent system ensures sensitive operations require explicit permission.

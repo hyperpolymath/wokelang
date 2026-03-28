@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: PMPL-1.0-or-later -->
 # Category Theory Foundations for WokeLang
 
 This document provides the category-theoretic foundations underlying WokeLang's type system and semantics.

@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: PMPL-1.0-or-later -->
 # Error Handling
 
 WokeLang provides gentle, human-centered error handling.

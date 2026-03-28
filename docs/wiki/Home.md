@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: PMPL-1.0-or-later -->
 # WokeLang Wiki
 
 > *A human-centered, consent-driven programming language*

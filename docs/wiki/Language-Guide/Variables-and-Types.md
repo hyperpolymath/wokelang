@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: PMPL-1.0-or-later -->
 # Variables and Types
 
 WokeLang provides a clear, type-safe variable system.

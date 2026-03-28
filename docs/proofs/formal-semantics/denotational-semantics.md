@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: PMPL-1.0-or-later -->
 # WokeLang Denotational Semantics
 
 This document provides the mathematical denotational semantics for WokeLang, giving precise meaning to programs as mathematical objects.

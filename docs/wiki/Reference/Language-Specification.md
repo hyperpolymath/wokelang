@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: PMPL-1.0-or-later -->
 # WokeLang Language Specification
 
 **Version**: 0.1.0

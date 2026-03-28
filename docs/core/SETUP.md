@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: PMPL-1.0-or-later -->
 # WokeLang OCaml Core Setup
 
 This document describes the minimal OCaml-only setup path for building and

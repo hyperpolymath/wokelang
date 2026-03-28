@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: PMPL-1.0-or-later -->
 # WokeLang Capability-Based Security Proofs
 
 This document provides formal proofs of security properties for WokeLang's capability-based security system (Superpowers).

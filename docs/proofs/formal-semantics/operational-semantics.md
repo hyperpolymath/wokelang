@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: PMPL-1.0-or-later -->
 # WokeLang Operational Semantics
 
 This document provides a complete formal specification of WokeLang's operational semantics using both big-step (natural) and small-step (structural operational) semantics.

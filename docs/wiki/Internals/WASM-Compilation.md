@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: PMPL-1.0-or-later -->
 # WASM Compilation
 
 WokeLang can compile programs to WebAssembly for browser and edge runtime execution.

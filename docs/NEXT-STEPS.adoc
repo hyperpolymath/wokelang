@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: PMPL-1.0-or-later -->
 # WokeLang - What's Next
 
 **Current Status:** Core language features complete, runtime features need attention

@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: PMPL-1.0-or-later -->
 # WokeLang Memory Model and Safety
 
 This document specifies the memory model and proves memory safety properties for WokeLang.

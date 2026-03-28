@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: PMPL-1.0-or-later -->
 # CLI Reference
 
 The `woke` command-line interface for WokeLang.

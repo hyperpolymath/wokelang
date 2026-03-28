@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: PMPL-1.0-or-later -->
 # WokeLang Hindley-Milner Type Inference
 
 This document formalizes the type inference algorithm used in WokeLang, based on the Hindley-Milner type system with extensions for Result types.

@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: PMPL-1.0-or-later -->
 # Architecture Overview
 
 This document describes the internal architecture of the WokeLang implementation.

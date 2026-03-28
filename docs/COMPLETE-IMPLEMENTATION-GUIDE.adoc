@@ -1,3 +1,6 @@
+<!-- SPDX-License-Identifier: PMPL-1.0-or-later -->
+<!-- SPDX-License-Identifier: PMPL-1.0-or-later -->
+// SPDX-License-Identifier: PMPL-1.0-or-later
 # WokeLang: Complete Implementation Guide
 ## From EBNF to Production-Ready Language
 
@@ -1226,7 +1229,7 @@ For each phase, perform:
 ## 7. Reference Implementations
 
 ### Current Implementation
-- **Location:** `/var/mnt/eclipse/repos/wokelang`
+- **Location:** `/var$REPOS_DIR/wokelang`
 - **Language:** Rust
 - **Architecture:** Tree-walking interpreter
 - **Status:** Phase 1 mostly complete

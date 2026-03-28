@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: PMPL-1.0-or-later -->
 # Installation
 
 This guide covers how to install WokeLang on your system.

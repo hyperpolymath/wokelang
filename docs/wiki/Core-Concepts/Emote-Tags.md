@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: PMPL-1.0-or-later -->
 # Emote Tags
 
 Emote tags provide emotional context and semantic meaning to WokeLang code.

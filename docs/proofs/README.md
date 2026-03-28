@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: PMPL-1.0-or-later -->
 # WokeLang Formal Proofs and Academic Documentation
 
 This directory contains formal mathematical proofs, specifications, and academic documentation for the WokeLang programming language.

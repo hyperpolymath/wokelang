@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: PMPL-1.0-or-later -->
 # WokeLang ABI/FFI Architecture
 
 This document describes the WokeLang ABI (Application Binary Interface) and FFI (Foreign Function Interface) architecture.

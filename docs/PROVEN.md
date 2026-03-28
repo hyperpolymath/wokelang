@@ -1,3 +1,5 @@
+<!-- SPDX-License-Identifier: PMPL-1.0-or-later -->
+<!-- SPDX-License-Identifier: PMPL-1.0-or-later -->
 # Proven Integration
 
 WokeLang uses [proven](https://github.com/hyperpolymath/proven) for formally verified operations where safety is critical.
@@ -84,4 +86,4 @@ proven adds FFI overhead for maximum safety. Use for:
 
 - proven repo: https://github.com/hyperpolymath/proven
 - Idris2 docs: https://idris2.readthedocs.io
-- Zig FFI: /var/mnt/eclipse/repos/proven/ffi/zig/
+- Zig FFI: /var$REPOS_DIR/proven/ffi/zig/

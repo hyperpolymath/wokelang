@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: PMPL-1.0-or-later -->
 # WokeLang Example Programs
 
 This directory contains example programs demonstrating WokeLang's features.

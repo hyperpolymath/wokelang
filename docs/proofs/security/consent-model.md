@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: PMPL-1.0-or-later -->
 # WokeLang Consent Model: Formal Specification
 
 This document provides a complete formal specification of the consent system, including temporal logic properties, interactive semantics, and persistent storage proofs.

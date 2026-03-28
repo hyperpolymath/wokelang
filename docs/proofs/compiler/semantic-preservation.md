@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: PMPL-1.0-or-later -->
 # WokeLang Compiler Correctness Proofs
 
 This document provides formal proofs of semantic preservation across WokeLang's compilation stages: Source → AST → Bytecode → WASM.

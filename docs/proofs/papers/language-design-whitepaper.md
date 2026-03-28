@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: PMPL-1.0-or-later -->
 # WokeLang: A Consent-Driven, Human-Centered Programming Language
 
 **White Paper v1.0**

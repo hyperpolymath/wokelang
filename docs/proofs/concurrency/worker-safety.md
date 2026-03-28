@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: PMPL-1.0-or-later -->
 # WokeLang Concurrency and Worker System Proofs
 
 This document provides formal proofs of safety properties for WokeLang's worker-based concurrency model.

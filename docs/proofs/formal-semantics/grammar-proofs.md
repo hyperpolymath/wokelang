@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: PMPL-1.0-or-later -->
 # WokeLang Grammar and Parsing Proofs
 
 This document provides formal proofs about the WokeLang grammar, including unambiguity, decidability, and parser correctness.

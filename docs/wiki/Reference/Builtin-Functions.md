@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: PMPL-1.0-or-later -->
 # Built-in Functions
 
 WokeLang provides these built-in functions available in all programs.

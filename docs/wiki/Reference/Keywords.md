@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: PMPL-1.0-or-later -->
 # Keywords Reference
 
 Complete list of reserved keywords in WokeLang.

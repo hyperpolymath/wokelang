@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: PMPL-1.0-or-later -->
 # WokeLang Type Safety Proofs
 
 This document provides formal proofs of type safety for the WokeLang type system, including the fundamental Progress and Preservation theorems.

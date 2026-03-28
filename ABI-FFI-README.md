@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: PMPL-1.0-or-later -->
 {{~ Aditionally delete this line and fill out the template below ~}}
 
 # {{PROJECT}} ABI/FFI Documentation

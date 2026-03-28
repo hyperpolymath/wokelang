@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: PMPL-1.0-or-later -->
 # WokeLang Documentation Index
 
 This index separates **core** documentation (required for the OCaml implementation)

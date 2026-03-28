@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: PMPL-1.0-or-later -->
 # Worker Concurrency System
 
 WokeLang provides lightweight concurrency through an actor-model worker system.

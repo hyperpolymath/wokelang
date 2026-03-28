@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: PMPL-1.0-or-later -->
 # Gratitude System
 
 WokeLang's gratitude system makes attribution and acknowledgment first-class language features.
