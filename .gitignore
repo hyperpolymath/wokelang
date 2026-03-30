@@ -56,7 +56,9 @@ htmlcov/
 # Crash recovery artifacts
 ai-cli-crash-capture/
 
-# ReScript/OCaml compiler artifacts
-*.cmt
-*.cmti
-*.cmi
+# Coq build artifacts
+*.vo
+*.vos
+*.vok
+*.glob
+.*.aux
