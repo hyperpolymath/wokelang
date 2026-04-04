@@ -1,6 +1,8 @@
 # TEST-NEEDS: wokelang
 <!-- SPDX-License-Identifier: PMPL-1.0-or-later -->
 
+## CRG Grade: C — ACHIEVED 2026-04-04
+
 ## Current State (Updated 2026-04-04)
 
 | Category | Count | Details |
