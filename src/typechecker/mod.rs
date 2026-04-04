@@ -1351,6 +1351,16 @@ impl TypeChecker {
                 Ok(sub.clone())
             }
 
+            // Worker messaging: send, receive, await, cancel
+            Statement::SendMessage(s) => {
+                self.infer_expr(&s.message, sub)?;
+                Ok(sub.clone())
+            }
+            Statement::ReceiveMessage(_) | Statement::AwaitWorker(_) | Statement::CancelWorker(_) => {
+                // TODO: Check worker/channel exists in scope
+                Ok(sub.clone())
+            }
+
             // Complain statement: complain "message";
             Statement::Complain(_) => Ok(sub.clone()),
 

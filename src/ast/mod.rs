@@ -128,6 +128,14 @@ pub enum Statement {
     Expression(Spanned<Expr>),
     /// `spawn worker name;`
     WorkerSpawn(WorkerSpawn),
+    /// `send expr to worker_name;`
+    SendMessage(SendMessage),
+    /// `receive from worker_name;`
+    ReceiveMessage(ReceiveMessage),
+    /// `await worker_name;`
+    AwaitWorker(AwaitWorker),
+    /// `cancel worker_name;`
+    CancelWorker(CancelWorker),
     /// `complain "message";`
     Complain(ComplainStmt),
     /// `@emote statement`
@@ -152,6 +160,10 @@ impl Statement {
             Statement::ConsentBlock(c) => c.span.clone(),
             Statement::Expression(e) => e.span.clone(),
             Statement::WorkerSpawn(w) => w.span.clone(),
+            Statement::SendMessage(s) => s.span.clone(),
+            Statement::ReceiveMessage(r) => r.span.clone(),
+            Statement::AwaitWorker(a) => a.span.clone(),
+            Statement::CancelWorker(c) => c.span.clone(),
             Statement::Complain(c) => c.span.clone(),
             Statement::EmoteAnnotated(e) => e.span.clone(),
             Statement::Decide(d) => d.span.clone(),
@@ -214,6 +226,35 @@ pub struct AttemptBlock {
 /// Worker spawn: `spawn worker name;`
 #[derive(Debug, Clone)]
 pub struct WorkerSpawn {
+    pub worker_name: String,
+    pub span: Span,
+}
+
+/// Send message: `send expr to worker_name;`
+#[derive(Debug, Clone)]
+pub struct SendMessage {
+    pub message: Spanned<Expr>,
+    pub target: String,
+    pub span: Span,
+}
+
+/// Receive message: `receive from worker_name;`
+#[derive(Debug, Clone)]
+pub struct ReceiveMessage {
+    pub source: String,
+    pub span: Span,
+}
+
+/// Await worker: `await worker_name;`
+#[derive(Debug, Clone)]
+pub struct AwaitWorker {
+    pub worker_name: String,
+    pub span: Span,
+}
+
+/// Cancel worker: `cancel worker_name;`
+#[derive(Debug, Clone)]
+pub struct CancelWorker {
     pub worker_name: String,
     pub span: Span,
 }

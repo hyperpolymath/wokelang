@@ -607,6 +607,10 @@ impl<'a> Parser<'a> {
             Token::Attempt => self.parse_attempt_block(),
             Token::Only => Ok(Statement::ConsentBlock(self.parse_consent_block()?)),
             Token::Spawn => self.parse_worker_spawn(),
+            Token::Send => self.parse_send_message(),
+            Token::Receive => self.parse_receive_message(),
+            Token::Await => self.parse_await_worker(),
+            Token::Cancel => self.parse_cancel_worker(),
             Token::Complain => self.parse_complain(),
             Token::Decide => self.parse_decide(),
             Token::At => self.parse_emote_annotated(),
@@ -806,6 +810,54 @@ impl<'a> Parser<'a> {
         let (worker_name, _) = self.expect_identifier()?;
         let end_span = self.expect(Token::Semicolon, ";")?;
         Ok(Statement::WorkerSpawn(WorkerSpawn {
+            worker_name,
+            span: start..end_span.end,
+        }))
+    }
+
+    fn parse_send_message(&mut self) -> Result<Statement, ParseError> {
+        let start = self.current_span().start;
+        self.expect(Token::Send, "send")?;
+        let message = self.parse_expression()?;
+        self.expect(Token::To, "to")?;
+        let (target, _) = self.expect_identifier()?;
+        let end_span = self.expect(Token::Semicolon, ";")?;
+        Ok(Statement::SendMessage(SendMessage {
+            message,
+            target,
+            span: start..end_span.end,
+        }))
+    }
+
+    fn parse_receive_message(&mut self) -> Result<Statement, ParseError> {
+        let start = self.current_span().start;
+        self.expect(Token::Receive, "receive")?;
+        self.expect(Token::From, "from")?;
+        let (source, _) = self.expect_identifier()?;
+        let end_span = self.expect(Token::Semicolon, ";")?;
+        Ok(Statement::ReceiveMessage(ReceiveMessage {
+            source,
+            span: start..end_span.end,
+        }))
+    }
+
+    fn parse_await_worker(&mut self) -> Result<Statement, ParseError> {
+        let start = self.current_span().start;
+        self.expect(Token::Await, "await")?;
+        let (worker_name, _) = self.expect_identifier()?;
+        let end_span = self.expect(Token::Semicolon, ";")?;
+        Ok(Statement::AwaitWorker(AwaitWorker {
+            worker_name,
+            span: start..end_span.end,
+        }))
+    }
+
+    fn parse_cancel_worker(&mut self) -> Result<Statement, ParseError> {
+        let start = self.current_span().start;
+        self.expect(Token::Cancel, "cancel")?;
+        let (worker_name, _) = self.expect_identifier()?;
+        let end_span = self.expect(Token::Semicolon, ";")?;
+        Ok(Statement::CancelWorker(CancelWorker {
             worker_name,
             span: start..end_span.end,
         }))
@@ -1527,7 +1579,7 @@ to greet(name: String) -> String {
                 assert_eq!(func.params.len(), 1);
                 assert_eq!(func.params[0].name, "name");
             }
-            _ => panic!("Expected function"),
+            other => panic!("Expected function, got {other:?}"),
         }
     }
 

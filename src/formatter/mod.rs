@@ -175,6 +175,22 @@ impl Formatter {
                 output.push_str(&indent_str);
                 output.push_str(&format!("spawn worker {};\n", w.worker_name));
             }
+            Statement::SendMessage(s) => {
+                output.push_str(&indent_str);
+                output.push_str(&format!("send ... to {};\n", s.target));
+            }
+            Statement::ReceiveMessage(r) => {
+                output.push_str(&indent_str);
+                output.push_str(&format!("receive from {};\n", r.source));
+            }
+            Statement::AwaitWorker(a) => {
+                output.push_str(&indent_str);
+                output.push_str(&format!("await {};\n", a.worker_name));
+            }
+            Statement::CancelWorker(c) => {
+                output.push_str(&indent_str);
+                output.push_str(&format!("cancel {};\n", c.worker_name));
+            }
             Statement::Complain(_) => {
                 output.push_str(&indent_str);
                 output.push_str("complain ...;\n");

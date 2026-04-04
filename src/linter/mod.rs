@@ -154,6 +154,8 @@ impl Linter {
                 self.lint_expr(expr);
             }
             Statement::WorkerSpawn(_) => {}
+            Statement::SendMessage(s) => self.lint_expr(&s.message),
+            Statement::ReceiveMessage(_) | Statement::AwaitWorker(_) | Statement::CancelWorker(_) => {}
             Statement::Complain(_) => {}
             Statement::EmoteAnnotated(emote) => {
                 self.lint_statement(&emote.statement);

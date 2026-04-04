@@ -114,6 +114,24 @@ pub enum Token {
     #[token("spawn")]
     Spawn,
 
+    #[token("send")]
+    Send,
+
+    #[token("receive")]
+    Receive,
+
+    #[token("from")]
+    From,
+
+    #[token("await")]
+    Await,
+
+    #[token("cancel")]
+    Cancel,
+
+    #[token("channel")]
+    Channel,
+
     // === Keywords - Pattern Matching ===
     #[token("decide")]
     Decide,
@@ -329,6 +347,12 @@ impl std::fmt::Display for Token {
             Token::Quest => write!(f, "quest"),
             Token::Superpower => write!(f, "superpower"),
             Token::Spawn => write!(f, "spawn"),
+            Token::Send => write!(f, "send"),
+            Token::Receive => write!(f, "receive"),
+            Token::From => write!(f, "from"),
+            Token::Await => write!(f, "await"),
+            Token::Cancel => write!(f, "cancel"),
+            Token::Channel => write!(f, "channel"),
             Token::Decide => write!(f, "decide"),
             Token::Based => write!(f, "based"),
             Token::On => write!(f, "on"),

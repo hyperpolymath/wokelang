@@ -47,7 +47,6 @@ top_level_item = function_def
 module_import = "use" , qualified_name , [ "renamed" , identifier ] , ";" ;
 
 module_export = "share" , identifier , ";" ;
-(* NOTE: parser implementation pending for module_export *)
 
 qualified_name = identifier , { "." , identifier } ;
 
@@ -152,16 +151,12 @@ superpower_decl = "superpower" , identifier , "{" , { statement } , "}" ;
 worker_spawn = "spawn" , "worker" , identifier , ";" ;
 
 (* --- Worker Messaging --- *)
-(* NOTE: parser implementation pending for send_message *)
 send_message = "send" , expression , "to" , identifier , ";" ;
 
-(* NOTE: parser implementation pending for receive_message *)
 receive_message = "receive" , "from" , identifier , ";" ;
 
-(* NOTE: parser implementation pending for await_worker *)
 await_worker = "await" , identifier , ";" ;
 
-(* NOTE: parser implementation pending for cancel_worker *)
 cancel_worker = "cancel" , identifier , ";" ;
 
 (* ===================================================================== *)
