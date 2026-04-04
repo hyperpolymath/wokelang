@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: PMPL-1.0-or-later
 pub mod ast;
+pub mod dap;
 pub mod formatter;
 pub mod interpreter;
 pub mod lexer;

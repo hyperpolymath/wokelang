@@ -165,13 +165,16 @@ impl DapServer {
             command: "initialize".to_string(),
             success: true,
             message: None,
-            body: Some(serde_json::to_value(InitializeResponse {
-                supports_configuration_done_request: true,
-                supports_function_breakpoints: true,
-                supports_conditional_breakpoints: true,
-                supports_evaluate_for_hovers: true,
-                exception_breakpoint_filters: vec![],
-            }).unwrap()),
+            body: Some(
+                serde_json::to_value(InitializeResponse {
+                    supports_configuration_done_request: true,
+                    supports_function_breakpoints: true,
+                    supports_conditional_breakpoints: true,
+                    supports_evaluate_for_hovers: true,
+                    exception_breakpoint_filters: vec![],
+                })
+                .unwrap(),
+            ),
         }
     }
 
@@ -225,9 +228,12 @@ impl DapServer {
             command: "setBreakpoints".to_string(),
             success: true,
             message: None,
-            body: Some(serde_json::to_value(SetBreakpointsResponse {
-                breakpoints: vec![],
-            }).unwrap()),
+            body: Some(
+                serde_json::to_value(SetBreakpointsResponse {
+                    breakpoints: vec![],
+                })
+                .unwrap(),
+            ),
         }
     }
 
@@ -239,12 +245,15 @@ impl DapServer {
             command: "threads".to_string(),
             success: true,
             message: None,
-            body: Some(serde_json::to_value(ThreadsResponse {
-                threads: vec![Thread {
-                    id: self.current_thread,
-                    name: "main".to_string(),
-                }],
-            }).unwrap()),
+            body: Some(
+                serde_json::to_value(ThreadsResponse {
+                    threads: vec![Thread {
+                        id: self.current_thread,
+                        name: "main".to_string(),
+                    }],
+                })
+                .unwrap(),
+            ),
         }
     }
 
@@ -256,23 +265,26 @@ impl DapServer {
             command: "stackTrace".to_string(),
             success: true,
             message: None,
-            body: Some(serde_json::to_value(StackTraceResponse {
-                stack_frames: self
-                    .call_stack
-                    .iter()
-                    .enumerate()
-                    .map(|(i, name)| StackFrame {
-                        id: i as i64,
-                        name: name.clone(),
-                        source: Some(Source {
-                            path: Some("file.wl".to_string()),
-                            source_reference: None,
-                        }),
-                        line: i as i64,
-                        column: 0,
-                    })
-                    .collect(),
-            }).unwrap()),
+            body: Some(
+                serde_json::to_value(StackTraceResponse {
+                    stack_frames: self
+                        .call_stack
+                        .iter()
+                        .enumerate()
+                        .map(|(i, name)| StackFrame {
+                            id: i as i64,
+                            name: name.clone(),
+                            source: Some(Source {
+                                path: Some("file.wl".to_string()),
+                                source_reference: None,
+                            }),
+                            line: i as i64,
+                            column: 0,
+                        })
+                        .collect(),
+                })
+                .unwrap(),
+            ),
         }
     }
 
@@ -284,13 +296,16 @@ impl DapServer {
             command: "scopes".to_string(),
             success: true,
             message: None,
-            body: Some(serde_json::to_value(ScopesResponse {
-                scopes: vec![Scope {
-                    name: "Locals".to_string(),
-                    variables_reference: 1,
-                    expensive: false,
-                }],
-            }).unwrap()),
+            body: Some(
+                serde_json::to_value(ScopesResponse {
+                    scopes: vec![Scope {
+                        name: "Locals".to_string(),
+                        variables_reference: 1,
+                        expensive: false,
+                    }],
+                })
+                .unwrap(),
+            ),
         }
     }
 
@@ -302,17 +317,20 @@ impl DapServer {
             command: "variables".to_string(),
             success: true,
             message: None,
-            body: Some(serde_json::to_value(VariablesResponse {
-                variables: self
-                    .variables
-                    .iter()
-                    .map(|(name, value)| Variable {
-                        name: name.clone(),
-                        value: value.clone(),
-                        r#type: None,
-                    })
-                    .collect(),
-            }).unwrap()),
+            body: Some(
+                serde_json::to_value(VariablesResponse {
+                    variables: self
+                        .variables
+                        .iter()
+                        .map(|(name, value)| Variable {
+                            name: name.clone(),
+                            value: value.clone(),
+                            r#type: None,
+                        })
+                        .collect(),
+                })
+                .unwrap(),
+            ),
         }
     }
 

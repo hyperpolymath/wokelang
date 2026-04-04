@@ -19,6 +19,12 @@ pub struct RuntimeError {
     pub message: String,
 }
 
+impl RuntimeError {
+    pub fn new(message: String) -> Self {
+        RuntimeError { message }
+    }
+}
+
 impl std::fmt::Display for RuntimeError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "Runtime error: {}", self.message)
@@ -92,7 +98,6 @@ enum ControlFlow {
     Return(Value),
 }
 
-
 /// Pragma settings for interpreter behavior
 #[derive(Debug, Clone)]
 pub struct PragmaSettings {
@@ -119,7 +124,7 @@ pub struct Interpreter {
     environment: Rc<RefCell<Environment>>,
     functions: HashMap<String, FunctionDef>,
     control_flow: ControlFlow,
-    in_loop_context: bool,  // Track whether we're inside a loop
+    in_loop_context: bool, // Track whether we're inside a loop
     capabilities: crate::security::CapabilityRegistry,
     pragmas: PragmaSettings,
     worker_defs: HashMap<String, Vec<Statement>>,
@@ -371,7 +376,7 @@ impl Interpreter {
             Statement::Break(_) => {
                 if !self.in_loop_context {
                     return Err(RuntimeError::new(
-                        "break statement used outside of loop context".to_string()
+                        "break statement used outside of loop context".to_string(),
                     ));
                 }
                 self.control_flow = ControlFlow::Break;
@@ -381,7 +386,7 @@ impl Interpreter {
             Statement::Continue(_) => {
                 if !self.in_loop_context {
                     return Err(RuntimeError::new(
-                        "continue statement used outside of loop context".to_string()
+                        "continue statement used outside of loop context".to_string(),
                     ));
                 }
                 self.control_flow = ControlFlow::Continue;

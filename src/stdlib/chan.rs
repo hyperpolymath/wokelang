@@ -154,10 +154,7 @@ pub fn try_recv(args: &[Value], _caps: &mut CapabilityRegistry) -> Result<Value,
 /// recv_timeout(channel, timeout_ms) -> Oops("timeout")
 /// recv_timeout(channel, timeout_ms) -> Oops(msg)
 /// ```
-pub fn recv_timeout(
-    args: &[Value],
-    _caps: &mut CapabilityRegistry,
-) -> Result<Value, StdlibError> {
+pub fn recv_timeout(args: &[Value], _caps: &mut CapabilityRegistry) -> Result<Value, StdlibError> {
     check_arity(args, 2)?;
     let channel = expect_channel(&args[0])?;
 
@@ -447,7 +444,11 @@ mod tests {
         let mut caps = test_caps();
         let channel = make_chan(&[], &mut caps).unwrap();
 
-        send(&[channel.clone(), Value::String("hello".to_string())], &mut caps).unwrap();
+        send(
+            &[channel.clone(), Value::String("hello".to_string())],
+            &mut caps,
+        )
+        .unwrap();
         send(&[channel.clone(), Value::Bool(true)], &mut caps).unwrap();
         send(&[channel.clone(), Value::Float(3.14)], &mut caps).unwrap();
 
@@ -455,7 +456,10 @@ mod tests {
         let r2 = try_recv(&[channel.clone()], &mut caps).unwrap();
         let r3 = try_recv(&[channel.clone()], &mut caps).unwrap();
 
-        assert_eq!(r1, Value::Okay(Box::new(Value::String("hello".to_string()))));
+        assert_eq!(
+            r1,
+            Value::Okay(Box::new(Value::String("hello".to_string())))
+        );
         assert_eq!(r2, Value::Okay(Box::new(Value::Bool(true))));
         assert_eq!(r3, Value::Okay(Box::new(Value::Float(3.14))));
     }
@@ -565,10 +569,7 @@ mod tests {
         close(&[channel.clone()], &mut caps).unwrap();
         // Closing again should not panic.
         close(&[channel.clone()], &mut caps).unwrap();
-        assert_eq!(
-            is_closed(&[channel], &mut caps).unwrap(),
-            Value::Bool(true)
-        );
+        assert_eq!(is_closed(&[channel], &mut caps).unwrap(), Value::Bool(true));
     }
 
     // -----------------------------------------------------------------------
@@ -649,7 +650,11 @@ mod tests {
         let ch3 = make_chan(&[], &mut caps).unwrap();
 
         // Put a value on the second channel only.
-        send(&[ch2.clone(), Value::String("picked".to_string())], &mut caps).unwrap();
+        send(
+            &[ch2.clone(), Value::String("picked".to_string())],
+            &mut caps,
+        )
+        .unwrap();
 
         let channels_arr = Value::Array(vec![ch1, ch2, ch3]);
         let result = select(&[channels_arr, Value::Int(1000)], &mut caps).unwrap();

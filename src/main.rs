@@ -394,24 +394,22 @@ fn parse_file(file: &PathBuf, format: &str) -> Result<()> {
 
     let mut parser = WokeParser::new(tokens, &source);
     match parser.parse() {
-        Ok(program) => {
-            match format {
-                "json" => {
-                    let json = sexpr::program_to_json(&program);
-                    println!("{}", serde_json::to_string_pretty(&json).unwrap());
-                }
-                "sexpr" | "sexp" => {
-                    println!("{}", sexpr::program_to_sexpr(&program));
-                }
-                "pretty" | _ => {
-                    println!("{:#?}", program);
-                    println!(
-                        "\nParsed {} top-level items successfully.",
-                        program.items.len()
-                    );
-                }
+        Ok(program) => match format {
+            "json" => {
+                let json = sexpr::program_to_json(&program);
+                println!("{}", serde_json::to_string_pretty(&json).unwrap());
             }
-        }
+            "sexpr" | "sexp" => {
+                println!("{}", sexpr::program_to_sexpr(&program));
+            }
+            "pretty" | _ => {
+                println!("{:#?}", program);
+                println!(
+                    "\nParsed {} top-level items successfully.",
+                    program.items.len()
+                );
+            }
+        },
         Err(e) => {
             eprintln!("{:?}", miette::Report::new(e));
         }
