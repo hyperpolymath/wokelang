@@ -358,7 +358,7 @@ mod tests {
             Value::Array(files) => {
                 assert!(files.contains(&Value::String("test.txt".to_string())));
             }
-            _ => panic!("Expected array"),
+            other => panic!("Expected array, got {other:?}"),
         }
 
         // Cleanup

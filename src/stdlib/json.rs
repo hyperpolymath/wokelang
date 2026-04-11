@@ -358,7 +358,7 @@ mod tests {
                 assert_eq!(arr[1], Value::Int(2));
                 assert_eq!(arr[2], Value::Int(3));
             }
-            _ => panic!("Expected array"),
+            other => panic!("Expected array, got {other:?}"),
         }
     }
 
@@ -375,7 +375,7 @@ mod tests {
                 assert_eq!(map.get("name"), Some(&Value::String("Alice".to_string())));
                 assert_eq!(map.get("age"), Some(&Value::Int(30)));
             }
-            _ => panic!("Expected record"),
+            other => panic!("Expected record, got {other:?}"),
         }
     }
 
