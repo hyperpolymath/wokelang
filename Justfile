@@ -9,6 +9,10 @@ build:
 test:
     cargo test
 
+# End-to-end structural validation
+e2e:
+    bash tests/e2e.sh
+
 # Format code
 format:
     cargo fmt
