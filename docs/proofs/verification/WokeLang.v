@@ -120,13 +120,23 @@ Definition extend_type_env (x : string) (t : woke_type) (e : type_env) : type_en
 (* 2b. Value Equality (decidable)                                            *)
 (* ========================================================================= *)
 
-(** Decidable equality on values. We axiomatize this because Coq's real
-    numbers (R) do not have decidable equality without classical axioms.
-    In a computational setting, float equality would use IEEE comparison.
-    The axiom is sound because all value constructors carry data with
-    decidable equality in any concrete implementation. *)
-
-Axiom value_eq_dec : forall (v1 v2 : value), {v1 = v2} + {v1 <> v2}.
+(** Decidable equality on values. Constructive proof:
+    - VInt/VString/VBool/VOops: standard stdlib decidability.
+    - VFloat (R): Req_EM_T from Coq.Reals.Reals (uses total_order_T,
+      which relies on the classical axioms already imported for R).
+      No new axioms are introduced beyond those implicit in Coq.Reals.
+    - VArray: list_eq_dec with the recursive IH from decide equality.
+    - VOkay: handled recursively by decide equality. *)
+Theorem value_eq_dec : forall (v1 v2 : value), {v1 = v2} + {v1 <> v2}.
+Proof.
+  decide equality.
+  - apply Z.eq_dec.
+  - apply Req_EM_T.
+  - apply String.string_dec.
+  - apply Bool.bool_dec.
+  - apply list_eq_dec; assumption.
+  - apply String.string_dec.
+Qed.
 
 (* ========================================================================= *)
 (* 3. Type Checking                                                          *)
