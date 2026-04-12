@@ -63,3 +63,17 @@ ai-cli-crash-capture/
 *.glob
 .*.aux
 editors/vscode/lib/
+
+# Native build artifacts
+*.wasm
+*.so
+*.dylib
+*.dll
+
+# Coverage / profiling
+*.profraw
+*.profdata
+.coverage/
+
+# OS
+.Trash-*/
