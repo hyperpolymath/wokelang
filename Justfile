@@ -2,6 +2,8 @@
 # WokeLang Justfile
 
 # Build the compiler
+import? "contractile.just"
+
 build:
     cargo build --release
 
