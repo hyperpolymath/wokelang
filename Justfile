@@ -2,12 +2,18 @@
 # WokeLang Justfile
 
 # Build the compiler
+import? "contractile.just"
+
 build:
     cargo build --release
 
 # Run tests
 test:
     cargo test
+
+# End-to-end structural validation
+e2e:
+    bash tests/e2e.sh
 
 # Format code
 format:
@@ -74,3 +80,21 @@ help-me:
     @echo "  https://github.com/hyperpolymath/wokelang/issues/new"
     @echo ""
     @echo "Include the output of 'just doctor' in your report."
+
+
+# Print the current CRG grade (reads from READINESS.md '**Current Grade:** X' line)
+crg-grade:
+    @grade=$$(grep -oP '(?<=\*\*Current Grade:\*\* )[A-FX]' READINESS.md 2>/dev/null | head -1); \
+    [ -z "$$grade" ] && grade="X"; \
+    echo "$$grade"
+
+# Generate a shields.io badge markdown for the current CRG grade
+# Looks for '**Current Grade:** X' in READINESS.md; falls back to X
+crg-badge:
+    @grade=$$(grep -oP '(?<=\*\*Current Grade:\*\* )[A-FX]' READINESS.md 2>/dev/null | head -1); \
+    [ -z "$$grade" ] && grade="X"; \
+    case "$$grade" in \
+      A) color="brightgreen" ;; B) color="green" ;; C) color="yellow" ;; \
+      D) color="orange" ;; E) color="red" ;; F) color="critical" ;; \
+      *) color="lightgrey" ;; esac; \
+    echo "[![CRG $$grade](https://img.shields.io/badge/CRG-$$grade-$$color?style=flat-square)](https://github.com/hyperpolymath/standards/tree/main/component-readiness-grades)"

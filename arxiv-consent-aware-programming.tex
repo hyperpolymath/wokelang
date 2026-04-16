@@ -1042,29 +1042,36 @@ there exists $e'$, $H'$, $A'$ such that $\langle e, H, A \rangle
 for any consent effect in $e$.
 \end{theorem}
 
-\begin{proof}[Proof sketch]
+\begin{proof}
 By structural induction on the typing derivation.  The critical case
-is \textsc{T-Consent}: the typing rule ensures that consent-gated
-expressions occur within a handler context ($\Sigma$ is non-empty),
-and the handler $h$ is total (it returns either $\granted$ or
-$\denied$ for any string $s$), so one of \textsc{E-ConsentGranted} or
-\textsc{E-ConsentDenied} always applies.
+is \textsc{T-Consent}: we strengthen the paper rule to require
+$\Sigma \neq \varnothing$ (at least one handler in scope), closing a
+gap in the original sketch.  With this invariant, the top handler $h$
+is always available and total, so one of \textsc{E-ConsentGranted} or
+\textsc{E-ConsentDenied} fires.  The full machine-checked proof is in
+\texttt{src/abi/WokeLang/Safety.idr} (\texttt{progress});
+see the supplementary proof inventory
+(\texttt{docs/supplementary/safety-proofs.adoc}) for details.
 \end{proof}
 
 \begin{theorem}[Preservation]
 \label{thm:preservation}
 If $\Gamma; \Sigma \vdash e : \tau$ and $\langle e, H, A \rangle
-\step \langle e', H', A' \rangle$, then $\Gamma; \Sigma \vdash e' :
-\tau'$ where $\tau' = \tau$ or $\tau' = \mathsf{Consent}[\tau]$
-resolves to $\tau$ (in the granted case) or $\denied$ (in the denied
-case).
+\step \langle e', H', A' \rangle$, then there exists $\tau'$ with
+$\Gamma; \Sigma' \vdash e' : \tau'$, where $\tau' = \tau$ for most
+rules, $\tau' = \tau$ (body type) when \textsc{E-ConsentGranted}
+fires, and $\tau' = \mathsf{TyDenied}$ when \textsc{E-ConsentDenied}
+fires.
 \end{theorem}
 
-\begin{proof}[Proof sketch]
-By structural induction on the reduction.  The consent cases follow
-from the handler totality and the fact that the body of a consent gate
-is typed at $\tau$ while the gate as a whole is typed at
-$\mathsf{Consent}[\tau]$.
+\begin{proof}
+By structural induction on the reduction derivation.  The consent
+cases follow from handler totality: \textsc{E-ConsentGranted} returns
+$e$ (the body, typed at $\tau$), and \textsc{E-ConsentDenied} returns
+\texttt{EDenied} (typed at $\mathsf{TyDenied}$).  The E-Beta case
+uses a closed-value substitution lemma proved by induction with a
+context-exchange step for nested lambda binders.  Machine-checked in
+\texttt{src/abi/WokeLang/Safety.idr} (\texttt{preservation}).
 \end{proof}
 
 \begin{theorem}[Consent Non-Evasion]
@@ -1075,14 +1082,16 @@ handler producing either $\granted$ or $\denied$ and logging the
 decision.
 \end{theorem}
 
-\begin{proof}[Proof sketch]
-The only reduction rules that step into a consent gate body are
-\textsc{E-ConsentGranted} and \textsc{E-ConsentDenied}, both of which
-require a handler response and produce a log entry in $A$.  The typing
-rule \textsc{T-Consent} ensures that the body is not directly
-accessible outside the gate construct.  Exhaustiveness of the handler
-(it must return $\granted$ or $\denied$) ensures a decision is always
-made.
+\begin{proof}
+By inversion on the \textsc{Step} derivation for $\mathbf{only\_if\_okay}\;s\;e$.
+The only constructors of \textsc{Step} whose head expression matches
+$\mathbf{only\_if\_okay}$ are \textsc{E-ConsentGranted} and
+\textsc{E-ConsentDenied}; all other constructors match different head
+forms and are structurally absent.  Both firing rules require
+$H = h :: H'$ (non-empty stack) and append
+$\mathsf{ConsentEntry}(d, s)$ to $A$.
+Machine-checked in \texttt{src/abi/WokeLang/Safety.idr}
+(\texttt{nonEvasion}, \texttt{consentBodyRequiresLog}).
 \end{proof}
 
 This theorem is the core safety property of the consent system: you
@@ -1448,11 +1457,16 @@ priority.
 
 \paragraph{Formal Verification.}
 The $\lambda_{\consent}$ calculus presented here covers a simplified
-core language.  Extending the formal treatment to cover the full
-\WokeLang{} language---including higher-order functions, mutation,
-concurrency, and module systems---is ongoing work.  We are exploring
-mechanized proofs in Idris~2~\citep{brady2021idris2} to ensure the
-correctness of our compiler's consent tracking.
+core language.  Proofs of Progress, Preservation, and Non-Evasion have
+been mechanised in Idris~2~\citep{brady2021idris2} under
+\texttt{\%default total} with no uses of \texttt{believe\_me} or
+\texttt{postulate}; see \texttt{src/abi/WokeLang/Safety.idr} and
+\texttt{docs/supplementary/safety-proofs.adoc}.  The mechanisation
+strengthens \textsc{T-Consent} to require a non-empty handler context
+$\Sigma$, fixing a gap in the original proof sketch.  Extending the
+formal treatment to the full language---including higher-order
+functions, mutation, concurrency, and module systems---remains future
+work.
 
 \paragraph{Localization.}
 Exploring multilingual keyword support while maintaining semantic

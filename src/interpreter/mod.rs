@@ -1381,7 +1381,7 @@ mod tests {
 
         match interp.eval_expr(&okay).unwrap() {
             Value::Okay(v) => assert_eq!(*v, Value::Int(42)),
-            _ => panic!("Expected Okay"),
+            other => panic!("Expected Okay, got {other:?}"),
         }
 
         // Oops("error")
@@ -1395,7 +1395,7 @@ mod tests {
 
         match interp.eval_expr(&oops).unwrap() {
             Value::Oops(msg) => assert_eq!(msg, "error"),
-            _ => panic!("Expected Oops"),
+            other => panic!("Expected Oops, got {other:?}"),
         }
     }
 

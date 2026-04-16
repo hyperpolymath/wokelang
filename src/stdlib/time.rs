@@ -270,7 +270,7 @@ mod tests {
         let result = now(&[], &mut caps).unwrap();
         match result {
             Value::Int(ts) => assert!(ts > 0),
-            _ => panic!("Expected integer"),
+            other => panic!("Expected integer, got {other:?}"),
         }
     }
 
@@ -280,7 +280,7 @@ mod tests {
         let result = timestamp(&[], &mut caps).unwrap();
         match result {
             Value::Int(ts) => assert!(ts > 0),
-            _ => panic!("Expected integer"),
+            other => panic!("Expected integer, got {other:?}"),
         }
     }
 
@@ -317,7 +317,7 @@ mod tests {
                 // Should be midnight UTC on 2024-01-15
                 assert!(ts > 0);
             }
-            _ => panic!("Expected integer"),
+            other => panic!("Expected integer, got {other:?}"),
         }
     }
 
@@ -361,7 +361,7 @@ mod tests {
 
         match result {
             Value::Int(ms) => assert!(ms >= 20),
-            _ => panic!("Expected integer"),
+            other => panic!("Expected integer, got {other:?}"),
         }
 
         // Reset

@@ -1,0 +1,96 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+// SPDX-FileCopyrightText: 2025 Jonathan D.A. Jewell
+= WokeLang Safety Proofs — Supplementary Material
+:toc:
+:toc-placement: preamble
+
+Supplementary material for _A Consent-Aware Programming Language: WokeLang_
+(§7, Formal Semantics).  This document maps each paper theorem to the
+corresponding Idris 2 source file and explains the key proof strategies.
+
+== Source locations
+
+[cols="2,3,4"]
+|===
+| Theorem | Paper reference | Idris 2 source
+
+| Syntax (Definition 1)
+| §7.1
+| `src/abi/WokeLang/Calculus.idr`
+
+| Typing (Definition 2)
+| §7.2
+| `src/abi/WokeLang/Typing.idr`
+
+| Operational semantics (Definition 3)
+| §7.3
+| `src/abi/WokeLang/Reduction.idr`
+
+| Theorem 1 — Progress
+| §7.4, `thm:progress`
+| `src/abi/WokeLang/Safety.idr`, `progress`
+
+| Theorem 2 — Preservation
+| §7.4, `thm:preservation`
+| `src/abi/WokeLang/Safety.idr`, `preservation`
+
+| Theorem 3 — Non-Evasion
+| §7.4, `thm:non-evasion`
+| `src/abi/WokeLang/Safety.idr`, `nonEvasion`, `consentBodyRequiresLog`
+
+|===
+
+All four files use `%default total` and contain no `believe_me`, `assert_total`,
+`postulate`, or `sorry`.
+
+== Key proof strategies
+
+=== T-Consent invariant fix
+
+The paper's T-Consent rule (Definition 2) accepts an arbitrary consent context Σ,
+including the empty one.  However, the Progress proof sketch (§7.4) implicitly
+assumes Σ is non-empty so that `E-ConsentGranted` or `E-ConsentDenied` can fire.
+The mechanisation strengthens T-Consent to require `Σ = h :: hs` (at least one
+handler in scope).  This is the only deviation from the paper and closes a genuine
+gap in the original presentation.
+
+=== Context exchange for substitution
+
+The substitution lemma (`substLemma` in `Typing.idr`) is proved for *closed values*
+(values typed in the empty context `[]`).  This is sufficient for Preservation
+because the whole term is typed in `[]`, so every function argument at a beta-redex
+is itself typed in `[]`.
+
+The `TLam` case requires a *context exchange* lemma (`ctxExchange`): when the
+substitution variable `x` appears under a lambda binder `y ≠ x`, the two adjacent
+bindings `(y, τy) :: (x, τx) :: ctx` are swapped to `(x, τx) :: (y, τy) :: ctx`.
+This is justified by `exchangeLookup`, which shows that `decEq`-based lookup
+produces the same result in both orderings when `x ≠ y`.
+
+=== Type change in Preservation
+
+Consent gate steps change the static type:
+
+* `SConsentGranted`: `Consent[τ] → τ` (`TCGranted`)
+* `SConsentDenied`: `Consent[τ] → TyDenied` (`TCDenied`)
+
+All other rules preserve the type exactly (`TCRefl`).  The `TypeChange` GADT
+captures this, and `preservation` returns `(τ' : Ty ** TypeChange τ τ' ** Typed [] sigma' e' τ')`.
+
+=== Non-Evasion
+
+`nonEvasion` proves Theorem 3 by *inversion*: matching on
+`Step (EOnlyIfOkay s e) H A e' H' A'` exhaustively enumerates the Step
+constructors.  The only constructors whose `Step` head is `EOnlyIfOkay` are
+`SConsentGranted` and `SConsentDenied`; all others match different head forms
+and are therefore structurally absent.  Both firing constructors append
+`ConsentEntry d s` to `A`, so `DecisionLogged A' s` holds immediately.
+
+== Scope and limitations
+
+* The mechanisation covers the core λ_consent calculus as defined in the paper.
+* The `EAttr` and `EFeel` extensions are included (reduction rules + preservation
+  cases) but are not the focus of the three theorems.
+* Units-of-measure typing (§5) and gratitude blocks (§6) are not mechanised here;
+  they are independent extensions that do not affect the consent gate soundness
+  results.
