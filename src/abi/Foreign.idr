@@ -1,126 +1,217 @@
--- SPDX-License-Identifier: PMPL-1.0-or-later
--- SPDX-FileCopyrightText: 2025 Jonathan D.A. Jewell
--- Foreign.idr - FFI declarations for WokeLang
+||| SPDX-License-Identifier: PMPL-1.0-or-later
+||| Foreign Function Interface Declarations for WOKELANG
+|||
+||| This module declares all C-compatible functions that will be
+||| implemented in the Zig FFI layer.
+|||
+||| All functions are declared here with type signatures and safety proofs.
+||| Implementations live in ffi/zig/
 
-module WokeLang.ABI.Foreign
+module Wokelang.ABI.Foreign
 
-import WokeLang.ABI.Types
-import WokeLang.ABI.Layout
+import Wokelang.ABI.Types
+import Wokelang.ABI.Layout
 
 %default total
 
--- | C string type
+--------------------------------------------------------------------------------
+-- Library Lifecycle
+--------------------------------------------------------------------------------
+
+||| Initialize the library
+||| Returns a handle to the library instance, or Nothing on failure
+export
+%foreign "C:wokelang_init, libwokelang"
+prim__init : PrimIO Bits64
+
+||| Safe wrapper for library initialization
+export
+init : IO (Maybe Handle)
+init = do
+  ptr <- primIO prim__init
+  pure (createHandle ptr)
+
+||| Clean up library resources
+export
+%foreign "C:wokelang_free, libwokelang"
+prim__free : Bits64 -> PrimIO ()
+
+||| Safe wrapper for cleanup
+export
+free : Handle -> IO ()
+free h = primIO (prim__free (handlePtr h))
+
+--------------------------------------------------------------------------------
+-- Core Operations
+--------------------------------------------------------------------------------
+
+||| Example operation: process data
+export
+%foreign "C:wokelang_process, libwokelang"
+prim__process : Bits64 -> Bits32 -> PrimIO Bits32
+
+||| Safe wrapper with error handling
+export
+process : Handle -> Bits32 -> IO (Either Result Bits32)
+process h input = do
+  result <- primIO (prim__process (handlePtr h) input)
+  pure $ case result of
+    0 => Left Error
+    n => Right n
+
+--------------------------------------------------------------------------------
+-- String Operations
+--------------------------------------------------------------------------------
+
+||| Convert C string to Idris String
+export
+%foreign "support:idris2_getString, libidris2_support"
+prim__getString : Bits64 -> String
+
+||| Free C string
+export
+%foreign "C:wokelang_free_string, libwokelang"
+prim__freeString : Bits64 -> PrimIO ()
+
+||| Get string result from library
+export
+%foreign "C:wokelang_get_string, libwokelang"
+prim__getResult : Bits64 -> PrimIO Bits64
+
+||| Safe string getter
+export
+getString : Handle -> IO (Maybe String)
+getString h = do
+  ptr <- primIO (prim__getResult (handlePtr h))
+  if ptr == 0
+    then pure Nothing
+    else do
+      let str = prim__getString ptr
+      primIO (prim__freeString ptr)
+      pure (Just str)
+
+--------------------------------------------------------------------------------
+-- Array/Buffer Operations
+--------------------------------------------------------------------------------
+
+||| Process array data
+export
+%foreign "C:wokelang_process_array, libwokelang"
+prim__processArray : Bits64 -> Bits64 -> Bits32 -> PrimIO Bits32
+
+||| Safe array processor
+export
+processArray : Handle -> (buffer : Bits64) -> (len : Bits32) -> IO (Either Result ())
+processArray h buf len = do
+  result <- primIO (prim__processArray (handlePtr h) buf len)
+  pure $ case resultFromInt result of
+    Just Ok => Right ()
+    Just err => Left err
+    Nothing => Left Error
+  where
+    resultFromInt : Bits32 -> Maybe Result
+    resultFromInt 0 = Just Ok
+    resultFromInt 1 = Just Error
+    resultFromInt 2 = Just InvalidParam
+    resultFromInt 3 = Just OutOfMemory
+    resultFromInt 4 = Just NullPointer
+    resultFromInt _ = Nothing
+
+--------------------------------------------------------------------------------
+-- Error Handling
+--------------------------------------------------------------------------------
+
+||| Get last error message
+export
+%foreign "C:wokelang_last_error, libwokelang"
+prim__lastError : PrimIO Bits64
+
+||| Retrieve last error as string
+export
+lastError : IO (Maybe String)
+lastError = do
+  ptr <- primIO prim__lastError
+  if ptr == 0
+    then pure Nothing
+    else pure (Just (prim__getString ptr))
+
+||| Get error description for result code
+export
+errorDescription : Result -> String
+errorDescription Ok = "Success"
+errorDescription Error = "Generic error"
+errorDescription InvalidParam = "Invalid parameter"
+errorDescription OutOfMemory = "Out of memory"
+errorDescription NullPointer = "Null pointer"
+
+--------------------------------------------------------------------------------
+-- Version Information
+--------------------------------------------------------------------------------
+
+||| Get library version
+export
+%foreign "C:wokelang_version, libwokelang"
+prim__version : PrimIO Bits64
+
+||| Get version as string
+export
+version : IO String
+version = do
+  ptr <- primIO prim__version
+  pure (prim__getString ptr)
+
+||| Get library build info
+export
+%foreign "C:wokelang_build_info, libwokelang"
+prim__buildInfo : PrimIO Bits64
+
+||| Get build information
+export
+buildInfo : IO String
+buildInfo = do
+  ptr <- primIO prim__buildInfo
+  pure (prim__getString ptr)
+
+--------------------------------------------------------------------------------
+-- Callback Support
+--------------------------------------------------------------------------------
+
+||| Callback function type (C ABI)
 public export
-CString : Type
-CString = Ptr String
+Callback : Type
+Callback = Bits64 -> Bits32 -> Bits32
 
--- | C int type
-public export
-CInt : Type
-CInt = Bits32
-
--- | C long long type
-public export
-CLongLong : Type
-CLongLong = Bits64
-
--- | C double type
-public export
-CDouble : Type
-CDouble = Double
-
--- ==== Interpreter Lifecycle ====
-
--- | Create a new WokeLang interpreter
--- Returns null on failure
-%foreign "C:woke_interpreter_new,libwokelang"
+||| Register a callback
 export
-woke_interpreter_new : PrimIO (Ptr InterpreterHandle)
+%foreign "C:wokelang_register_callback, libwokelang"
+prim__registerCallback : Bits64 -> AnyPtr -> PrimIO Bits32
 
--- | Free a WokeLang interpreter
-%foreign "C:woke_interpreter_free,libwokelang"
+||| Safe callback registration
 export
-woke_interpreter_free : Ptr InterpreterHandle -> PrimIO ()
+registerCallback : Handle -> Callback -> IO (Either Result ())
+registerCallback h cb = do
+  result <- primIO (prim__registerCallback (handlePtr h) (cast cb))
+  pure $ case resultFromInt result of
+    Just Ok => Right ()
+    Just err => Left err
+    Nothing => Left Error
+  where
+    resultFromInt : Bits32 -> Maybe Result
+    resultFromInt 0 = Just Ok
+    resultFromInt _ = Just Error
 
--- ==== Execution ====
+--------------------------------------------------------------------------------
+-- Utility Functions
+--------------------------------------------------------------------------------
 
--- | Execute WokeLang source code
-%foreign "C:woke_exec,libwokelang"
+||| Check if library is initialized
 export
-woke_exec : Ptr InterpreterHandle -> CString -> PrimIO CInt
+%foreign "C:wokelang_is_initialized, libwokelang"
+prim__isInitialized : Bits64 -> PrimIO Bits32
 
--- | Execute and get return value
-%foreign "C:woke_eval,libwokelang"
+||| Check initialization status
 export
-woke_eval : Ptr InterpreterHandle -> CString -> Ptr (Ptr ValueHandle) -> PrimIO CInt
-
--- ==== Value Operations ====
-
--- | Free a WokeLang value
-%foreign "C:woke_value_free,libwokelang"
-export
-woke_value_free : Ptr ValueHandle -> PrimIO ()
-
--- | Get value type
-%foreign "C:woke_value_type,libwokelang"
-export
-woke_value_type : Ptr ValueHandle -> PrimIO CInt
-
--- | Get integer from value
-%foreign "C:woke_value_as_int,libwokelang"
-export
-woke_value_as_int : Ptr ValueHandle -> Ptr CLongLong -> PrimIO CInt
-
--- | Get float from value
-%foreign "C:woke_value_as_float,libwokelang"
-export
-woke_value_as_float : Ptr ValueHandle -> Ptr CDouble -> PrimIO CInt
-
--- | Get boolean from value
-%foreign "C:woke_value_as_bool,libwokelang"
-export
-woke_value_as_bool : Ptr ValueHandle -> Ptr CInt -> PrimIO CInt
-
--- | Get string from value (must free with woke_string_free)
-%foreign "C:woke_value_as_string,libwokelang"
-export
-woke_value_as_string : Ptr ValueHandle -> PrimIO CString
-
--- | Free string returned by woke_value_as_string
-%foreign "C:woke_string_free,libwokelang"
-export
-woke_string_free : CString -> PrimIO ()
-
--- ==== Value Creation ====
-
--- | Create integer value
-%foreign "C:woke_value_from_int,libwokelang"
-export
-woke_value_from_int : CLongLong -> PrimIO (Ptr ValueHandle)
-
--- | Create float value
-%foreign "C:woke_value_from_float,libwokelang"
-export
-woke_value_from_float : CDouble -> PrimIO (Ptr ValueHandle)
-
--- | Create boolean value
-%foreign "C:woke_value_from_bool,libwokelang"
-export
-woke_value_from_bool : CInt -> PrimIO (Ptr ValueHandle)
-
--- | Create string value
-%foreign "C:woke_value_from_string,libwokelang"
-export
-woke_value_from_string : CString -> PrimIO (Ptr ValueHandle)
-
--- ==== Utility ====
-
--- | Get version string
-%foreign "C:woke_version,libwokelang"
-export
-woke_version : PrimIO CString
-
--- | Get last error message
-%foreign "C:woke_last_error,libwokelang"
-export
-woke_last_error : PrimIO CString
+isInitialized : Handle -> IO Bool
+isInitialized h = do
+  result <- primIO (prim__isInitialized (handlePtr h))
+  pure (result /= 0)
