@@ -13,5 +13,9 @@ depends = base >= 0.6.0
 modules = WokeLang.ABI.Types
         , WokeLang.ABI.Layout
         , WokeLang.ABI.Foreign
+        , WokeLang.Calculus
+        , WokeLang.Typing
+        , WokeLang.Reduction
+        , WokeLang.Safety
 
 sourcedir = "."
