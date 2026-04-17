@@ -77,3 +77,10 @@ editors/vscode/lib/
 
 # OS
 .Trash-*/
+target/
+node_modules/
+_build/
+deps/
+.elixir_ls/
+.cache/
+dist/

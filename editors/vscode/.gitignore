@@ -2,3 +2,14 @@ node_modules/
 out/
 *.vsix
 .vscode-test/
+target/
+_build/
+deps/
+.elixir_ls/
+.cache/
+*.log
+*.tmp
+.DS_Store
+Thumbs.db
+build/
+dist/
