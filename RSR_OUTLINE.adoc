@@ -18,7 +18,7 @@ This repository provides the standardized structure, configuration, and tooling 
 
 * Bootstrap new projects with RSR compliance
 * Reference the standard directory structure
-* Copy configuration templates (justfile, STATE.scm, etc.)
+* Copy configuration templates (Justfile, STATE.scm, etc.)
 
 == Quick Start
 
@@ -33,7 +33,7 @@ rm -rf .git
 git init
 
 # Customize
-sed -i 's/RSR-template-repo/my-project/g' justfile guix.scm README.adoc
+sed -i 's/RSR-template-repo/my-project/g' Justfile guix.scm README.adoc
 
 # Enter development environment
 guix shell -D -f guix.scm
@@ -84,7 +84,7 @@ just validate-rsr
 
 == Justfile Features
 
-The template justfile provides:
+The template Justfile provides:
 
 * **~10 billion recipe combinations** via matrix recipes
 * **Cookbook generation**: `just cookbook` → `docs/just-cookbook.adoc`
@@ -110,7 +110,7 @@ just ci             # Full CI pipeline
 
 just validate       # RSR + STATE validation
 just docs           # Generate all docs
-just cookbook       # Generate justfile docs
+just cookbook       # Generate Justfile docs
 
 just guix-shell     # Guix dev environment
 just container-build # Build container
@@ -134,7 +134,7 @@ project/
 │   ├── man/
 │   └── just-cookbook.adoc
 ├── guix.scm               # Guix package
-├── justfile               # Task runner
+├── Justfile               # Task runner
 ├── LICENSE.txt            # Dual license
 ├── README.adoc            # Overview
 ├── RSR_COMPLIANCE.adoc    # Compliance

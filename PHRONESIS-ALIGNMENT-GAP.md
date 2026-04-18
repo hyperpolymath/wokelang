@@ -417,7 +417,7 @@ impl PackageManager {
 ### Phase 1: Quick Wins (1 week)
 **Goal:** Close easy gaps
 1. ✅ Create TOOLCHAIN-WISHLIST.md (complete)
-2. ✅ Align justfile structure (complete)
+2. ✅ Align Justfile structure (complete)
 3. Create syntax highlighting files
 4. Enhanced error messages
 
