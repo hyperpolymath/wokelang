@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
 = `.machine_readable/svc/` — Service components for wokelang
 :toc:
 

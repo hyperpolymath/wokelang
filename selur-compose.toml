@@ -1,0 +1,19 @@
+# SPDX-License-Identifier: PMPL-1.0-or-later
+# Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+#
+# Stapeln service definition for wokelang
+#
+# Usage:
+#   podman-compose -f selur-compose.toml up -d
+#   just stack-up
+
+[project]
+name = "wokelang"
+
+[services.wokelang]
+build = { context = ".", dockerfile = "Containerfile" }
+image = "wokelang:latest"
+restart = "unless-stopped"
+networks = ["default"]
+security_opt = ["no-new-privileges:true"]
+healthcheck = { test = ["CMD", "wokelang", "--version"], interval = "30s", timeout = "5s", retries = 3 }
