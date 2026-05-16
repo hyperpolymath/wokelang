@@ -74,7 +74,10 @@ pub fn walk_statement<V: Visitor>(v: &mut V, stmt: &Statement) {
             for s in &c.body { v.visit_statement(s); }
         }
         Statement::Expression(e) => v.visit_expr(&e.node),
-        Statement::WorkerSpawn(_) | Statement::Complain(_)
+        Statement::SendMessage(s) => v.visit_expr(&s.message.node),
+        Statement::WorkerSpawn(_) | Statement::ReceiveMessage(_)
+        | Statement::AwaitWorker(_) | Statement::CancelWorker(_)
+        | Statement::Complain(_)
         | Statement::Break(_) | Statement::Continue(_) => {}
         Statement::EmoteAnnotated(e) => v.visit_statement(&e.statement),
         Statement::Decide(d) => {

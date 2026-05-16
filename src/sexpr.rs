@@ -331,6 +331,20 @@ fn stmt_to_sexpr(stmt: &Statement, out: &mut String, indent: usize) {
         Statement::WorkerSpawn(w) => {
             out.push_str(&format!("(spawn-worker \"{}\")", w.worker_name));
         }
+        Statement::SendMessage(s) => {
+            out.push_str(&format!("(send :to \"{}\" ", s.target));
+            expr_to_sexpr(&s.message.node, out, indent + 2);
+            out.push(')');
+        }
+        Statement::ReceiveMessage(r) => {
+            out.push_str(&format!("(receive :from \"{}\")", r.source));
+        }
+        Statement::AwaitWorker(a) => {
+            out.push_str(&format!("(await-worker \"{}\")", a.worker_name));
+        }
+        Statement::CancelWorker(c) => {
+            out.push_str(&format!("(cancel-worker \"{}\")", c.worker_name));
+        }
         Statement::Complain(c) => {
             out.push_str(&format!("(complain \"{}\")", c.message));
         }
@@ -709,6 +723,23 @@ fn stmt_to_json(stmt: &Statement) -> serde_json::Value {
         Statement::WorkerSpawn(w) => serde_json::json!({
             "type": "spawn_worker",
             "name": w.worker_name
+        }),
+        Statement::SendMessage(s) => serde_json::json!({
+            "type": "send_message",
+            "target": s.target,
+            "message": expr_to_json(&s.message.node)
+        }),
+        Statement::ReceiveMessage(r) => serde_json::json!({
+            "type": "receive_message",
+            "source": r.source
+        }),
+        Statement::AwaitWorker(a) => serde_json::json!({
+            "type": "await_worker",
+            "name": a.worker_name
+        }),
+        Statement::CancelWorker(c) => serde_json::json!({
+            "type": "cancel_worker",
+            "name": c.worker_name
         }),
         Statement::Complain(c) => serde_json::json!({
             "type": "complain",

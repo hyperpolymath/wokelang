@@ -515,6 +515,30 @@ impl Interpreter {
                 Ok(Value::Unit)
             }
 
+            Statement::SendMessage(send) => Err(RuntimeError::new(format!(
+                "Worker-addressed message passing is not implemented: cannot `send` to worker '{}'. \
+                 Use a channel created in the main scope and pass it to the worker instead.",
+                send.target
+            ))),
+
+            Statement::ReceiveMessage(recv) => Err(RuntimeError::new(format!(
+                "Worker-addressed message passing is not implemented: cannot `receive` from worker '{}'. \
+                 Use a channel created in the main scope and pass it to the worker instead.",
+                recv.source
+            ))),
+
+            Statement::AwaitWorker(await_worker) => Err(RuntimeError::new(format!(
+                "Awaiting a worker by name is not implemented: cannot `await` worker '{}'. \
+                 Workers run detached; synchronise via a channel created in the main scope.",
+                await_worker.worker_name
+            ))),
+
+            Statement::CancelWorker(cancel) => Err(RuntimeError::new(format!(
+                "Cancelling a worker by name is not implemented: cannot `cancel` worker '{}'. \
+                 Workers run detached and cannot currently be cancelled.",
+                cancel.worker_name
+            ))),
+
             Statement::Complain(complain) => Err(RuntimeError {
                 message: complain.message.clone(),
             }),
