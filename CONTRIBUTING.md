@@ -1,5 +1,5 @@
-<!-- SPDX-License-Identifier: PMPL-1.0-or-later -->
-<!-- SPDX-License-Identifier: PMPL-1.0-or-later -->
+<!-- SPDX-License-Identifier: MPL-2.0 -->
+<!-- SPDX-License-Identifier: MPL-2.0 -->
 # Contributing to WokeLang
 
 Thank you for your interest in contributing.
@@ -8,7 +8,7 @@ Thank you for your interest in contributing.
 
 1. Fork the repository
 2. Create a feature branch (`feat/my-feature`)
-3. Ensure SPDX headers on all new files (`PMPL-1.0-or-later`)
+3. Ensure SPDX headers on all new files (`MPL-2.0`)
 4. Run `panic-attack assail` before committing
 5. Submit a pull request
 

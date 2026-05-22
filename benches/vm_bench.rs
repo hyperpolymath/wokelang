@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: PMPL-1.0-or-later
+// SPDX-License-Identifier: MPL-2.0
 //! WokeLang VM Performance Benchmarks
 //!
 //! Benchmarks comparing interpreter vs VM execution.

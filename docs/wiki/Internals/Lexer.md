@@ -1,4 +1,4 @@
-<!-- SPDX-License-Identifier: PMPL-1.0-or-later -->
+<!-- SPDX-License-Identifier: MPL-2.0 -->
 # Lexer Internals
 
 The lexer (tokenizer) converts WokeLang source code into a stream of tokens for the parser.

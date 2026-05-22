@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# SPDX-License-Identifier: PMPL-1.0-or-later
+# SPDX-License-Identifier: MPL-2.0
 # Conformance test runner for WokeLang
 #
 # Invokes the WokeLang parser on every file in valid/ and invalid/,

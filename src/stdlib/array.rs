@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: PMPL-1.0-or-later
+// SPDX-License-Identifier: MPL-2.0
 //! WokeLang Standard Library - Array Module
 //!
 //! Array manipulation functions.

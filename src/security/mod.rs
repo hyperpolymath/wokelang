@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: PMPL-1.0-or-later
+// SPDX-License-Identifier: MPL-2.0
 //! Capability-based Security System for WokeLang
 //!
 //! This module implements "superpowers" - a capability-based security model

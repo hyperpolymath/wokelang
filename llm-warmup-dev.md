@@ -1,4 +1,4 @@
-<!-- SPDX-License-Identifier: PMPL-1.0-or-later -->
+<!-- SPDX-License-Identifier: MPL-2.0 -->
 # LLM Warmup — wokelang (Developer)
 
 ## What is wokelang?
@@ -12,6 +12,6 @@ See README.adoc for overview.
 - `just heal` — attempt auto-repair
 
 ## Quick Context
-- License: PMPL-1.0-or-later
+- License: MPL-2.0
 - Part of hyperpolymath ecosystem
 - See EXPLAINME.adoc for architecture

@@ -1,4 +1,4 @@
-<!-- SPDX-License-Identifier: PMPL-1.0-or-later -->
+<!-- SPDX-License-Identifier: MPL-2.0 -->
 # Parser Internals
 
 The parser transforms a stream of tokens into an Abstract Syntax Tree (AST).

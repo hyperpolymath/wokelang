@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: PMPL-1.0-or-later
+// SPDX-License-Identifier: MPL-2.0
 //! aggregate-library (aLib) Implementation for WokeLang
 //!
 //! This module implements the 22 core operations from aggregate-library,

@@ -1,4 +1,4 @@
--- SPDX-License-Identifier: PMPL-1.0-or-later
+-- SPDX-License-Identifier: MPL-2.0
 -- SPDX-FileCopyrightText: 2025 Jonathan D.A. Jewell
 
 package wokelang-abi
@@ -6,7 +6,7 @@ package wokelang-abi
 authors    = "Jonathan D.A. Jewell"
 version    = 0.1.0
 readme     = "../../ABI-FFI-README.md"
-license    = "PMPL-1.0-or-later"
+license    = "MPL-2.0"
 
 depends = base >= 0.6.0
 

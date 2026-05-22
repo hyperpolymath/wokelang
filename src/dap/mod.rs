@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: PMPL-1.0-or-later
+// SPDX-License-Identifier: MPL-2.0
 //! Debug Adapter Protocol (DAP) implementation for WokeLang
 //!
 //! This module provides a minimal DAP adapter for WokeLang.

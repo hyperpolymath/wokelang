@@ -1,4 +1,4 @@
-<!-- SPDX-License-Identifier: PMPL-1.0-or-later -->
+<!-- SPDX-License-Identifier: MPL-2.0 -->
 # WokeLang-Specific Library
 
 This directory contains libraries that are **unique to WokeLang** and represent the language's distinctive features. These are NOT part of the common aggregate-library.

@@ -1,4 +1,4 @@
-(* SPDX-License-Identifier: PMPL-1.0-or-later *)
+(* SPDX-License-Identifier: MPL-2.0 *)
 (* SPDX-FileCopyrightText: 2026 Hyperpolymath *)
 
 (** WokeLang CLI
@@ -130,7 +130,7 @@ let version () =
   print_endline "WokeLang 0.1.0";
   print_endline "OCaml Core Implementation";
   print_endline "Copyright (c) 2026 Hyperpolymath";
-  print_endline "Licensed under PMPL-1.0-or-later"
+  print_endline "Licensed under MPL-2.0"
 
 (** Main entry point *)
 let () =

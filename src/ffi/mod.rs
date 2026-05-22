@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: PMPL-1.0-or-later
+// SPDX-License-Identifier: MPL-2.0
 //! Foreign Function Interface for WokeLang
 //!
 //! This module provides a C-compatible API that can be used from Zig, C, or any

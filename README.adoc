@@ -1,7 +1,7 @@
-<!-- SPDX-License-Identifier: PMPL-1.0-or-later -->
+<!-- SPDX-License-Identifier: MPL-2.0 -->
 = WokeLang
 image:https://img.shields.io/badge/License-PMPL--1.0-blue.svg[License: PMPL-1.0,link="https://github.com/hyperpolymath/palimpsest-license"]
-// SPDX-License-Identifier: PMPL-1.0-or-later
+// SPDX-License-Identifier: MPL-2.0
 // SPDX-FileCopyrightText: 2025 Jonathan D.A. Jewell
 
 :toc: macro
@@ -117,7 +117,7 @@ wokelang/
 │   └── zig/           # Zig FFI implementation (C ABI)
 │       └── src/
 ├── license/            # License files
-│   └── PMPL-1.0-or-later.txt
+│   └── MPL-2.0.txt
 ├── scripts/
 │   ├── install-hooks.sh  # Install git hooks
 │   └── setup.sh          # Setup script

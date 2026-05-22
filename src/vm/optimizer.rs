@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: PMPL-1.0-or-later
+// SPDX-License-Identifier: MPL-2.0
 //! WokeLang Bytecode Optimizer
 //!
 //! Optimization passes for improving bytecode performance.

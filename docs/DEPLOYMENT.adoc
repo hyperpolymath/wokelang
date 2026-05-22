@@ -1,4 +1,4 @@
-<!-- SPDX-License-Identifier: PMPL-1.0-or-later -->
+<!-- SPDX-License-Identifier: MPL-2.0 -->
 # WokeLang Deployment Guide
 
 ## Container Deployment
@@ -197,4 +197,4 @@ See individual repo documentation for integration details.
 
 ## License
 
-PMPL-1.0-or-later
+MPL-2.0

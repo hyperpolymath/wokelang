@@ -1,4 +1,4 @@
-<!-- SPDX-License-Identifier: PMPL-1.0-or-later -->
+<!-- SPDX-License-Identifier: MPL-2.0 -->
 # FFI (Foreign Function Interface)
 
 WokeLang provides a C-compatible FFI for embedding in other languages.

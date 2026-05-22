@@ -1,4 +1,4 @@
-<!-- SPDX-License-Identifier: PMPL-1.0-or-later -->
+<!-- SPDX-License-Identifier: MPL-2.0 -->
 # Phase 1 Seam Analysis Report
 **Date:** 2026-01-31
 **Status:** Phase 1 Complete

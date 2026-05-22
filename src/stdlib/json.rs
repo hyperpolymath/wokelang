@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: PMPL-1.0-or-later
+// SPDX-License-Identifier: MPL-2.0
 //! JSON parsing and serialization for WokeLang
 //!
 //! Provides consent-aware JSON operations.

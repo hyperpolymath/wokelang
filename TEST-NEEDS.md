@@ -1,5 +1,5 @@
 # TEST-NEEDS: wokelang
-<!-- SPDX-License-Identifier: PMPL-1.0-or-later -->
+<!-- SPDX-License-Identifier: MPL-2.0 -->
 
 ## CRG Grade: C — ACHIEVED 2026-04-04
 
@@ -140,8 +140,8 @@ cargo test --test lsp_integration_test     → (existing 8 tests)
 ## Compliance
 
 ### SPDX Headers
-- All new test files: `SPDX-License-Identifier: PMPL-1.0-or-later`
-- All new conformance test programs: `SPDX-License-Identifier: PMPL-1.0-or-later`
+- All new test files: `SPDX-License-Identifier: MPL-2.0`
+- All new conformance test programs: `SPDX-License-Identifier: MPL-2.0`
 - Test runner script: SPDX header included
 
 ### Author Attribution

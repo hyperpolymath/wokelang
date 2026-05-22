@@ -1,4 +1,4 @@
-<!-- SPDX-License-Identifier: PMPL-1.0-or-later -->
+<!-- SPDX-License-Identifier: MPL-2.0 -->
 # Control Flow
 
 WokeLang provides intuitive control flow constructs with clear, readable syntax.

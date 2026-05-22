@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: PMPL-1.0-or-later
+// SPDX-License-Identifier: MPL-2.0
 //! WokeLang Standard Library - I/O Module
 //!
 //! File I/O operations that require explicit consent through capabilities.

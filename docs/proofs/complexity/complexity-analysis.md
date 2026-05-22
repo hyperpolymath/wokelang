@@ -1,4 +1,4 @@
-<!-- SPDX-License-Identifier: PMPL-1.0-or-later -->
+<!-- SPDX-License-Identifier: MPL-2.0 -->
 # WokeLang Complexity Analysis
 
 This document provides rigorous complexity analysis of WokeLang's core algorithms, runtime operations, and space usage.

@@ -1,6 +1,6 @@
-<!-- SPDX-License-Identifier: PMPL-1.0-or-later -->
-<!-- SPDX-License-Identifier: PMPL-1.0-or-later -->
-// SPDX-License-Identifier: PMPL-1.0-or-later
+<!-- SPDX-License-Identifier: MPL-2.0 -->
+<!-- SPDX-License-Identifier: MPL-2.0 -->
+// SPDX-License-Identifier: MPL-2.0
 // Template: QUICKSTART-USER.adoc — 5-minute path to working software
 // Replace wokelang, Wokelang — See README.adoc for details., just run, Wokelang started successfully. with actuals
 = wokelang — Quick Start for Users

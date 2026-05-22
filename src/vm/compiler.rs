@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: PMPL-1.0-or-later
+// SPDX-License-Identifier: MPL-2.0
 //! Bytecode Compiler
 //!
 //! Compiles WokeLang AST to stack-based bytecode.

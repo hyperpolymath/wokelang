@@ -1,4 +1,4 @@
-<!-- SPDX-License-Identifier: PMPL-1.0-or-later -->
+<!-- SPDX-License-Identifier: MPL-2.0 -->
 # Tutorial: Building Your First CLI App
 
 Learn to build a command-line application in WokeLang.

@@ -1,4 +1,4 @@
-<!-- SPDX-License-Identifier: PMPL-1.0-or-later -->
+<!-- SPDX-License-Identifier: MPL-2.0 -->
 {{~ Aditionally delete this line and fill out the template below ~}}
 
 # WOKELANG ABI/FFI Documentation
@@ -375,7 +375,7 @@ When modifying the ABI/FFI:
 
 ## License
 
-PMPL-1.0-or-later
+MPL-2.0
 
 ## See Also
 

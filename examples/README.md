@@ -1,4 +1,4 @@
-<!-- SPDX-License-Identifier: PMPL-1.0-or-later -->
+<!-- SPDX-License-Identifier: MPL-2.0 -->
 # WokeLang Example Programs
 
 This directory contains example programs demonstrating WokeLang's features.
@@ -88,4 +88,4 @@ Feel free to add more examples! Follow these guidelines:
 
 ## License
 
-PMPL-1.0-or-later
+MPL-2.0

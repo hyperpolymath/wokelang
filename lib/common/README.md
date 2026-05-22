@@ -1,4 +1,4 @@
-<!-- SPDX-License-Identifier: PMPL-1.0-or-later -->
+<!-- SPDX-License-Identifier: MPL-2.0 -->
 # WokeLang Common Library
 
 This directory contains WokeLang's implementation of the **aggregate-library** common operations, plus additional utilities that are language-agnostic.

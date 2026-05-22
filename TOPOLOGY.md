@@ -1,5 +1,5 @@
-<!-- SPDX-License-Identifier: PMPL-1.0-or-later -->
-<!-- SPDX-License-Identifier: PMPL-1.0-or-later -->
+<!-- SPDX-License-Identifier: MPL-2.0 -->
+<!-- SPDX-License-Identifier: MPL-2.0 -->
 <!-- TOPOLOGY.md — Project architecture map and completion dashboard -->
 <!-- Last updated: 2026-02-19 -->
 

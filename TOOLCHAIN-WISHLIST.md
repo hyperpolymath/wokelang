@@ -1,5 +1,5 @@
-<!-- SPDX-License-Identifier: PMPL-1.0-or-later -->
-// SPDX-License-Identifier: PMPL-1.0-or-later
+<!-- SPDX-License-Identifier: MPL-2.0 -->
+// SPDX-License-Identifier: MPL-2.0
 // SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell
 
 # WokeLang Toolchain Wishlist
@@ -632,4 +632,4 @@ High-skill contributions:
 
 **Maintainer:** Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
 **Date:** 2026-02-01
-**License:** PMPL-1.0-or-later
+**License:** MPL-2.0
