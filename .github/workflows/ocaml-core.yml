@@ -19,6 +19,8 @@ on:
       - 'dune-project'
       - '*.opam'
 
+permissions: read-all
+
 jobs:
   build:
     name: Build and Test OCaml Core
