@@ -1,4 +1,7 @@
-<!-- SPDX-License-Identifier: MPL-2.0 -->
+<!--
+SPDX-License-Identifier: MPL-2.0
+Copyright (c) Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+-->
 # WokeLang Consent Model: Formal Specification
 
 This document provides a complete formal specification of the consent system, including temporal logic properties, interactive semantics, and persistent storage proofs.

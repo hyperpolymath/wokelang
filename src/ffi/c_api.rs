@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: MPL-2.0
+// Copyright (c) Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
 //! C-compatible API for WokeLang
 //!
 //! This module provides extern "C" functions that can be called from Zig, C,

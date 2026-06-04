@@ -1,8 +1,7 @@
-<!-- SPDX-License-Identifier: MPL-2.0 -->
 <!--
 SPDX-License-Identifier: MPL-2.0
+Copyright (c) Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
 -->
-
 # WokeLang for Visual Studio Code
 
 Official VS Code extension for WokeLang - a human-centered programming language with consent-driven capabilities.
