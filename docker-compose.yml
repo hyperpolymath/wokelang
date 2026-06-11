@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: MPL-2.0
+// Owner: Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
 # WokeLang Docker Compose - Security-hardened deployment
 # Integrates with Svalinn (security), Vordr (guardian), Selur (layer), Cerro-Torre (orchestration)
 
