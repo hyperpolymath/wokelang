@@ -1,4 +1,7 @@
-<!-- SPDX-License-Identifier: MPL-2.0 -->
+<!--
+SPDX-License-Identifier: MPL-2.0
+Copyright (c) Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+-->
 # WokeLang Formal Proofs and Academic Documentation
 
 This directory contains formal mathematical proofs, specifications, and academic documentation for the WokeLang programming language.

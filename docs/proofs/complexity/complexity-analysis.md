@@ -1,4 +1,7 @@
-<!-- SPDX-License-Identifier: MPL-2.0 -->
+<!--
+SPDX-License-Identifier: MPL-2.0
+Copyright (c) Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+-->
 # WokeLang Complexity Analysis
 
 This document provides rigorous complexity analysis of WokeLang's core algorithms, runtime operations, and space usage.

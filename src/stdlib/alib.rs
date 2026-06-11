@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: MPL-2.0
+// Copyright (c) Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
 //! aggregate-library (aLib) Implementation for WokeLang
 //!
 //! This module implements the 22 core operations from aggregate-library,

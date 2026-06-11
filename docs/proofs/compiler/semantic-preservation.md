@@ -1,4 +1,7 @@
-<!-- SPDX-License-Identifier: MPL-2.0 -->
+<!--
+SPDX-License-Identifier: MPL-2.0
+Copyright (c) Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+-->
 # WokeLang Compiler Correctness Proofs
 
 This document provides formal proofs of semantic preservation across WokeLang's compilation stages: Source → AST → Bytecode → WASM.

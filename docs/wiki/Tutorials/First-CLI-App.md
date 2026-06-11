@@ -1,4 +1,7 @@
-<!-- SPDX-License-Identifier: MPL-2.0 -->
+<!--
+SPDX-License-Identifier: MPL-2.0
+Copyright (c) Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+-->
 # Tutorial: Building Your First CLI App
 
 Learn to build a command-line application in WokeLang.

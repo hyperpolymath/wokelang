@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: MPL-2.0
+// Copyright (c) Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
 //! Async Worker System for WokeLang
 //!
 //! This module provides true async workers with message passing capabilities.
