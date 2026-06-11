@@ -7,16 +7,13 @@
 #   structural — fast, no compiler required (grammar, spec, fixtures, layout)
 #   build-e2e  — full build then E2E (Rust cargo check + OCaml dune build)
 name: E2E Validation
-
 on:
   pull_request:
     branches: ['**']
   push:
     branches: [main, master]
-
 permissions:
   contents: read
-
 jobs:
   # --------------------------------------------------------------------------
   # Job 1: Structural validation (no toolchain needed)
@@ -25,14 +22,11 @@ jobs:
     name: Structural E2E (no-build)
     runs-on: ubuntu-latest
     timeout-minutes: 15
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
-
       - name: Run structural E2E checks
         run: E2E_BUILD=0 bash tests/e2e.sh
-
   # --------------------------------------------------------------------------
   # Job 2: Full build + E2E (Rust + OCaml)
   # --------------------------------------------------------------------------
@@ -40,35 +34,28 @@ jobs:
     name: Build + E2E (Rust + OCaml)
     runs-on: ubuntu-latest
     timeout-minutes: 15
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
-
       # ---- Rust ----
       - name: Install Rust stable toolchain
         uses: dtolnay/rust-toolchain@4be9e76fd7c4901c61fb841f559994984270fce7 # stable
         with:
           components: clippy, rustfmt
-
       - name: Cache Cargo registry and build artefacts
         uses: Swatinem/rust-cache@779680da715d629ac1d338a641029a2f4372abb5 # v2
-
       # ---- OCaml ----
       - name: Set up OCaml
         uses: ocaml/setup-ocaml@dec6499fef64fc5d7ed43d43a87251b7b1c306f5 # v3
         with:
           ocaml-compiler: 5.1.x
-
       - name: Install opam dependencies
         run: |
           opam install --deps-only --with-test wokelang.opam -y || \
           opam install menhir ounit2 -y
-
       # ---- Full E2E ----
       - name: Run full E2E (with build checks)
         run: E2E_BUILD=1 bash tests/e2e.sh
-
       # ---- Conformance suite ----
       - name: Run conformance test runner
         run: bash tests/run_conformance.sh

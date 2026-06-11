@@ -2,7 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Hyperpolymath
 
 name: OCaml Core CI
-
 on:
   push:
     branches: [main, develop]
@@ -18,63 +17,48 @@ on:
       - 'test/**'
       - 'dune-project'
       - '*.opam'
-
 permissions: read-all
-
 jobs:
   build:
     name: Build and Test OCaml Core
     runs-on: ubuntu-latest
     timeout-minutes: 15
-
     strategy:
       matrix:
         ocaml-version: ['5.1.0', '5.0.0']
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
-
       - name: Setup OCaml
         uses: ocaml/setup-ocaml@dec6499fef64fc5d7ed43d43a87251b7b1c306f5 # v3
         with:
           ocaml-compiler: ${{ matrix.ocaml-version }}
           dune-cache: true
-
       - name: Install dependencies
         run: opam install . --deps-only --with-test
-
       - name: Build core
         run: opam exec -- dune build
-
       - name: Run tests
         run: opam exec -- dune test
-
       - name: Run golden path smoke test
         run: opam exec -- dune exec -- wokelang examples/hello_world.wl
-
   conformance:
     name: Conformance Tests
     runs-on: ubuntu-latest
     timeout-minutes: 15
     needs: build
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
-
       - name: Setup OCaml
         uses: ocaml/setup-ocaml@dec6499fef64fc5d7ed43d43a87251b7b1c306f5 # v3
         with:
           ocaml-compiler: '5.1.0'
           dune-cache: true
-
       - name: Install dependencies
         run: opam install . --deps-only
-
       - name: Build
         run: opam exec -- dune build
-
       - name: Run conformance corpus
         run: |
           for f in test/conformance/*.wl; do
