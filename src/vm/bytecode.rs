@@ -62,7 +62,9 @@ pub enum OpCode {
     JumpIfTrue(usize),
 
     // Functions
-    /// Call a function with N arguments
+    /// Call the function at the given index in the program's function table.
+    /// Arguments are expected on top of the stack in parameter order; the
+    /// callee's arity is read from its definition.
     Call(usize),
     /// Return from function
     Return,

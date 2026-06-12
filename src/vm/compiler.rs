@@ -482,13 +482,21 @@ impl BytecodeCompiler {
             }
 
             Expr::Call(func_name, args) => {
-                // Compile arguments
+                // Resolve the callee to its function-table index. The arity is
+                // recovered at runtime from the called function's definition.
+                let func_idx = *self
+                    .function_indices
+                    .get(func_name)
+                    .ok_or_else(|| CompileError::UndefinedFunction(func_name.clone()))?;
+
+                // Compile arguments left-to-right so they sit on top of the
+                // stack in parameter order, ready to become the callee's locals.
                 for arg in args {
                     self.compile_expr(&arg.node, func)?;
                 }
 
-                // Emit call
-                func.emit(OpCode::Call(args.len()));
+                // Emit call to the resolved function index.
+                func.emit(OpCode::Call(func_idx));
                 Ok(())
             }
 

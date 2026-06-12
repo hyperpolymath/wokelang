@@ -1493,7 +1493,11 @@ mod tests {
     #[test]
     fn test_type_checker_new() {
         let checker = TypeChecker::new();
-        assert_eq!(checker.env.bindings.len(), 0);
+        // The type checker seeds a prelude of builtin bindings on construction.
+        assert!(!checker.env.bindings.is_empty());
+        assert!(checker.env.bindings.contains_key("print"));
+        assert!(checker.env.bindings.contains_key("toString"));
+        assert!(checker.env.bindings.contains_key("Okay"));
     }
 
     #[test]

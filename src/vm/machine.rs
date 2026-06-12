@@ -284,11 +284,36 @@ impl VirtualMachine {
                     }
                 }
 
+                OpCode::Call(callee_idx) => {
+                    let callee = self
+                        .program
+                        .get_function(callee_idx)
+                        .ok_or(VMError::InvalidFunctionIndex(callee_idx))?;
+                    let arity = callee.arity;
+
+                    // Arguments sit on top of the stack in parameter order; the
+                    // new frame's base points at the first argument so that
+                    // locals 0..arity coincide with the arguments.
+                    let bp = self
+                        .stack
+                        .len()
+                        .checked_sub(arity)
+                        .ok_or(VMError::StackUnderflow)?;
+
+                    self.frames.push(CallFrame {
+                        function_idx: callee_idx,
+                        ip: 0,
+                        bp,
+                    });
+                }
+
                 OpCode::Return => {
                     let return_value = self.pop()?;
 
-                    // Pop call frame
-                    self.frames.pop();
+                    // Pop call frame and discard its locals/arguments by
+                    // truncating the stack back to the frame's base pointer.
+                    let frame = self.frames.pop().ok_or(VMError::InvalidIP)?;
+                    self.stack.truncate(frame.bp);
 
                     // If no more frames, we're done
                     if self.frames.is_empty() {
