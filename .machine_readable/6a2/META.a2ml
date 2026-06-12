@@ -1,9 +1,78 @@
 # SPDX-License-Identifier: MPL-2.0
 # META.a2ml — Project meta-information
-# Converted from META.scm on 2026-03-15
+# Converted from META.scm on 2026-03-15; enriched 2026-06-12.
+# Architecture decisions, design rationale, governance.
 
 [metadata]
 project = "wokelang"
 author = "Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>"
 license = "MPL-2.0"
 standard = "RSR 2026"
+version = "0.1.0"
+last-updated = "2026-06-12"
+
+[project-info]
+type = "monorepo"  # library | binary | monorepo | service | website
+tagline = "A human-centered, consent-driven programming language"
+languages = ["rust", "ocaml"]
+primary-language = "rust"
+
+[implementation]
+primary = "Rust toolchain in src/"
+rust-components = "lexer, parser, typechecker, bytecode VM (compiler + machine), tree-walking interpreter, LSP (woke-lsp), DAP (woke-dap), formatter, linter, REPL, stdlib, codegen, ABI/FFI, security"
+rust-lib-tests = "173 passing"
+binaries = "woke, woke-lsp, woke-dap"
+ocaml-core = "core/ reference implementation: ocamllex lexer + menhir parser + evaluator (dune)"
+
+[architecture-decisions]
+adrs = [
+  { id = "ADR-001", title = "Rust is the primary toolchain; OCaml core is the reference", status = "accepted", date = "2026-03-15",
+    rationale = "The production toolchain (lexer, parser, typechecker, VM, interpreter, LSP, DAP, tooling) is implemented in Rust under src/. A smaller OCaml implementation in core/ (ocamllex + menhir + evaluator) serves as an independent reference for the language semantics and an end-to-end cross-check. Both are first-class; the OCaml core grounds the e2e CI gate." },
+  { id = "ADR-002", title = "Consent / affine safety is the defining language feature", status = "accepted", date = "2026-03-15",
+    rationale = "wokelang is human-centered and consent-driven: the type system discharges consent and affine-use obligations so users never reason about them manually. This is the architectural invariant the whole toolchain serves." },
+  { id = "ADR-003", title = "Echo types are the formal substrate for consent / affine safety", status = "accepted", date = "2026-06-12",
+    rationale = "wokelang consumes hyperpolymath/echo-types (constructive Agda formalization of fiber-based structured loss) as the source of truth for the loss / consent reasoning. The frontier workstream integrates echo types into the typechecker, with an end-to-end, near-first-principles machine-checked proof narrative (Isabelle preferred) backing it." },
+  { id = "ADR-004", title = "Hyperpolymath Standard governance via thin-wrapper reusables", status = "accepted", date = "2026-06-12",
+    rationale = "CI is 20 GitHub Actions workflows built on thin-wrapper reusable workflows from hyperpolymath/standards, plus a dogfooding gate (a2ml / k9 / empty-lint / groove / eclexiaiser), clusterfuzzlite fuzzing, and a hypatia security scan. Machine state lives only under .machine_readable/ (never the repo root)." },
+]
+
+[development-practices]
+build-tool = "just"             # Justfile at repo root; contractile.just for contracts
+rust-build = "cargo"
+ocaml-build = "dune"
+container-runtime = "podman"     # Containerfile present
+ci-platform = "github-actions"
+package-manager = "guix"         # guix.scm primary; flake.nix fallback
+
+[maintenance-axes]
+scoping-first = true
+execution-order = "axis-1 > axis-2 > axis-3"
+axis-1 = "must > intend > like"
+axis-2 = "corrective > adaptive > perfective"
+axis-3 = "systems > compliance > effects"
+
+[scoping]
+sources = "README, ROADMAP, status docs, maintenance checklist, CI/security docs"
+marker-scan = "TODO/FIXME/XXX/HACK/STUB/PARTIAL"
+proof-escape-scan = "believe_me/assert_total/sorry/Admitted/unsafeCoerce/Obj.magic"
+
+[axis-2-maintenance-rules]
+corrective-first = true
+adaptive-second = true
+adaptive-focus = "scope-change reconciliation, stale-reference removal, obsolete-work culling"
+perfective-third = true
+perfective-source = "axis-1 honest state after corrective/adaptive updates"
+
+[axis-3-audit-rules]
+audit-focus = "systems in place, documentation explains actual state, consent/affine-safety and security accounted for, observed effects reviewed"
+compliance-focus = "seams/compromises/exception register, bounded exceptions, anti-drift checks"
+drift-risk-example = "a single banned-language exception (e.g. ReScript/TypeScript) broadening into a policy violation"
+effects-evidence = "test-suite execution/results (Rust + OCaml e2e) and maintainer status dialogue/review"
+
+[design-rationale]
+summary = [
+  "wokelang is a human-centered, consent-driven language: the type system does the hard consent/affine-safety reasoning so users never have to.",
+  "Rust under src/ is the production toolchain; the OCaml core/ is the independent reference implementation and e2e cross-check.",
+  "Echo types (hyperpolymath/echo-types) are the formal substrate; the frontier is integrating them into the typechecker with a machine-checked Isabelle proof narrative.",
+  "Governance follows the Hyperpolymath Standard: MPL-2.0, allowed/banned language policy, dogfooding gate, and machine state confined to .machine_readable/.",
+]

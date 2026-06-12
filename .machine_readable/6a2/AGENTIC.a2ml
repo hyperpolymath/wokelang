@@ -1,0 +1,57 @@
+# SPDX-License-Identifier: MPL-2.0
+# Copyright (c) 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+#
+# AGENTIC.a2ml — AI agent constraints and capabilities
+# Defines what AI agents can and cannot do in this repository.
+
+[metadata]
+version = "0.1.0"
+last-updated = "2026-06-12"
+project = "wokelang"
+
+[agent-permissions]
+can-edit-source = true
+can-edit-tests = true
+can-edit-docs = true
+can-edit-config = true
+can-create-files = true
+
+[agent-constraints]
+# What AI agents must NOT do (see 0-AI-MANIFEST.a2ml for the canonical list):
+# - Never use forbidden escape hatches in proof / unsafe code:
+#     believe_me, assert_total, sorry, Admitted, unsafeCoerce, Obj.magic
+#   (these would silently void the echo-types / Isabelle consent-safety proofs).
+# - Never commit secrets or credentials.
+# - Never use banned languages (TypeScript, Node.js, npm, Bun, Go, Python,
+#   Java, Kotlin, Swift, ReScript — per the Hyperpolymath Standard).
+# - Never place machine files (.scm / .a2ml) in the repository root;
+#   they live only under .machine_readable/.
+# - Never use AGPL license (this estate is MPL-2.0).
+# - Never weaken the consent / affine-safety guarantees the type checker enforces.
+
+[maintenance-integrity]
+fail-closed = true
+require-evidence-per-step = true
+allow-silent-skip = false
+require-rerun-after-fix = true
+release-claim-requires-hard-pass = true
+
+# ============================================================================
+# METHODOLOGY (ADR-002)
+# ============================================================================
+# Detailed methodology configuration lives in:
+#   .machine_readable/agent_instructions/methodology.a2ml
+#   .machine_readable/agent_instructions/coverage.a2ml
+#   .machine_readable/agent_instructions/debt.a2ml
+#
+# AGENTIC.a2ml declares WHAT agents can do (permissions, gating).
+# agent_instructions/ declares HOW agents should work (methodology).
+
+[methodology]
+instructions-dir = ".machine_readable/agent_instructions/"
+default-mode = "hybrid"
+
+[automation-hooks]
+# on-enter: Read 0-AI-MANIFEST.a2ml, then 6a2/STATE.a2ml, then agent_instructions/
+# on-exit: Update 6a2/STATE.a2ml, coverage.a2ml, and debt.a2ml with session outcomes
+# on-commit: Run the dogfooding gate (a2ml / k9 / empty-lint / groove / eclexiaiser)

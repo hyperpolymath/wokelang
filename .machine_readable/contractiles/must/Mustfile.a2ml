@@ -1,0 +1,96 @@
+# SPDX-License-Identifier: MPL-2.0
+# Mustfile — Physical state contract
+# Author: Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+
+@abstract:
+What MUST be true about this repository's files and configuration.
+These are hard requirements — CI fails if any check fails.
+@end
+
+## File Presence
+
+### license-present
+- description: LICENSE file must exist
+- run: test -f LICENSE
+- severity: critical
+
+### readme-present
+- description: README.adoc or README.md must exist
+- run: test -f README.adoc || test -f README.md
+- severity: critical
+
+### security-policy
+- description: SECURITY.md must exist
+- run: test -f SECURITY.md
+- severity: critical
+
+### ai-manifest
+- description: 0-AI-MANIFEST.a2ml must exist
+- run: test -f 0-AI-MANIFEST.a2ml
+- severity: critical
+
+### contributing
+- description: CONTRIBUTING.adoc or CONTRIBUTING.md must exist (GitHub community health)
+- run: test -f CONTRIBUTING.adoc || test -f CONTRIBUTING.md
+- severity: warning
+
+### editorconfig
+- description: .editorconfig must exist
+- run: test -f .editorconfig
+- severity: warning
+
+## SPDX Compliance
+
+### spdx-headers
+- description: All source files must have SPDX-License-Identifier
+- run: "! find src/ core/ -name '*.rs' -o -name '*.ml' -o -name '*.mll' -o -name '*.mly' 2>/dev/null | head -20 | xargs grep -L 'SPDX-License-Identifier' 2>/dev/null | head -1 | grep -q ."
+- severity: warning
+
+### no-agpl
+- description: No AGPL-3.0 references in dotfiles
+- run: "! grep -r 'AGPL-3.0' .gitignore .gitattributes .editorconfig 2>/dev/null | head -1 | grep -q ."
+- severity: critical
+
+## Banned Languages (Hyperpolymath Standard)
+
+### no-typescript-sources
+- description: No TypeScript source files (use AffineScript)
+- run: "! find . -name '*.ts' -o -name '*.tsx' 2>/dev/null | grep -v node_modules | head -1 | grep -q ."
+- severity: critical
+
+### no-node-manifests
+- description: No package.json runtime manifests (use Deno / deno.json)
+- run: "! find . -name 'package.json' 2>/dev/null | grep -v node_modules | head -1 | grep -q ."
+- severity: warning
+
+## Dangerous Patterns
+
+### no-believe-me
+- description: No believe_me in proof / Idris2 code
+- run: "! grep -rE 'believe_me' --include='*.idr' . 2>/dev/null | grep -v node_modules | head -1 | grep -q ."
+- severity: critical
+
+### no-assert-total
+- description: No assert_total escape hatch in proof code
+- run: "! grep -rE 'assert_total' --include='*.idr' . 2>/dev/null | grep -v node_modules | head -1 | grep -q ."
+- severity: critical
+
+### no-sorry
+- description: No sorry in Lean / Isabelle proof code
+- run: "! grep -rE 'sorry' --include='*.lean' --include='*.thy' . 2>/dev/null | grep -v node_modules | head -1 | grep -q ."
+- severity: critical
+
+### no-admitted
+- description: No Admitted in Coq / Agda proof code
+- run: "! grep -rE 'Admitted' --include='*.v' --include='*.agda' . 2>/dev/null | grep -v node_modules | head -1 | grep -q ."
+- severity: critical
+
+### no-obj-magic
+- description: No Obj.magic escape hatch in the OCaml reference core
+- run: "! grep -rE 'Obj\\.magic' --include='*.ml' --include='*.mli' . 2>/dev/null | grep -v node_modules | head -1 | grep -q ."
+- severity: critical
+
+### no-unsafe-without-comment
+- description: All unsafe blocks in Rust must have SAFETY comments
+- run: "! grep -B1 'unsafe {' --include='*.rs' -r . 2>/dev/null | grep -v SAFETY | grep 'unsafe {' | head -1 | grep -q ."
+- severity: warning

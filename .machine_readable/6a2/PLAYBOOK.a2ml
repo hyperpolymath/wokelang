@@ -1,0 +1,51 @@
+# SPDX-License-Identifier: MPL-2.0
+# Copyright (c) 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+#
+# PLAYBOOK.a2ml — Operational playbook
+# Runbooks, incident response, deployment procedures.
+
+[metadata]
+version = "0.1.0"
+last-updated = "2026-06-12"
+project = "wokelang"
+
+[build]
+# build-tool = "just" (Justfile at repo root; contractile.just for contract checks)
+# rust-build = "cargo build"  -> produces woke, woke-lsp, woke-dap
+# ocaml-core = "dune build" in core/ (reference ocamllex + menhir + evaluator)
+# test = "cargo test" (173 Rust lib tests) + dune runtest for the OCaml core
+
+[deployment]
+# method = "ci-triggered"  # gitops | manual | ci-triggered
+# target = "binary"        # container | binary | library | wasm
+# Binaries shipped: woke (CLI/REPL), woke-lsp (editor LSP), woke-dap (debug adapter).
+# Containerfile present for reproducible image builds.
+
+[incident-response]
+# 1. Check .machine_readable/6a2/STATE.a2ml for current status.
+# 2. Review recent commits and the 20 GitHub Actions workflow results.
+# 3. Run the dogfooding gate (a2ml / k9 / empty-lint / groove / eclexiaiser).
+# 4. Run `just lint` and `just test` to reproduce locally.
+# 5. For proof-cleanliness regressions, grep for forbidden escape hatches
+#    (believe_me, assert_total, sorry, Admitted, unsafeCoerce, Obj.magic).
+
+[release-process]
+# 1. Update version in 6a2/STATE.a2ml, 6a2/META.a2ml, Cargo.toml.
+# 2. Run the full CI gate set: rust-ci, dogfood-gate, e2e (Rust + OCaml),
+#    governance, security, codeql, scorecard, secret-scanner, hypatia-scan,
+#    clusterfuzzlite, mirror, instant-sync.
+# 3. Confirm all Mustfile contract checks pass (just lint / test / fmt).
+# 4. Tag and push; the mirror + instant-sync workflows propagate.
+
+[maintenance-operations]
+# Governance:
+#   thin-wrapper reusable workflows from hyperpolymath/standards.
+# Dogfooding gate (self-application):
+#   a2ml lint, k9 self-validation, empty-lint, groove discovery, eclexiaiser.
+# Fuzzing:
+#   clusterfuzzlite (fuzz/ harnesses).
+# Security scan:
+#   hypatia-scan (symbolic / neurosymbolic analysis).
+# Last shepherd note (2026-06-12, PR #77): fixed 3 Rust tests, emptied
+#   wokelang.opam, removed banned ReScript VSCode client; issue #78 tracks
+#   the AffineScript reimplementation of that client.

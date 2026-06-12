@@ -1,0 +1,38 @@
+# SPDX-License-Identifier: MPL-2.0
+# Copyright (c) 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+#
+# NEUROSYM.a2ml — Neurosymbolic integration metadata
+# Configuration for Hypatia scanning and symbolic reasoning.
+
+[metadata]
+version = "0.1.0"
+last-updated = "2026-06-12"
+project = "wokelang"
+
+[hypatia-config]
+scan-enabled = true
+scan-depth = "standard"  # quick | standard | deep
+report-format = "logtalk"
+
+[symbolic-backbone]
+# wokelang's neurosymbolic stance is symbolic-first: the guarantees come from
+# a static type system and machine-checked proofs, not from a learned model.
+description = "Consent-driven, affine type-system guarantees backed by machine-checked proofs."
+type-system = "Rust typechecker enforcing affine / consent safety (echo-types integration in progress)"
+proof-source = "hyperpolymath/echo-types (constructive Agda fiber-based structured loss)"
+proof-assistant = "Isabelle (preferred) for the end-to-end consent-safety narrative"
+guarantee = "Consent / affine obligations are discharged at type-check time so users never reason about them manually."
+
+[symbolic-rules]
+# Custom symbolic rules for this project (consumed by hypatia-scan):
+# - { name = "no-unsafe-escape", pattern = "believe_me|assert_total|sorry|Admitted|unsafeCoerce|Obj\\.magic", severity = "critical" }
+# - { name = "no-banned-language", pattern = "typescript|node_modules|import .*python", severity = "critical" }
+
+[neural-config]
+# No neural / learned component is part of wokelang. The "neuro" half of the
+# neurosymbolic pairing is intentionally empty here — wokelang contributes the
+# symbolic, proof-carrying substrate that neural tooling elsewhere in the
+# estate (e.g. agentic assistants) can consume, but it ships no model itself.
+neural-component = "none"
+# confidence-threshold = (n/a — no model)
+# model = (n/a — no model)
