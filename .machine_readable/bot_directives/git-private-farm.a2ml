@@ -1,0 +1,48 @@
+# SPDX-License-Identifier: MPL-2.0
+# Copyright (c) 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+#
+# git-private-farm.a2ml — directive for the private mirror / build farm on this
+# repository. The farm mirrors the repository to estate-private infrastructure
+# and runs reproducible builds there.
+
+[metadata]
+bot = "git-private-farm"
+project = "wokelang"
+version = "0.1.0"
+last-updated = "2026-06-12"
+
+[hook]
+# The farm is driven by the mirror / sync / publish workflows.
+related-workflows = [
+  ".github/workflows/mirror.yml",        # mirror the repository
+  ".github/workflows/instant-sync.yml",  # propagate changes on push
+  ".github/workflows/ghcr-publish.yml",  # publish the container image
+  ".github/workflows/boj-build.yml",     # SSG / publish build (boj-server trigger)
+]
+build-tooling = ["cargo", "dune", "podman"]   # Rust + OCaml + container builds
+
+[purpose]
+summary = "Private mirroring and reproducible builds of the repository."
+responsibilities = [
+  "mirror the public repository to estate-private hosting",
+  "run reproducible builds (Guix primary, Nix fallback) of the toolchain",
+  "build and publish the container image (Containerfile / stapeln.toml)",
+  "keep the private mirror in sync with the default branch",
+]
+
+[direction]
+# The farm consumes this repo; it does not write source changes back.
+flow = "outbound-mirror"          # public repo -> private farm
+writes-back-to-public = false
+
+[constraints]
+reproducible-builds = true        # guix.scm primary; flake.nix fallback
+preserve-spdx-headers = true
+no-secrets-in-image = true        # no credentials baked into published images
+sha-pinned-dependencies = true
+https-only = true
+
+[notes]
+# Private endpoints, registry coordinates, and credentials live in the farm
+# infrastructure, NOT in this file. This directive only declares repo-local
+# scope and the build/mirror policy the farm must honour.
