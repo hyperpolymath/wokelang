@@ -1,0 +1,91 @@
+// SPDX-License-Identifier: MPL-2.0
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+= WokeLang — Roadmap
+:toc: macro
+:icons: font
+
+link:Home.adoc[← Wiki home]
+
+toc::[]
+
+This page distils `ROADMAP.adoc`, the frontier described in
+`.machine_readable/6a2/STATE.a2ml`, and the honest caveats in `EXPLAINME.adoc`.
+WokeLang is at *version 0.1.0*, phase *implementation* (~35% complete).
+
+== Current
+
+* *Rust toolchain* (`src/`): lexer, parser, typechecker, bytecode VM
+  (compiler + machine + optimizer), tree-walking interpreter, LSP (`woke-lsp`),
+  DAP (`woke-dap`), formatter, linter, REPL, stdlib, ABI/FFI, security — *173
+  library tests passing*.
+* *OCaml reference core* (`core/`): `ocamllex` + `menhir` + evaluator, grounding
+  the end-to-end CI cross-check.
+* *Implemented language features*: consent gates, gratitude blocks, units of
+  measure, pipelines, empathy annotations, the `Result` type (`Okay`/`Oops`),
+  and `#care` / `#strict` pragmas.
+* *Specification*: EBNF grammar, consent-extended axiomatic semantics, and the
+  research paper.
+* *Governance*: the GitHub Actions CI suite, the dogfooding gate, and the
+  enforced language policy (see link:CI-and-Governance.adoc[CI & Governance]).
+
+== Near-term
+
+* *Frontier — echo types in the typechecker.* Integrate
+  `hyperpolymath/echo-types` (fiber-based structured loss) into the type checker
+  so the language reasons about consent / affine-use automatically.
+* *Frontier — machine-checked proof narrative.* Stand up an end-to-end,
+  near-first-principles proof of the consent-safety guarantees (Isabelle
+  preferred), consuming the echo-types Agda formalization.
+* *Eliminate proof escape hatches.* Drive out any remaining
+  `sorry` / `Admitted`-style gaps; tighten the formal-verification story
+  (`PROOF-NEEDS.md`).
+* *Restore the VS Code LSP client.* Re-enable completion / hover / diagnostics /
+  go-to-definition / formatting via an *AffineScript* client driving the Rust
+  `woke-lsp` server, once the estate ABI/FFI layer lands. Tracked in issue #78.
+  (The `woke-lsp` server already works with any LSP-capable editor.)
+* *Broaden type inference.* Extend Hindley-Milner inference beyond scalars and
+  units to closures and module types.
+
+== Long-term
+
+* *WASM backend.* Turn the `src/codegen/` `WasmCompiler` scaffold (and the
+  `compiler/wokelang-wasm/` experiment) into a working WebAssembly target. This
+  is currently a *design commitment*, not a working backend.
+* *Blockchain / Vyper FFI.* Realise the `vyper call` design feature described in
+  the spec and the research paper. Currently a *design commitment* with no bridge
+  in the tree.
+* *Self-hosting and tooling.* Continue toward a more complete toolchain
+  (formatter / linter / package-management ergonomics), self-hosting where
+  appropriate.
+
+== Implemented vs. designed
+
+To keep expectations calibrated, the following are explicitly *not yet*
+implemented and should be treated as roadmap items:
+
+[cols="1,2", options="header"]
+|===
+| Item | Status
+
+| WASM compilation target
+| Design commitment — `src/codegen/` scaffold not wired into the build
+
+| Blockchain / Vyper FFI
+| Design commitment — no `vyper` bridge in `src/stdlib/`
+
+| Full polymorphic HM inference
+| Partial — scalar and unit inference today
+
+| VS Code LSP client (completion/hover/etc.)
+| Removed (was ReScript); AffineScript reimpl blocked on ABI/FFI (issue #78)
+|===
+
+== Tracking documents
+
+* `ROADMAP.adoc` — the headline roadmap.
+* `PROOF-NEEDS.md` — outstanding formal proof obligations.
+* `PHRONESIS-ALIGNMENT-GAP.md` — gaps between stated principles and current
+  implementation.
+* `TEST-NEEDS.md` · `TOOLCHAIN-WISHLIST.md` — desired test coverage and
+  toolchain improvements.
+* `.machine_readable/6a2/STATE.a2ml` — the canonical, dated project state.

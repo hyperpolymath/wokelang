@@ -15,15 +15,23 @@ commitment.
 
 == What WokeLang Is
 
-WokeLang is a programming language in `nextgen-languages` designed around
+WokeLang is a standalone language in the hyperpolymath estate, designed around
 three principles: human-readable syntax (English-like keywords), ethical
 scaffolding (consent gates, gratitude blocks, empathy annotations), and type
 safety with dimensional analysis (units of measure enforced at compile time).
 The primary implementation is a Rust compiler/interpreter (`src/`, `Cargo.toml`)
-that can run WokeLang programs via a tree-walking interpreter, compile to
-bytecode for the WokeLang VM, or export a WASM target for browser execution.
-An OCaml frontend (`dune-project`, `wokelang.opam`) provides an alternative
-AST pipeline used for research and verification.
+that runs WokeLang programs via a tree-walking interpreter or compiles them to
+bytecode for the WokeLang VM. A WASM target is a design commitment (see Claim 2).
+An OCaml reference core (`core/`, built with `dune` + `menhir`) provides an
+independent AST + evaluator pipeline used for research, semantics
+cross-checking, and the end-to-end CI gate. (Note: `wokelang.opam` is currently
+an intentionally empty stub; the OCaml core builds from `dune-project`.)
+
+The *frontier* workstream integrates *echo types* — `hyperpolymath/echo-types`,
+a constructive Agda formalization of fiber-based structured loss — into the type
+checker, backed by a near-first-principles machine-checked proof narrative
+(Isabelle preferred), so the language discharges consent / affine-use safety for
+the user automatically.
 
 == Claim 1: Rust compiler with lexer, parser, type checker, and VM
 
@@ -76,24 +84,24 @@ blockchain ops. WASM Target: Compile to run in browsers/Node.js. Portable
 and fast.
 ____
 
-*How it works.*
-`src/codegen/` contains the WASM backend: it consumes the typed AST and emits
-WebAssembly binary format consumable by browsers and Deno.
-`src/stdlib/` includes the Vyper FFI bridge: `vyper call` statements in
-WokeLang source are lowered to calls against a Vyper contract ABI at the
-code-generation phase, allowing blockchain operations to be invoked with the
-same `only if okay` consent-gate syntax as local side effects.
-`examples/` contains `.woke` files demonstrating the full feature set including
-`thanks to` gratitude blocks, `@feeling` empathy annotations, and pipeline
-syntax (`data then clean then analyze`).
-`fuzz/` contains fuzzing harnesses for the parser and typechecker.
+*How it works (and what is real).*
+`src/codegen/` declares a `WasmCompiler` scaffold for a future WASM backend.
+`examples/` contains `.woke` files demonstrating the *implemented* feature set
+including `only if okay` consent gates (`08_consent.woke`, `22_consent_system.woke`),
+`thanks to` gratitude blocks (`17_gratitude.woke`), and security examples.
+`src/stdlib/` provides the standard library (`array`, `chan`, `io`, `json`,
+`math`, `net`, `string`, `time`), where `io` and `net` route side effects
+through the consent machinery.
+`fuzz/` contains fuzzing harnesses (driven by ClusterFuzzLite in CI).
 `verification/` holds formal verification artefacts.
 
 *Honest caveat.*
-The Vyper FFI is a design feature present in the README feature table; its
-integration with live contract ABIs requires a running Ethereum node and is
-not covered by the existing test suite — it is a research capability, not a
-production-ready integration.
+The Vyper / blockchain FFI and the WASM target are *design commitments* described
+in the README feature table, the language spec, and the research paper — they are
+*not* working implementations in the current tree. There is no `vyper` bridge in
+`src/stdlib/`, and the `src/codegen/` WASM module is a scaffold that is not yet
+wired into the build or emitting binaries. Treat both as research capabilities on
+the roadmap, not production-ready integrations.
 
 == Dogfooded Across The Account
 
@@ -111,16 +119,16 @@ production-ready integration.
 | Container build manifest for the WokeLang compiler image (Chainguard Wolfi base)
 
 | `nextgen-languages`
-| WokeLang is a sub-project of the `nextgen-languages` monorepo; this repo is checked out as a submodule
+| Sibling estate (home of AffineScript / my-lang). WokeLang is a *standalone* repository in the hyperpolymath estate, not a submodule of `nextgen-languages`.
 
 | `ABI-FFI-README.md`
-| Idris2 ABI + Zig FFI standard applied: `src/abi/` and `ffi/` directories follow the account-wide ABI/FFI convention
+| Account-wide ABI/FFI convention applied: `src/abi/` holds the Idris2 ABI definitions (`Foreign.idr`, `Layout.idr`, `Types.idr`) and `src/ffi/` holds the Rust C-ABI bridge (`c_api.rs`).
 
 | `grammar/`
-| WokeLang grammar files feed `tree-sitter generate` for editor syntax support
+| WokeLang grammar source feeding editor syntax support (TextMate / tree-sitter).
 
 | `editors/`
-| Editor integration packages (Neovim, VS Code) built from the tree-sitter grammar
+| Editor integration: a TextMate grammar plus a VS Code extension. The VS Code extension is currently *syntax-only* — its ReScript LSP client was removed (banned estate-wide) and an AffineScript reimplementation is tracked in issue #78. The Rust `woke-lsp` server binary is unaffected and works with any LSP-capable editor.
 
 | `arxiv-consent-aware-programming.tex`
 | Research paper on consent-aware programming; wokelang is the reference implementation
@@ -166,13 +174,13 @@ production-ready integration.
 | Bytecode optimiser: constant folding, dead code elimination
 
 | `src/codegen/`
-| WASM code generation backend
+| Code-generation scaffolding (`WasmCompiler`); a future WASM backend, not yet wired into the build
 
 | `src/lsp/`
-| Language Server Protocol implementation for editor integration
+| Language Server Protocol implementation (built as the `woke-lsp` binary)
 
 | `src/dap/`
-| Debug Adapter Protocol implementation
+| Debug Adapter Protocol implementation (built as the `woke-dap` binary)
 
 | `src/repl.rs`
 | Interactive REPL loop
@@ -181,7 +189,7 @@ production-ready integration.
 | S-expression AST dump (for debugging and tooling)
 
 | `src/stdlib/`
-| Standard library: built-in functions, Vyper FFI bridge, I/O primitives
+| Standard library: `array`, `chan`, `io`, `json`, `math`, `net`, `string`, `time` (consent-routed I/O and networking)
 
 | `src/linter/`
 | Static linter: style rules, consent-gate usage checks
@@ -196,16 +204,16 @@ production-ready integration.
 | Module system: import resolution and namespace management
 
 | `src/abi/`
-| Idris2 ABI definitions for the Rust/Zig FFI boundary
+| Idris2 ABI definitions (`Foreign.idr`, `Layout.idr`, `Types.idr`, `wokelang-abi.ipkg`) for the FFI boundary
 
-| `ffi/`
-| Zig FFI implementation: C-ABI-compatible bridge
+| `src/ffi/`
+| Rust C-ABI FFI bridge (`c_api.rs`, `mod.rs`)
 
 | `grammar/`
 | Tree-sitter grammar source for WokeLang syntax
 
 | `editors/`
-| Editor integration packages built from the grammar
+| TextMate grammar + VS Code extension (currently syntax-only; ReScript LSP client removed, AffineScript reimpl tracked in issue #78)
 
 | `examples/`
 | `.woke` example programs: hello world through fibonacci, unit arithmetic, consent gates, gratitude blocks
@@ -222,8 +230,11 @@ production-ready integration.
 | `bench/` / `benches/`
 | Criterion benchmarks: interpreter and VM throughput
 
-| `compiler/`
-| OCaml alternative frontend (dune-project, wokelang.opam)
+| `core/`
+| OCaml reference core: `lexer.mll` (ocamllex) + `parser.mly` (menhir) + `ast.ml` + `eval.ml`, built with `dune`
+
+| `compiler/wokelang-wasm/`
+| Standalone Rust crate for the WASM compilation experiment (`lib.rs`)
 
 | `conformance/`
 | Conformance test suite against the language specification
@@ -238,7 +249,7 @@ production-ready integration.
 | Rust workspace manifest
 
 | `dune-project` / `wokelang.opam`
-| OCaml build configuration for the alternative frontend
+| OCaml build configuration for the `core/` reference (`dune-project` drives the build; `wokelang.opam` is currently an empty stub)
 
 | `Justfile` / `Mustfile`
 | Developer recipes: `build`, `test`, `bench`, `fuzz`, `check-conformance`
@@ -256,7 +267,7 @@ production-ready integration.
 | Container build manifest
 
 | `flake.nix` / `guix.scm`
-| Reproducible build environments (Rust nightly + OCaml + Deno toolchain)
+| Reproducible build environments (Rust + OCaml toolchain); Guix primary, Nix fallback
 |===
 
 == Questions?

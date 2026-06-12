@@ -1,0 +1,66 @@
+// SPDX-License-Identifier: MPL-2.0
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+= WokeLang Wiki
+:toc: macro
+:icons: font
+
+Welcome to the in-tree wiki for *WokeLang* — a human-centered, consent-driven
+programming language. This wiki distils the README, `EXPLAINME.adoc`, the
+language spec, and the machine-readable project state into a short, accurate set
+of pages. It is the bleeding-edge entry point for understanding the project.
+
+[IMPORTANT]
+====
+WokeLang is at version *0.1.0*, phase *implementation* (~35% complete). The pages
+below distinguish *what is implemented* from *what is designed*. Where a feature
+is a design commitment rather than working code, it is labelled as such.
+====
+
+== Navigation
+
+[cols="1,3", options="header"]
+|===
+| Page | What it covers
+
+| link:Overview.adoc[Overview]
+| What WokeLang is, who it is for, its defining consent / affine-safety idea, and
+  the signature language features.
+
+| link:Architecture.adoc[Architecture]
+| The primary Rust toolchain (`src/`), the OCaml reference core (`core/`), and the
+  echo-types / Isabelle proof frontier.
+
+| link:CI-and-Governance.adoc[CI & Governance]
+| The GitHub Actions workflow suite, the dogfooding gate, and the Hyperpolymath
+  Standard language policy.
+
+| link:Roadmap.adoc[Roadmap]
+| Current state, near-term work, and long-term direction.
+|===
+
+== One-paragraph summary
+
+WokeLang makes *consent* and *affine-use safety* first-class: the type system is
+intended to discharge the hard reasoning about destructive or sensitive
+operations so the user does not have to. The production implementation is a Rust
+toolchain (lexer, parser, typechecker, bytecode VM, tree-walking interpreter,
+LSP, DAP, formatter, linter, REPL, stdlib); an OCaml reference core provides an
+independent semantics cross-check. The frontier workstream integrates *echo
+types* — a constructive Agda formalization of fiber-based structured loss — into
+the typechecker, backed by a machine-checked proof narrative.
+
+== Source documents
+
+This wiki is derived from, and should stay consistent with:
+
+* `README.adoc` — project overview and quick start.
+* `EXPLAINME.adoc` — "claims vs. receipts" honesty pass over the codebase.
+* `ROADMAP.adoc` — the headline roadmap.
+* `spec/` — `grammar.ebnf`, `axiomatic-semantics.md`, `system-specs.md`.
+* `.machine_readable/6a2/` — structured project state (`STATE`, `META`,
+  `ECOSYSTEM`, `AGENTIC`, `NEUROSYM`, `PLAYBOOK`).
+* `arxiv-consent-aware-programming.tex` — the research paper.
+
+== Author
+
+Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk> · Licence: MPL-2.0

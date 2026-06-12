@@ -1,0 +1,182 @@
+// SPDX-License-Identifier: MPL-2.0
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+= WokeLang — Architecture
+:toc: macro
+:icons: font
+
+link:Home.adoc[← Wiki home]
+
+toc::[]
+
+WokeLang has two implementations and one proof frontier:
+
+. a *primary Rust toolchain* (`src/`) — the production compiler/interpreter and
+  tooling;
+. an *OCaml reference core* (`core/`) — an independent semantics implementation
+  and end-to-end cross-check;
+. the *echo-types / Isabelle frontier* — a machine-checked grounding of the
+  consent / affine-safety guarantees.
+
+== 1. The primary Rust toolchain (`src/`)
+
+The production toolchain compiles and runs WokeLang. It builds three binaries:
+`woke` (CLI + REPL), `woke-lsp` (language server), and `woke-dap` (debug
+adapter). It has *173 library tests passing*.
+
+=== Compiler pipeline
+
+[source]
+----
+.woke source
+   │
+   ▼
+src/lexer/      tokeniser (logos): remember, measured in, only if okay,
+   │            thanks to, then, …
+   ▼
+src/parser/     recursive-descent parser
+   │
+   ▼
+src/ast/        WokeLang AST
+   │
+   ▼
+src/typechecker/  Hindley-Milner-style inference + Unit dimensional analysis
+   │              (e.g. km + km is valid; km + kg is a type error)
+   │
+   ├──► src/interpreter/   tree-walking interpreter   →  woke run
+   │
+   └──► src/vm/            bytecode compiler + stack machine + optimizer
+                           →  woke compile  /  woke run-vm
+----
+
+=== Component map
+
+[cols="1,3", options="header"]
+|===
+| Module | Responsibility
+
+| `src/lexer/`
+| Tokenises `.woke` text (using `logos`), including WokeLang-specific tokens.
+
+| `src/parser/` + `src/ast/`
+| Recursive-descent parsing into the WokeLang AST.
+
+| `src/typechecker/`
+| Static inference and the `Unit` enum for dimensional analysis.
+  `TypeChecker::new` seeds a ~64-binding builtin prelude (including `Result` /
+  echo constructors).
+
+| `src/interpreter/`
+| Tree-walking evaluation for `woke run`.
+
+| `src/vm/`
+| Bytecode VM: `compiler`, `machine`, `bytecode`, `optimizer`.
+
+| `src/lsp/`
+| Language Server Protocol (built as `woke-lsp`).
+
+| `src/dap/`
+| Debug Adapter Protocol (built as `woke-dap`).
+
+| `src/formatter/` · `src/linter/` · `src/security/`
+| Canonical formatter, style + consent-gate lints, and security analysis passes.
+
+| `src/stdlib/`
+| Standard library: `array`, `chan`, `io`, `json`, `math`, `net`, `string`,
+  `time`. `io` and `net` route side effects through the consent machinery.
+
+| `src/abi/`
+| Idris2 ABI definitions (`Foreign.idr`, `Layout.idr`, `Types.idr`).
+
+| `src/ffi/`
+| Rust C-ABI FFI bridge (`c_api.rs`).
+
+| `src/codegen/`
+| Code-generation scaffolding (`WasmCompiler`) for a future WASM backend — not
+  yet wired into the build.
+
+| `src/modules.rs` · `src/repl.rs` · `src/sexpr.rs`
+| Module system, REPL loop, and an S-expression AST dump.
+|===
+
+NOTE: `compiler/wokelang-wasm/` is a separate experimental Rust crate exploring
+WASM compilation. Like `src/codegen/`, the WASM target is a design commitment,
+not a working backend.
+
+== 2. The OCaml reference core (`core/`)
+
+`core/` is a smaller, independent implementation of the language semantics,
+built with `dune`:
+
+[cols="1,3", options="header"]
+|===
+| File | Role
+
+| `core/lexer.mll`
+| `ocamllex` lexer.
+
+| `core/parser.mly`
+| `menhir` parser (the project's `dune-project` declares `(using menhir 2.1)`).
+
+| `core/ast.ml`
+| AST definitions.
+
+| `core/eval.ml`
+| Evaluator.
+
+| `core/main.ml`
+| Entry point.
+|===
+
+The OCaml core exists to *cross-check the Rust toolchain*: running the same
+programs through both implementations grounds the end-to-end (`e2e`) CI gate and
+gives an independent reference for the language's semantics. (Note:
+`wokelang.opam` is currently an empty stub; the core builds from `dune-project`.)
+
+== 3. The echo-types / Isabelle frontier
+
+The frontier workstream makes the consent / affine-safety guarantees
+*machine-checked from near first principles*:
+
+* *Substrate.* WokeLang consumes `hyperpolymath/echo-types` — a constructive
+  Agda formalization of *fiber-based structured loss* ("echo types",
+  `Echo f y := Σ (x : A) , (f x ≡ y)`). This is the source of truth for the
+  loss / consent reasoning.
+* *Integration.* Echo types are being integrated into the typechecker so the
+  language can reason about what information is *lost* (and therefore what
+  consent / affine-use obligations arise) without the user doing it by hand.
+* *Proof narrative.* The goal is an end-to-end, near-first-principles
+  machine-checked proof narrative — *Isabelle preferred* — that backs the
+  axiomatic guarantees in `spec/axiomatic-semantics.md` (consent safety,
+  consent monotonicity, worker isolation, gentle error handling).
+
+This is the architectural payoff: *the language sorts the hard consent /
+affine-safety reasoning so users never have to.*
+
+== Build at a glance
+
+[source,bash]
+----
+# Rust toolchain
+cargo build --release        # → woke, woke-lsp, woke-dap
+cargo test                   # 173 library tests
+
+# OCaml reference core
+dune build ./core
+dune runtest ./core
+----
+
+Reproducible environments are provided by Guix (`guix.scm`, primary) and Nix
+(`flake.nix`, fallback). The production toolchain needs only *Rust stable*
+(`.tool-versions` pins `rust stable`).
+
+== Specification
+
+The canonical language definition lives in `spec/`:
+
+* `grammar.ebnf` — the EBNF grammar.
+* `axiomatic-semantics.md` — consent Hoare logic and the key theorems.
+* `system-specs.md` — system-level specification.
+* `SPEC.core.scm` — the core spec in the RSR meta-format.
+
+See also link:Overview.adoc[Overview] for the language features and
+link:CI-and-Governance.adoc[CI & Governance] for how the toolchain is gated.
