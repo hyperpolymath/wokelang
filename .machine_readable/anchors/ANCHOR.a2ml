@@ -3,7 +3,7 @@
 
 id: "org.hyperpolymath.wokelang"
 version: "1.0.0"
-clade: "unknown"
+clade: "nl"   # nextgen-languages clade (per .machine_readable/CLADE.a2ml)
 status: "active"
 
 # SSG Configuration (Unified boj-server build)
@@ -15,4 +15,5 @@ ssg:
 
 # Relationships
 parents:
-  - "org.hyperpolymath.boj-server"
+  - "org.hyperpolymath.boj-server"          # SSG / publish parent (boj build trigger)
+  - "org.hyperpolymath.nextgen-languages"   # code lineage (monorepo-child, clade nl)
