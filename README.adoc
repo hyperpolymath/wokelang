@@ -12,208 +12,299 @@ image:https://img.shields.io/badge/License-MPL_2.0-blue.svg[License: MPL-2.0,lin
 :icons: font
 :source-highlighter: highlight.js
 
-WokeLang: A Human-Centered Programming Language
+image:https://img.shields.io/badge/License-MPL--2.0-brightgreen.svg[License: MPL-2.0,link="LICENSE"]
+image:https://github.com/hyperpolymath/wokelang/actions/workflows/rust-ci.yml/badge.svg[Rust CI,link="https://github.com/hyperpolymath/wokelang/actions/workflows/rust-ci.yml"]
+image:https://img.shields.io/badge/Rust-stable-orange.svg[Rust]
+image:https://img.shields.io/badge/OCaml-reference%20core-blueviolet.svg[OCaml]
 
-[![Build Status](https://github.com/hyperpolymath/wokelang/actions/workflows/ci.yml/badge.svg)](https://github.com/hyperpolymath/wokelang/actions)
-[![OCaml](https://img.shields.io/badge/OCaml-5.0-blue)](https://ocaml.org)
-[![Rust](https://img.shields.io/badge/Rust-1.70-red)](https://rust-lang.org)
-[![Vyper](https://img.shields.io/badge/Vyper-0.3.10-green)](https://vyper.readthedocs.io)
+*WokeLang: A human-centered, consent-driven programming language.*
 
-WokeLang is a programming language designed for **human collaboration**, **empathy**, and **safety**—without sacrificing power or performance. It combines:
+WokeLang is a programming language designed for *human collaboration*, *consent*,
+and *affine-use safety* — without sacrificing power or performance. The defining
+idea is that the *type system discharges the hard consent and affine-use reasoning
+for you*, so dangerous or destructive operations are scaffolded at the language
+level rather than left to convention.
 
-- **Python's readability** with **Rust's performance**.
-- **Hindley-Milner type inference** with **JavaScript's expressiveness**.
-- **Unique features** like `thanks to`, `only if okay`, and `measured in` for **ethical, self-documenting code**.
+It combines:
 
-## Table of Contents
-- [🚀 Quick Start](#-quick-start)
-- [🌟 Key Features](#-key-features)
-- [📦 Project Structure](#-project-structure)
-- [🛠 Development](#-development)
-- [📚 Examples](#-examples)
-- [🎯 Next Steps](#-next-steps)
-- [🤝 Community](#-community)
+- Readable, English-like syntax with a statically typed core.
+- Hindley-Milner-style type inference (scalar and unit types today; broader
+  polymorphic inference is a roadmap item).
+- Consent-aware features like `only if okay`, `thanks to`, and `measured in`
+  (units of measure) for ethical, self-documenting code.
 
-## 🚀 Quick Start
+The primary implementation is a *Rust toolchain* in `src/`; a smaller *OCaml
+reference core* in `core/` cross-checks the language semantics end-to-end.
 
-### 1. Install
-```bash
+toc::[]
+
+== Project status
+
+[cols="1,3", options="header"]
+|===
+| Aspect | State
+
+| Phase
+| Implementation (~35% complete; version 0.1.0).
+
+| Primary implementation
+| Rust toolchain in `src/`: lexer, parser, typechecker, bytecode VM (compiler +
+  machine), tree-walking interpreter, LSP (`woke-lsp`), DAP (`woke-dap`),
+  formatter, linter, REPL, stdlib, codegen, ABI/FFI, security.
+
+| Reference core
+| OCaml in `core/`: `ocamllex` lexer + `menhir` parser + evaluator, built with
+  `dune`. Grounds the end-to-end CI cross-check.
+
+| Tests
+| 173 Rust library tests passing.
+
+| Binaries
+| `woke` (CLI + REPL), `woke-lsp` (editor language server), `woke-dap` (debug
+  adapter).
+
+| Frontier
+| Integrating *echo types* (`hyperpolymath/echo-types`) into the type checker,
+  with a near-first-principles machine-checked proof narrative (Isabelle
+  preferred), so consent / affine-safety is handled automatically.
+
+| Editor support
+| Tree-sitter / TextMate grammar drives passive syntax highlighting. The VS Code
+  extension is currently *syntax-only* (see `editors/vscode/`).
+|===
+
+== Quick start
+
+=== 1. Install
+
+[source,bash]
+----
 git clone https://github.com/hyperpolymath/wokelang.git
 cd wokelang
 
-# Install dependencies (asdf + tools)
-asdf install  # installs rust, deno, idris2, zig
-
-# Build
+# Build the Rust toolchain (Rust stable; see .tool-versions)
 cargo build --release
+----
 
-2. Run the REPL
+To build the OCaml reference core as well:
 
-cargo run --release -- repl
+[source,bash]
+----
+dune build ./core
+----
 
-Example REPL Session:
+=== 2. Run the REPL
 
+[source,bash]
+----
+cargo run --release --bin woke -- repl
+----
+
+Example REPL session:
+
+----
 wokelang> remember x = 5 measured in km
 wokelang> x + 3 measured in km
 Result: 8 measured in km
+----
 
-3. Run Examples
+Adding mismatched units (`5 measured in km + 3 measured in kg`) is a compile-time
+type error.
 
+=== 3. Run examples
+
+[source,bash]
+----
 # Hello World
-cargo run --release -- run examples/01_hello.woke
+cargo run --release --bin woke -- run examples/01_hello.woke
 
 # Fibonacci
-cargo run --release -- run examples/13_fibonacci.woke
+cargo run --release --bin woke -- run examples/13_fibonacci.woke
 
-# All examples
+# List all examples
 ls examples/*.woke
+----
 
-4. Build & Execute
+=== 4. Compile and execute on the VM
 
+[source,bash]
+----
 # Compile to bytecode
-cargo run --release -- compile examples/01_hello.woke -o hello.wbc
+cargo run --release --bin woke -- compile examples/01_hello.woke -o hello.wbc
 
-# Run on VM
-cargo run --release -- run-vm hello.wbc
+# Run the bytecode on the VM
+cargo run --release --bin woke -- run-vm hello.wbc
+----
 
-```markdown
-## 🌟 Key Features
+== Key features
 
-| Feature               | Example                                  | Why It’s Special                          |
-|-----------------------|------------------------------------------|-------------------------------------------|
-| **Human Syntax**      | `to add(a, b) -> a + b`                  | Reads like plain English.                 |
-| **Empathy Annotations** | `@feeling(confident=true)`              | Codes with emotional context.             |
-| **Consent Gates**     | `only if okay "Delete?" { ... }`         | Ethical scaffolding for dangerous ops.    |
-| **Gratitude Blocks**  | `thanks to { "Alice" → "Fixed X!" }`      | Acknowledges contributors in code.       |
-| **Units of Measure**  | `5 measured in km`                       | Prevents unit-related bugs.               |
-| **Pipelines**         | `data then clean then analyze`           | Intuitive data transformations.          |
-| **Vyper FFI**         | `vyper call "gratitude.add_entry"`      | Immutable, auditable blockchain ops.      |
-| **WASM Target**       | Compile to run in browsers/Node.js.      | Portable and fast.                       |
+[cols="1,2,2", options="header"]
+|===
+| Feature | Example | Why it matters
 
-## 📦 Project Structure
+| Human syntax
+| `to add(a, b) -> a + b`
+| Reads like plain English.
 
-```bash
+| Consent gates
+| `only if okay "Delete?" { ... }`
+| Ethical scaffolding for dangerous operations.
+
+| Gratitude blocks
+| `thanks to { "Alice" -> "Fixed X!" }`
+| Acknowledges contributors in the code itself.
+
+| Units of measure
+| `5 measured in km`
+| Dimensional analysis prevents unit-mismatch bugs at compile time.
+
+| Pipelines
+| `data then clean then analyze`
+| Intuitive left-to-right data transformations.
+
+| Empathy annotations
+| `@feeling(confident=true)`
+| Carries emotional / authorial context alongside code.
+|===
+
+NOTE: Some surface features described in the language spec and research paper
+(for example a blockchain FFI bridge and a WASM target) are *design commitments*
+rather than production-ready integrations. See `EXPLAINME.adoc` for the honest
+"what is implemented vs. what is designed" breakdown.
+
+== Project structure
+
+[source]
+----
 wokelang/
-├── .bot_directives/     # Bot constraint files for gitbot-fleet
-├── .claude/             # Project-specific AI instructions
-├── .github/workflows/   # CI/CD (Hypatia, CodeQL, Scorecard)
-├── .machine_readable/   # Machine-readable metadata
-│   └── 6scm/           # SCM checkpoint files
-├── contractiles/        # Contractile definitions
-│   ├── dust/           # External dependencies
-│   ├── k9/             # Security constraints
-│   ├── lust/           # Desired features
-│   ├── must/           # Required features & must runner
-│   └── trust/          # Trust boundaries
-├── docs/               # Documentation
-│   ├── architecture/   # Architecture docs (COMPILER-ROADMAP.adoc)
-│   ├── sessions/       # Development session reports
-│   ├── ABI-FFI-README.adoc        # ABI/FFI integration guide
-│   ├── DEPLOYMENT.adoc            # Deployment documentation
-│   ├── GAP-ANALYSIS.adoc          # Implementation gaps
-│   ├── NEXT-STEPS.adoc            # Development roadmap
-│   ├── PALIMPSEST.adoc            # License philosophy
-│   ├── PROVEN.md                  # proven library integration
-│   └── WORKERS.adoc               # Worker documentation
-├── examples/           # Example WokeLang programs
-├── ffi/
-│   └── zig/           # Zig FFI implementation (C ABI)
-│       └── src/
-├── license/            # License files
-│   └── MPL-2.0.txt
-├── scripts/
-│   ├── install-hooks.sh  # Install git hooks
-│   └── setup.sh          # Setup script
-├── site/               # wokelang.org website
-│   ├── content/        # Markdown content
-│   ├── templates/      # Tera templates
-│   └── config.yaml     # Site configuration
-├── src/
-│   ├── abi/            # Idris2 ABI definitions with formal proofs
-│   │   ├── Foreign.idr
-│   │   ├── Layout.idr
-│   │   └── Types.idr
-│   ├── ast/            # Abstract Syntax Tree
-│   ├── interpreter/    # Tree-walking interpreter
-│   ├── lexer/          # Token generation (logos)
-│   ├── parser/         # Parser (tokens → AST)
-│   ├── stdlib/         # Standard library modules
-│   │   ├── array.rs
-│   │   ├── chan.rs     # Go-style channels
-│   │   ├── io.rs       # File I/O with consent
-│   │   ├── math.rs
-│   │   ├── net.rs      # HTTP with consent
-│   │   ├── string.rs
-│   │   └── time.rs
-│   ├── typechecker/    # Hindley-Milner type inference
-│   ├── vm/             # Bytecode VM
-│   │   ├── bytecode.rs
-│   │   ├── compiler.rs
-│   │   ├── machine.rs
-│   │   └── optimizer.rs
-│   ├── main.rs         # CLI entry point
-│   └── repl.rs         # REPL
-├── tests/              # Test suite
-├── .tool-versions      # asdf tool versions (rust, deno, idris2, zig)
-├── AI.a2ml             # AI assistant instructions
-├── Cargo.toml          # Rust dependencies
-├── .machine_readable/6a2/ECOSYSTEM.a2ml       # Ecosystem relationships
-├── .machine_readable/6a2/META.a2ml            # Architectural decisions
-├── .machine_readable/6a2/STATE.a2ml           # Current project state
-└── README.adoc         # This file
+├── src/                  # PRIMARY Rust toolchain
+│   ├── lexer/            # Tokeniser (logos): remember, measured in, only if okay, thanks to, then
+│   ├── parser/           # Recursive-descent parser → AST
+│   ├── ast/              # AST node definitions
+│   ├── typechecker/      # Hindley-Milner-style inference + Unit dimensional analysis
+│   ├── interpreter/      # Tree-walking interpreter (woke run)
+│   ├── vm/               # Bytecode VM: compiler, machine, optimizer
+│   ├── codegen/          # Code generation backend
+│   ├── lsp/              # Language Server Protocol (binary: woke-lsp)
+│   ├── dap/              # Debug Adapter Protocol (binary: woke-dap)
+│   ├── formatter/        # Canonical-style formatter
+│   ├── linter/           # Style + consent-gate lint rules
+│   ├── security/         # Security analysis passes
+│   ├── stdlib/           # Standard library modules
+│   ├── abi/  ffi/        # ABI / FFI boundary
+│   ├── modules.rs        # Module system
+│   ├── main.rs  repl.rs  # CLI entry point + REPL
+│   └── bin/              # woke-lsp.rs, wokelang-dap.rs
+├── core/                 # OCaml reference core: lexer.mll + parser.mly + eval.ml (dune)
+├── spec/                 # Language specification: grammar.ebnf, axiomatic-semantics, SPEC.core.scm
+├── examples/             # .woke example programs
+├── conformance/          # Conformance test suite
+├── fuzz/                 # ClusterFuzzLite fuzzing harnesses
+├── verification/         # Formal verification artefacts
+├── editors/              # Editor integration (TextMate grammar; VS Code = syntax-only)
+├── wiki/                 # In-tree project wiki (start at wiki/Home.adoc)
+├── docs/                 # Documentation (architecture, sessions, PALIMPSEST, …)
+├── contractiles/         # Contractile definitions (must / trust / dust / bust)
+├── .machine_readable/    # Structured project metadata (6a2/, anchors/, svc/k9, bot_directives/, …)
+├── .github/workflows/    # CI/CD (rust-ci, dogfood-gate, e2e, governance, hypatia-scan, …)
+├── Cargo.toml            # Rust workspace manifest
+├── dune-project          # OCaml build configuration
+├── Justfile / Mustfile   # Developer recipes + mandatory-check runner
+└── README.adoc           # This file
+----
 
-## 🛠 Development
+== Development
 
-### Must Runner (Contractile Enforcement)
+=== Toolchain
 
-WokeLang uses a **Mustfile** (in `contractiles/must/`) to enforce mandatory checks:
+WokeLang's production toolchain needs only *Rust stable* (`.tool-versions` pins
+`rust stable`). The OCaml reference core additionally needs OCaml + `dune` +
+`menhir`. Reproducible environments are provided via Guix (`guix.scm`, primary)
+and Nix (`flake.nix`, fallback).
 
-```bash
-# Run all mandatory checks (security, tests, format)
-must run
-
-# Individual checks
-just lint    # Security checks
-just test    # Test suite
-just fmt     # Code formatting
-```
-
-**Mustfile** defines requirements that MUST pass before commits/releases. See `contractiles/` for full contractile system:
-- `must/` - Mandatory requirements (MUST pass)
-- `lust/` - Desired features (WANT to have)
-- `dust/` - External dependencies
-- `trust/` - Trust boundaries
-- `k9/` - Security constraints
-
-## 🛠 Development
-
-### Development Environment
-
-**Required Tools** (managed via asdf):
-- Rust 1.84.0 - Compiler infrastructure
-- Deno 2.1.4 - Runtime (NO Node.js/npm)
-- Idris2 0.7.0 - ABI with formal proofs
-- Zig 0.13.0 - FFI C-compatible implementation
-
-```bash
-# Install asdf
-git clone https://github.com/asdf-vm/asdf.git ~/.asdf
-
-# Install plugins
-asdf plugin add rust
-asdf plugin add deno
-asdf plugin add idris2
-asdf plugin add zig
-
-# Install versions (from .tool-versions)
-asdf install
-
-# Build
+[source,bash]
+----
+# Rust toolchain
 cargo build --release
+cargo test            # 173 library tests
 
+# OCaml reference core
+dune build ./core
+dune runtest ./core
+----
 
-== License
+=== Must runner (contractile enforcement)
 
-This project is licensed under the Mozilla Public License, v. 2.0. See the `LICENSE` file for details.
+WokeLang uses a *Mustfile* to enforce mandatory checks before commits and
+releases:
 
-SPDX-License-Identifier: MPL-2.0
+[source,bash]
+----
+must run          # all mandatory checks (security, tests, format)
+
+just lint         # lint / security checks
+just test         # test suite
+just fmt          # formatting
+----
+
+The contractile system lives under `contractiles/` (and the machine-readable
+mirror under `.machine_readable/contractiles/`):
+
+- `must/` — mandatory requirements (MUST pass)
+- `trust/` — trust boundaries
+- `dust/` — external dependencies
+- `bust/` — teardown / cleanup contracts
+
+Self-validation (K9) templates live under `.machine_readable/svc/k9/`.
+
+== Governance
+
+WokeLang follows the *Hyperpolymath Standard*:
+
+- *Licence:* MPL-2.0 (SPDX header on every file).
+- *Language policy:* an allowed / banned language set (for example, no
+  TypeScript, Node.js, Go, or Python) enforced by the `governance` workflow.
+- *CI:* a multi-workflow GitHub Actions suite (`rust-ci`, `ocaml-core`, `e2e`,
+  `dogfood-gate`, `governance`, `security`, `codeql`, `scorecard`,
+  `secret-scanner`, `hypatia-scan`, ClusterFuzzLite, mirror, instant-sync, …).
+- *Dogfooding gate:* the repo applies its own tooling (a2ml lint, K9
+  self-validation, empty-lint, Groove discovery, eclexiaiser).
+
+See `wiki/CI-and-Governance.adoc` for the full picture, and `.machine_readable/`
+for the structured project state.
+
+== Documentation
+
+- `wiki/Home.adoc` — in-tree project wiki (Overview, Architecture, CI &
+  Governance, Roadmap).
+- `EXPLAINME.adoc` — honest "claims vs. receipts" walkthrough of the codebase.
+- `spec/` — the language specification.
+- `docs/` — architecture notes, session reports, and the Palimpsest licence
+  philosophy.
+- `arxiv-consent-aware-programming.tex` — the research paper on consent-aware
+  programming, for which WokeLang is the reference implementation.
+
+== Next steps
+
+- Eliminate proof escape hatches; tighten the formal-verification story.
+- Integrate echo types into the typechecker (frontier workstream).
+- Restore a full LSP client for the VS Code extension once the estate ABI/FFI
+  layer lands (the Rust `woke-lsp` server already works with any LSP-capable
+  editor).
+- Broaden Hindley-Milner inference over closures and module types.
+
+See `ROADMAP.adoc` and `wiki/Roadmap.adoc`.
+
+== Community
+
+- *Author / maintainer:* Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+- *Issues:* https://github.com/hyperpolymath/wokelang/issues
+- *Contributing:* see `CONTRIBUTING.adoc`.
+- *Code of Conduct:* see `CODE_OF_CONDUCT.md`.
+
+== Licence
+
+WokeLang is released under the *Mozilla Public License 2.0* (`MPL-2.0`); the SPDX
+identifier on every file is `MPL-2.0`. The project additionally describes its
+ethical-use and provenance philosophy via the Palimpsest framing — see
+`docs/PALIMPSEST.adoc`.

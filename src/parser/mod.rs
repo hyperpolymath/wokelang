@@ -36,6 +36,11 @@ pub struct Parser<'a> {
     tokens: Vec<LexerSpanned<Token>>,
     source: &'a str,
     current: usize,
+    /// When true, a `{` following an identifier is not treated as the start of
+    /// a record literal. Used in positions like a `decide based on` scrutinee
+    /// where the `{` opens the match block, not a record (cf. how Rust
+    /// disambiguates `if x { }` from a struct literal).
+    no_struct_literal: bool,
 }
 
 /// Operator precedence levels (higher = tighter binding)
@@ -60,6 +65,7 @@ impl<'a> Parser<'a> {
             tokens,
             source,
             current: 0,
+            no_struct_literal: false,
         }
     }
 
@@ -245,8 +251,10 @@ impl<'a> Parser<'a> {
                 self.advance();
                 let end = self.tokens[self.current - 1].span.end;
 
-                // Check if it's a record literal (Type { field: value, ... })
-                if matches!(self.peek(), Token::LBrace) {
+                // Check if it's a record literal (Type { field: value, ... }).
+                // Suppressed in `no_struct_literal` positions so the `{` can
+                // instead open an enclosing block (e.g. a match block).
+                if !self.no_struct_literal && matches!(self.peek(), Token::LBrace) {
                     self.parse_record_literal(name, start)
                 }
                 // Check if it's a function call
@@ -892,7 +900,12 @@ impl<'a> Parser<'a> {
         self.expect(Token::Decide, "decide")?;
         self.expect(Token::Based, "based")?;
         self.expect(Token::On, "on")?;
+        // Parse the scrutinee with record-literal syntax suppressed, so the `{`
+        // that follows opens the match block rather than a record literal.
+        let prev_no_struct_literal = self.no_struct_literal;
+        self.no_struct_literal = true;
         let scrutinee = self.parse_expression()?;
+        self.no_struct_literal = prev_no_struct_literal;
         self.expect(Token::LBrace, "{")?;
 
         let mut arms = Vec::new();

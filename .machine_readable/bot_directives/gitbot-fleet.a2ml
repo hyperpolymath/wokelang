@@ -1,0 +1,49 @@
+# SPDX-License-Identifier: MPL-2.0
+# Copyright (c) 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+#
+# gitbot-fleet.a2ml — directive for the hyperpolymath gitbot / agent fleet on
+# this repository. The fleet is the estate's automation that operates across
+# repositories (housekeeping, governance sync, dependency hygiene, label and
+# issue triage).
+
+[metadata]
+bot = "gitbot-fleet"
+project = "wokelang"
+version = "0.1.0"
+last-updated = "2026-06-12"
+
+[hook]
+# The fleet acts through pull requests and issue actions on this repo.
+mechanism = "pull-request"
+governance-upstream = "hyperpolymath/standards"   # reusable workflows + policy
+related-workflows = [
+  ".github/workflows/governance.yml",
+  ".github/workflows/workflow-linter.yml",
+]
+
+[purpose]
+summary = "Cross-repository automation and governance synchronisation."
+responsibilities = [
+  "keep CI thin-wrapper reusables in sync with hyperpolymath/standards",
+  "repository hygiene (stale references, empty files, formatting)",
+  "issue / label triage and cross-repo coordination",
+  "open maintenance PRs (never direct pushes to the default branch)",
+]
+
+[permissions]
+can-open-pull-requests = true
+can-comment-on-issues = true
+can-push-to-default-branch = false
+can-edit-source = false           # source changes go through human-reviewed PRs
+can-edit-machine-readable = false # .machine_readable/ is maintainer-curated
+
+[constraints]
+respect-language-policy = true    # Hyperpolymath Standard allowed/banned set
+respect-contractiles = true       # must / trust / dust / bust
+require-dogfood-gate-green = true  # changes must keep the dogfooding gate passing
+preserve-spdx-headers = true
+no-secrets-in-commits = true
+
+[notes]
+# Fleet identity, tokens, and scheduling are managed by the fleet infrastructure
+# and are NOT committed here. This file is the repo-local scope/policy surface.

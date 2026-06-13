@@ -1,0 +1,51 @@
+# SPDX-License-Identifier: MPL-2.0
+# Copyright (c) 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+#
+# hypatia.a2ml — directive for the Hypatia security bot on this repository.
+# Hypatia is the estate's neurosymbolic security scanner. It runs as the
+# `hypatia-scan` CI gate and the `hypatia-autofix` bot.
+
+[metadata]
+bot = "hypatia"
+project = "wokelang"
+version = "0.1.0"
+last-updated = "2026-06-12"
+
+[hook]
+# CI gate workflow that invokes Hypatia.
+ci-workflow = ".github/workflows/hypatia-scan.yml"
+# Local activity ledger Hypatia writes to (see repo root).
+activity-log = ".hypatia/activity.jsonl"
+last-visit = ".hypatia/last-visit.json"
+agents = ["hypatia-scan", "hypatia-autofix"]
+
+[purpose]
+summary = "Symbolic / neurosymbolic security scanning of the repository."
+scans = [
+  "banned-language patterns (Hyperpolymath Standard policy)",
+  "dangerous / unsafe usage in Rust",
+  "proof escape hatches (believe_me, assert_total, sorry, Admitted, unsafeCoerce, Obj.magic)",
+  "secret / credential leakage (complements secret-scanner)",
+]
+
+[autofix-policy]
+# hypatia-autofix may propose fixes, but only within these bounds.
+mode = "propose"                 # propose | apply
+allow-source-edits = false       # never silently edit src/ — open a PR instead
+open-pull-request = true
+require-human-review = true
+never-touch = [
+  ".machine_readable/",          # machine state is maintainer-curated
+  "LICENSE", "NOTICE", "LICENSES/",
+]
+
+[constraints]
+# Hard invariants Hypatia must not violate.
+must-not-weaken-consent-safety = true
+must-not-add-escape-hatches = true
+must-preserve-spdx-headers = true
+fail-closed = true               # a scan error blocks, it does not pass silently
+
+[notes]
+# Endpoints and credentials are supplied by the Hypatia service, not committed here.
+# This directive only declares repo-local scope and policy.

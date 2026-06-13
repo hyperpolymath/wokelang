@@ -1,10 +1,43 @@
 # SPDX-License-Identifier: MPL-2.0
 # ECOSYSTEM.a2ml — Ecosystem position
-# Converted from ECOSYSTEM.scm on 2026-03-15
+# Converted from ECOSYSTEM.scm on 2026-03-15; enriched 2026-06-12.
+# Relationships, dependencies, integration points.
 
 [metadata]
 project = "wokelang"
 ecosystem = "hyperpolymath"
+version = "0.1.0"
+last-updated = "2026-06-12"
+
+[project]
+name = "wokelang"
+purpose = "A human-centered, consent-driven programming language whose type system discharges consent / affine-use safety automatically"
+role = "language"  # e.g. language, ffi-infrastructure, cli-tool, library, service
 
 [position]
 type = "component"
+
+[position-in-ecosystem]
+tier = "1"  # 1 | 2 | infrastructure
+notes = "wokelang is a standalone language in the hyperpolymath estate, distinct from the estate-primary AffineScript / my-lang. It consumes echo-types as its formal substrate."
+
+[related-projects]
+projects = [
+  { name = "echo-types", relationship = "upstream-dependency", notes = "Constructive Agda formalization of fiber-based structured loss ('echo types'). The source of truth wokelang consumes for consent / affine-loss reasoning; integrated into the typechecker on the frontier workstream." },
+  { name = "nextgen-languages", relationship = "sibling-estate", notes = "Home of AffineScript / my-lang, the estate-primary language. Coordination monorepo for the language family." },
+  { name = "nextgen-typing", relationship = "sibling-estate", notes = "Coordination monorepo for the hyperpolymath type-theory pipeline; the MAXIMAL reference for these machine-readable governance artefacts." },
+  { name = "panll", relationship = "estate-peer", notes = "Three-pane cognitive-relief HTI in the estate; a consumer-facing surface for estate capabilities." },
+  { name = "verisimdb", relationship = "estate-peer", notes = "Identity-state capture with filesystem fallback (VeriSim family)." },
+  { name = "groove", relationship = "integration-protocol", notes = "HTTP-based service-discovery protocol; lets estate capabilities announce themselves for automatic detection. Part of wokelang's dogfooding gate." },
+  { name = "hypatia", relationship = "security-tooling", notes = "Neurosymbolic security scanner; runs as the hypatia-scan CI gate." },
+  { name = "gitbot-fleet", relationship = "automation", notes = "Estate gitbot / agent fleet that operates across repositories." },
+  { name = "standards", relationship = "governance-upstream", notes = "hyperpolymath/standards supplies the thin-wrapper reusable workflows and the Hyperpolymath Standard language policy wokelang follows." },
+]
+
+[integration-points]
+integrations = [
+  { system = "echo-types", direction = "inbound", protocol = "formalization-consume", notes = "wokelang's typechecker integrates echo-types' fiber-based structured-loss formalization; an Isabelle proof narrative backs the consent-safety guarantees." },
+  { system = "groove", direction = "bidirectional", protocol = "service-discovery", notes = "Groove discovery is exercised by the dogfooding gate so wokelang capabilities are announceable to the estate." },
+  { system = "hypatia", direction = "inbound", protocol = "security-scan", notes = "hypatia-scan analyses the repository as part of CI (neurosymbolic / symbolic-rule scanning)." },
+  { system = "standards", direction = "inbound", protocol = "reusable-workflow", notes = "CI gates are thin wrappers over hyperpolymath/standards reusable workflows." },
+]

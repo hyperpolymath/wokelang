@@ -1,0 +1,27 @@
+# SPDX-License-Identifier: MPL-2.0
+# SPDX-FileCopyrightText: 2026 Hyperpolymath
+opam-version: "2.0"
+name: "wokelang"
+version: "0.1.0"
+synopsis: "A human-centered, consent-driven programming language"
+description: """
+WokeLang is a human-centered, consent-driven programming language.
+This package builds the OCaml reference core (lexer / parser / evaluator)
+under core/ via dune + menhir. The Rust toolchain (compiler, VM, LSP,
+DAP) is built separately via Cargo.
+"""
+maintainer: "Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>"
+authors: "Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>"
+license: "MPL-2.0"
+homepage: "https://github.com/hyperpolymath/wokelang"
+bug-reports: "https://github.com/hyperpolymath/wokelang/issues"
+dev-repo: "git+https://github.com/hyperpolymath/wokelang.git"
+depends: [
+  "ocaml" {>= "4.14"}
+  "dune" {>= "3.0"}
+  "menhir" {>= "2.1"}
+]
+build: [
+  ["dune" "subst"] {dev}
+  ["dune" "build" "-p" name "-j" jobs]
+]

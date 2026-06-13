@@ -1,14 +1,38 @@
 # SPDX-License-Identifier: MPL-2.0
 # STATE.a2ml — Project state checkpoint
-# Converted from STATE.scm on 2026-03-15
+# Converted from STATE.scm on 2026-03-15; refreshed 2026-06-12.
 
 [metadata]
 project = "wokelang"
 version = "0.1.0"
-last-updated = "2026-03-15"
+last-updated = "2026-06-12"
 status = "active"
 
 [project-context]
 name = "wokelang"
-completion-percentage = 5
-phase = "concept"
+completion-percentage = 35
+phase = "implementation"
+tagline = "A human-centered, consent-driven programming language"
+
+[implementation]
+primary = "Rust toolchain in src/"
+rust-components = "lexer, parser, typechecker, bytecode VM (compiler + machine), tree-walking interpreter, LSP, DAP, formatter, linter, REPL, stdlib, codegen, ABI/FFI, security"
+rust-lib-tests = "173 passing (0 failing)"
+binaries = "woke, woke-lsp, woke-dap"
+ocaml-core = "core/ reference: ocamllex lexer + menhir parser + evaluator (dune)"
+
+[frontier]
+focus = "integrate echo-types into the type checker + an end-to-end, near-first-principles machine-checked proof narrative"
+proof-assistant = "Isabelle (preferred)"
+echo-types-source = "hyperpolymath/echo-types (constructive Agda formalization of fiber-based structured loss)"
+goal = "the language sorts the hard consent/affine-safety reasoning so users never have to"
+typechecker-note = "TypeChecker::new seeds a ~64-binding builtin prelude (incl. Result/echo constructors)"
+
+[ci]
+workflows = "20 GitHub Actions; thin-wrapper reusables from hyperpolymath/standards"
+gates = "rust-ci, dogfood-gate, e2e (Rust+OCaml), governance, security, codeql, scorecard, secret-scanner, hypatia-scan, clusterfuzzlite, mirror, instant-sync"
+last-shepherd = "2026-06-12 PR #77: fixed 3 Rust tests, empty wokelang.opam, removed banned ReScript VSCode client (governance); issue #78 tracks AffineScript reimpl"
+
+[spec]
+location = "spec/ — grammar.ebnf, axiomatic-semantics.md, system-specs.md, SPEC.core.scm"
+paper = "arxiv-consent-aware-programming.tex (+ references.bib)"

@@ -1,0 +1,186 @@
+// SPDX-License-Identifier: MPL-2.0
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+= WokeLang — CI & Governance
+:toc: macro
+:icons: font
+
+link:Home.adoc[← Wiki home]
+
+toc::[]
+
+WokeLang follows the *Hyperpolymath Standard*: an MPL-2.0 licence, a strict
+allowed/banned language policy, a multi-workflow CI suite built on thin-wrapper
+reusable workflows from `hyperpolymath/standards`, and a *dogfooding gate* in
+which the repository applies its own tooling to itself.
+
+== CI workflow suite
+
+The CI suite is described in the project state (`.machine_readable/6a2/STATE.a2ml`)
+as a *20-workflow* GitHub Actions suite. The workflow files currently present
+under `.github/workflows/` are:
+
+[cols="1,3", options="header"]
+|===
+| Workflow | Purpose
+
+| `rust-ci.yml`
+| Build and test the Rust toolchain (the 173 library tests).
+
+| `ocaml-core.yml`
+| Build and test the OCaml reference core (`dune`).
+
+| `e2e.yml`
+| End-to-end cross-check (Rust toolchain ↔ OCaml core).
+
+| `dogfood-gate.yml`
+| The dogfooding gate — applies WokeLang's own tooling (see below).
+
+| `governance.yml`
+| Enforces the Hyperpolymath Standard language policy and repo conventions.
+
+| `security.yml`
+| Security checks.
+
+| `cargo-audit.yml`
+| Audits Rust dependencies for known advisories.
+
+| `codeql.yml`
+| CodeQL static analysis.
+
+| `scorecard.yml` · `scorecard-enforcer.yml`
+| OpenSSF Scorecard supply-chain posture, plus enforcement.
+
+| `secret-scanner.yml`
+| Scans for committed secrets.
+
+| `hypatia-scan.yml`
+| Hypatia neurosymbolic / symbolic-rule security scan.
+
+| `cflite_pr.yml` · `cflite_batch.yml`
+| ClusterFuzzLite fuzzing (per-PR and batch) over the `fuzz/` harnesses.
+
+| `workflow-linter.yml`
+| Lints the workflow definitions themselves.
+
+| `boj-build.yml`
+| Static-site / publish build (boj-server trigger; see `anchors/ANCHOR.a2ml`).
+
+| `ghcr-publish.yml`
+| Publishes the container image.
+
+| `mirror.yml`
+| Mirrors the repository.
+
+| `instant-sync.yml`
+| Propagates changes across the estate on push.
+|===
+
+NOTE: The count of literal `.yml` files may differ slightly from the headline
+"20 workflows" figure recorded in the machine-readable state, as some gates are
+composed of multiple jobs or split across files. Treat
+`.machine_readable/6a2/STATE.a2ml` and `PLAYBOOK.a2ml` as the canonical record of
+the intended gate set.
+
+== The dogfooding gate
+
+The `dogfood-gate` workflow has WokeLang *apply its own ecosystem tooling to its
+own repository*. Per `PLAYBOOK.a2ml`, the gate runs:
+
+* *a2ml lint* — validates the machine-readable artefacts under
+  `.machine_readable/`.
+* *K9 self-validation* — the K9 self-validating contractiles
+  (`.machine_readable/svc/k9/`).
+* *empty-lint* — catches empty / placeholder files.
+* *Groove discovery* — exercises the Groove HTTP service-discovery protocol so
+  WokeLang's capabilities are announceable to the estate.
+* *eclexiaiser* — repository hygiene checks.
+
+This is the practical expression of WokeLang being a first-class member of the
+hyperpolymath estate rather than a passive consumer of standards.
+
+== Language policy (Hyperpolymath Standard)
+
+Governance is enforced, not just documented. The policy is enforced by the
+`governance` workflow and recorded in `.machine_readable/6a2/AGENTIC.a2ml` and
+the root `CLAUDE.md`.
+
+=== Allowed
+
+Rust (primary toolchain), OCaml (the reference core and the AffineScript-compiler
+lineage), AffineScript (estate-primary application language), Deno (runtime /
+package management), Gleam, Bash/POSIX, Nickel (config), Guile Scheme (state
+files), Julia (batch/data), Ada (safety-critical), and Tauri / Dioxus for mobile.
+
+=== Banned (with replacements)
+
+[cols="1,1", options="header"]
+|===
+| Banned | Replacement
+
+| TypeScript | AffineScript
+| Node.js / npm / Bun / pnpm / yarn | Deno
+| Go | Rust
+| Python | Julia / Rust
+| Java / Kotlin / Swift | Rust / Tauri / Dioxus
+| React Native / Flutter / Dart | Tauri / Dioxus
+|===
+
+This policy is *live*: the VS Code extension's LSP client was *removed* because
+it was written in ReScript (banned estate-wide); the AffineScript
+reimplementation is tracked in issue #78. The single-exception drift risk — one
+banned-language exception broadening into a policy violation — is an explicit
+anti-drift concern in `META.a2ml`.
+
+== Security and proof-cleanliness requirements
+
+* SPDX `MPL-2.0` header on *every* file.
+* No MD5/SHA1 for security (SHA-256+); HTTPS-only; no hardcoded secrets;
+  SHA-pinned dependencies.
+* No proof / unsafe escape hatches anywhere: `believe_me`, `assert_total`,
+  `sorry`, `Admitted`, `unsafeCoerce`, `Obj.magic` — these would silently void
+  the echo-types / Isabelle consent-safety proofs.
+* Machine-readable files (`.scm` / `.a2ml`) live *only* under
+  `.machine_readable/`, never the repository root.
+
+== Contractiles and self-validation
+
+WokeLang uses the hyperpolymath *contractile* system. The verb contractiles live
+under `contractiles/` (mirrored in `.machine_readable/contractiles/`):
+
+* `must/` — mandatory requirements (the `Mustfile`; `must run` gates commits and
+  releases).
+* `trust/` — trust boundaries.
+* `dust/` — external dependencies.
+* `bust/` — teardown / cleanup contracts.
+
+*K9 self-validation* templates (Kennel / Yard / Hunt trust levels) live under
+`.machine_readable/svc/k9/`. Per ADR-001, K9 lives in `svc/` rather than
+`contractiles/` so the contractile directory stays a pure verb set.
+
+== Where the canonical state lives
+
+[cols="1,3", options="header"]
+|===
+| Artefact | Contents
+
+| `.machine_readable/6a2/STATE.a2ml`
+| Current project state, completion %, CI gate list, last shepherd note.
+
+| `.machine_readable/6a2/META.a2ml`
+| Architecture decisions (ADRs), governance, maintenance axes.
+
+| `.machine_readable/6a2/ECOSYSTEM.a2ml`
+| Position in the estate, related projects, integration points.
+
+| `.machine_readable/6a2/PLAYBOOK.a2ml`
+| Build / deploy / incident-response / release runbook.
+
+| `.machine_readable/bot_directives/`
+| Automation-fleet hooks (hypatia, gitbot-fleet, git-private-farm).
+
+| `0-AI-MANIFEST.a2ml`
+| AI agent entry point (read first).
+|===
+
+See link:Architecture.adoc[Architecture] for the build details and
+link:Roadmap.adoc[Roadmap] for what is gated next.

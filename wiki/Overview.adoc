@@ -1,0 +1,129 @@
+// SPDX-License-Identifier: MPL-2.0
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+= WokeLang — Overview
+:toc: macro
+:icons: font
+
+link:Home.adoc[← Wiki home]
+
+toc::[]
+
+== What WokeLang is
+
+WokeLang is a *human-centered, consent-driven* programming language. Its defining
+goal is that the *type system discharges the hard consent and affine-use safety
+reasoning for the user*: dangerous or sensitive operations are scaffolded at the
+language level so they cannot happen silently, and the programmer is not left to
+enforce these properties by convention.
+
+Three design principles run through the language:
+
+. *Human-readable syntax* — English-like keywords (`to`, `remember`, `when`,
+  `otherwise`, `give back`).
+. *Ethical scaffolding* — consent gates, gratitude blocks, and empathy
+  annotations are part of the language, not comments.
+. *Type safety with dimensional analysis* — units of measure are checked at
+  compile time.
+
+== Who it is for
+
+WokeLang targets settings where *the consequences of code matter to people*:
+software that performs destructive actions, accesses external resources, or
+operates on sensitive data. The language is also the reference implementation for
+research on consent-aware programming (`arxiv-consent-aware-programming.tex`).
+
+== The consent / affine-safety idea
+
+WokeLang's axiomatic semantics extend Hoare logic with *consent preconditions*.
+A consent Hoare triple `{P, C} S {Q, C'}` carries a set `C` of active consents
+alongside the usual pre/post-conditions. The core guarantees (from
+`spec/axiomatic-semantics.md`) include:
+
+* *Consent safety* — no operation that requires consent can execute unless the
+  corresponding consent is in `C`; the consent gate (`only if okay`) is the only
+  way to add to `C`.
+* *Consent monotonicity* — within a session, `C` only grows:
+  `{P, C} S {Q, C'} ⟹ C ⊆ C'`.
+* *Worker isolation* — spawned workers cannot touch the parent's mutable state;
+  they communicate only through channels.
+* *Gentle error handling* — an `attempt safely` block never terminates the
+  program; errors are caught and a reassurance message is shown.
+
+On the *frontier*, these guarantees are being grounded in *echo types*
+(`hyperpolymath/echo-types`), a constructive Agda formalization of fiber-based
+structured loss, integrated into the typechecker — see
+link:Architecture.adoc[Architecture].
+
+== Signature language features
+
+[cols="1,2,2", options="header"]
+|===
+| Feature | Syntax | Status
+
+| Consent gates
+| `only if okay "Delete?" { ... }`
+| Implemented (see `examples/08_consent.woke`, `22_consent_system.woke`)
+
+| Gratitude blocks
+| `thanks to { "Alice" -> "Fixed X!" }`
+| Implemented (`examples/17_gratitude.woke`); pure metadata, no side effects
+
+| Units of measure
+| `remember x = 5 measured in km`
+| Implemented; mismatched units are a compile-time type error
+
+| Pipelines
+| `data then clean then analyze`
+| Implemented
+
+| Empathy annotations
+| `@feeling(confident=true)`
+| Implemented as authorial metadata
+
+| Result type
+| `Okay(v)` / `Oops(e)`, `unwrap`
+| Implemented
+
+| Pragmas
+| `#care on`, `#strict on`
+| Implemented (extra validation / warnings-as-errors)
+
+| WASM target
+| compile to WebAssembly
+| *Design commitment* — codegen scaffold only, not wired into the build
+
+| Blockchain / Vyper FFI
+| `vyper call "..."`
+| *Design commitment* — described in the spec/paper; no bridge in the tree
+|===
+
+== A taste of the syntax
+
+[source]
+----
+to calculateArea(width, height) {
+    give back width * height;
+}
+
+to main() {
+    remember result = calculateArea(5, 10) measured in m;
+    when result > 20 {
+        print("Large area");
+    } otherwise {
+        print("Small area");
+    }
+
+    only if okay "Write the result to disk?" {
+        save(result);
+    }
+
+    thanks to { "Reviewer" -> "Caught a unit bug" }
+}
+----
+
+== Honesty note
+
+WokeLang is early (~35% complete). The README and `EXPLAINME.adoc` are
+deliberately explicit about the gap between *stated design principles* and
+*current implementation*; `PROOF-NEEDS.md` and `PHRONESIS-ALIGNMENT-GAP.md`
+track the outstanding obligations. This wiki follows the same discipline.
