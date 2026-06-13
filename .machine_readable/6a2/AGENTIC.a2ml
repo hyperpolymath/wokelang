@@ -1,13 +1,12 @@
 # SPDX-License-Identifier: MPL-2.0
-# Copyright (c) 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+# Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 #
 # AGENTIC.a2ml — AI agent constraints and capabilities
 # Defines what AI agents can and cannot do in this repository.
 
 [metadata]
 version = "0.1.0"
-last-updated = "2026-06-12"
-project = "wokelang"
+last-updated = "2026-04-11"
 
 [agent-permissions]
 can-edit-source = true
@@ -17,17 +16,12 @@ can-edit-config = true
 can-create-files = true
 
 [agent-constraints]
-# What AI agents must NOT do (see 0-AI-MANIFEST.a2ml for the canonical list):
-# - Never use forbidden escape hatches in proof / unsafe code:
-#     believe_me, assert_total, sorry, Admitted, unsafeCoerce, Obj.magic
-#   (these would silently void the echo-types / Isabelle consent-safety proofs).
-# - Never commit secrets or credentials.
-# - Never use banned languages (TypeScript, Node.js, npm, Bun, Go, Python,
-#   Java, Kotlin, Swift, ReScript — per the Hyperpolymath Standard).
-# - Never place machine files (.scm / .a2ml) in the repository root;
-#   they live only under .machine_readable/.
-# - Never use AGPL license (this estate is MPL-2.0).
-# - Never weaken the consent / affine-safety guarantees the type checker enforces.
+# What AI agents must NOT do:
+# - Never use banned language patterns (believe_me, unsafeCoerce, etc.)
+# - Never commit secrets or credentials
+# - Never use banned languages (TypeScript, Python, Go, etc.)
+# - Never place state files in repository root (must be in .machine_readable/)
+# - Never use AGPL license (use MPL-2.0)
 
 [maintenance-integrity]
 fail-closed = true
@@ -40,18 +34,18 @@ release-claim-requires-hard-pass = true
 # METHODOLOGY (ADR-002)
 # ============================================================================
 # Detailed methodology configuration lives in:
-#   .machine_readable/agent_instructions/methodology.a2ml
-#   .machine_readable/agent_instructions/coverage.a2ml
-#   .machine_readable/agent_instructions/debt.a2ml
+#   .machine_readable/bot_directives/methodology.a2ml
+#   .machine_readable/bot_directives/coverage.a2ml
+#   .machine_readable/bot_directives/debt.a2ml
 #
 # AGENTIC.a2ml declares WHAT agents can do (permissions, gating).
-# agent_instructions/ declares HOW agents should work (methodology).
+# bot_directives/ declares HOW agents should work (methodology).
 
 [methodology]
-instructions-dir = ".machine_readable/agent_instructions/"
+instructions-dir = ".machine_readable/bot_directives/"
 default-mode = "hybrid"
 
 [automation-hooks]
-# on-enter: Read 0-AI-MANIFEST.a2ml, then 6a2/STATE.a2ml, then agent_instructions/
-# on-exit: Update 6a2/STATE.a2ml, coverage.a2ml, and debt.a2ml with session outcomes
-# on-commit: Run the dogfooding gate (a2ml / k9 / empty-lint / groove / eclexiaiser)
+# on-enter: Read 0-AI-MANIFEST.a2ml, then STATE.a2ml, then bot_directives/
+# on-exit: Update STATE.a2ml, coverage.a2ml, and debt.a2ml with session outcomes
+# on-commit: Run just validate-rsr

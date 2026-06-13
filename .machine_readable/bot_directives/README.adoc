@@ -1,59 +1,42 @@
 // SPDX-License-Identifier: MPL-2.0
-// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
-= Bot Directives
+// Copyright (c) Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+<!-- SPDX-License-Identifier: MPL-2.0 -->
+= Agent Instructions
 :toc: preamble
-:icons: font
 
-Fleet-specific directives for the automation bots that operate on this
-repository. These files declare *what each bot is allowed and expected to do
-here* — they are the per-repo constraint surface for the hyperpolymath
-automation fleet.
-
-The repository root exposes this directory through the `.bot_directives`
-symlink (`.bot_directives` → `.machine_readable/bot_directives`).
-
-[NOTE]
-====
-These directives are *declarative constraint stubs*. They name the hook and its
-purpose and set repo-local policy; they intentionally contain *no endpoints,
-credentials, or tokens*. Concrete bot configuration (URLs, secrets, schedules)
-is supplied by the fleet's own infrastructure, not committed here.
-====
-
-== Relationship to other agent files
-
-(See `.machine_readable/agent_instructions/README.adoc`.)
-
-* `AGENTIC.a2ml` — WHAT agents can do (permissions, gating).
-* `agent_instructions/` — HOW agents should work (methodology).
-* `bot_directives/` — what the *gitbot-fleet and automation bots* do here
-  (this directory).
-* `CLAUDE.md` — how Claude specifically should work (Claude-specific).
+Methodology-aware configuration for AI agents. Read by any AI agent
+(Claude, Gemini, Copilot, etc.) at session start.
 
 == Files
 
-[cols="1,3", options="header"]
+[cols="1,3"]
 |===
-| File | Bot / fleet
+| File | Purpose
 
-| `hypatia.a2ml`
-| Hypatia neurosymbolic security scanner (the `hypatia-scan` CI gate and the
-  `hypatia-autofix` bot).
+| `methodology.a2ml`
+| Default mode, invariants, ring ceiling, priority weights, convergent budget
 
-| `gitbot-fleet.a2ml`
-| The estate gitbot / agent fleet that operates across repositories.
+| `coverage.a2ml`
+| Session coverage tracking — what was visited, what was skipped, what has MUSTs
 
-| `git-private-farm.a2ml`
-| The private mirror / build farm that propagates and builds the repository.
+| `debt.a2ml`
+| Meander debt — things found but not fixed, carried between sessions
 |===
 
-== Invariants binding on every bot
+== How Agents Use These
 
-* Honour the Hyperpolymath Standard language policy (no banned languages).
-* Never introduce proof / unsafe escape hatches (`believe_me`, `assert_total`,
-  `sorry`, `Admitted`, `unsafeCoerce`, `Obj.magic`).
-* Never weaken the consent / affine-safety guarantees the type checker enforces.
-* Keep machine-readable files under `.machine_readable/` only.
-* Preserve SPDX `MPL-2.0` headers on all files.
-* Open changes as reviewable pull requests; do not force-push to the default
-  branch.
+1. Read `methodology.a2ml` at session start — know mode, invariants, ceiling
+2. Read `coverage.a2ml` — know what was visited last time, what was skipped
+3. Read `debt.a2ml` — know what's outstanding from previous sessions
+4. At session end, update `coverage.a2ml` and `debt.a2ml`
+
+== Relationship to Other Files
+
+* `AGENTIC.a2ml` says WHAT agents can do (permissions, gating)
+* `bot_directives/` says HOW agents should work (methodology)
+* `bot_directives/` says what the gitbot-fleet does (fleet-specific)
+* `CLAUDE.md` says how Claude specifically should work (Claude-specific)
+
+== Reference
+
+ADR-002 in `standards/agentic-a2ml/docs/ADR-002-methodology-layer.adoc`

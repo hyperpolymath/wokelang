@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: MPL-2.0
+// Copyright (c) Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
 //! Capability-based Security System for WokeLang
 //!
 //! This module implements "superpowers" - a capability-based security model
