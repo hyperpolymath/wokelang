@@ -114,6 +114,38 @@ the implementations toward it, or (b) build a *second* Lean model faithful to
 4. **Compiler/VM track** (the file's §8 TODO stubs: bytecode, compiler,
    VM semantics, compiler-correctness) remains open and is a larger effort.
 
+## Echo-types design compatibility (checked 2026-06-14)
+
+Checked against echo-types `main` before extending WokeLang's type system, so
+the extensions don't box out a future echo/loss layer. The precedent is
+`EchoEphapaxBridge`: **Ephapax** (a linear-typed language) ports
+`EchoLinear.agda` + `EchoResidue.agda` into its prover as an **L3 layer**
+(`formal/Echo.v`, 584 lines Coq, zero axioms), preserving the headline
+theorems (`weaken_collapses_distinction`, `affine_canonical`,
+`no_section_collapse_to_residue`, `degrade_mode_comp`).
+
+- The echo/loss layer is a **`Mode`-indexed decoration** (`linear ⊑ affine`,
+  `weaken : LEcho linear → LEcho affine`) sitting *on top of* a base type
+  system as a **separate module** — not a change to `progress`/`preservation`.
+  So the Tier-1 base-operator extensions (`or`/`sub`/`mul`/…) are **orthogonal
+  and compatible** by construction.
+- echo-types' `DecorationStructure` is a **preorder** (`≤-refl`, `≤-trans`,
+  `≤-prop`, `join`). WokeLang's **capability subsumption is that shape** — the
+  `capSubsumes_refl` / `capSubsumes_trans` lemmas are deliberately on-path to
+  host echo decorations later.
+- **Integration blueprint** (not yet started): a Lean port of `EchoLinear` +
+  `EchoResidue` as a `WokeLang/Echo.lean` L3 module, à la Ephapax's Coq port,
+  leaving the base type-safety proofs intact.
+
+## Extensions landed (2026-06-14)
+
+- **Tier 1 (base operators):** `or` (logical), `sub`/`mul` (integer) — each
+  with `HasType` + `Step` rules and full `progress`/`preservation` coverage.
+- **Tier 3 (capability):** `capSubsumes` is a preorder (`_refl`, `_trans`).
+- Still open in Tier 1: ordering comparisons (`lt`/`gt`/`le`/`ge`), `div`/`mod`
+  (with divide-by-zero → `error` panic, reusing the proven panic fragment),
+  float variants, and `array` typing.
+
 ## Status
 
 - Repair to `sorry`-free under Lean 4.30.0: see CI / `lean` check.

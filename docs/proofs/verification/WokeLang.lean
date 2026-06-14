@@ -174,6 +174,15 @@ inductive HasType : TypeEnv → Expr → WokeType → Prop where
   | tAnd : ∀ Γ e₁ e₂,
       HasType Γ e₁ .bool → HasType Γ e₂ .bool →
       HasType Γ (.binOp .and e₁ e₂) .bool
+  | tOr : ∀ Γ e₁ e₂,
+      HasType Γ e₁ .bool → HasType Γ e₂ .bool →
+      HasType Γ (.binOp .or e₁ e₂) .bool
+  | tSubInt : ∀ Γ e₁ e₂,
+      HasType Γ e₁ .int → HasType Γ e₂ .int →
+      HasType Γ (.binOp .sub e₁ e₂) .int
+  | tMulInt : ∀ Γ e₁ e₂,
+      HasType Γ e₁ .int → HasType Γ e₂ .int →
+      HasType Γ (.binOp .mul e₁ e₂) .int
   | tNegInt : ∀ Γ e,
       HasType Γ e .int →
       HasType Γ (.unOp .neg e) .int
@@ -244,6 +253,15 @@ inductive Step : Expr → Env → Expr → Env → Prop where
   | sAnd : ∀ b₁ b₂ ρ,
       Step (.binOp .and (.lit (.vBool b₁)) (.lit (.vBool b₂))) ρ
            (.lit (.vBool (b₁ && b₂))) ρ
+  | sOr : ∀ b₁ b₂ ρ,
+      Step (.binOp .or (.lit (.vBool b₁)) (.lit (.vBool b₂))) ρ
+           (.lit (.vBool (b₁ || b₂))) ρ
+  | sSubInt : ∀ n₁ n₂ ρ,
+      Step (.binOp .sub (.lit (.vInt n₁)) (.lit (.vInt n₂))) ρ
+           (.lit (.vInt (n₁ - n₂))) ρ
+  | sMulInt : ∀ n₁ n₂ ρ,
+      Step (.binOp .mul (.lit (.vInt n₁)) (.lit (.vInt n₂))) ρ
+           (.lit (.vInt (n₁ * n₂))) ρ
   | sUnOpCong : ∀ op e e' ρ ρ',
       Step e ρ e' ρ' →
       Step (.unOp op e) ρ (.unOp op e') ρ'
@@ -464,6 +482,78 @@ theorem progress : ∀ e t,
     | inr hstp =>
       obtain ⟨e₁', ρ', hs₁⟩ := hstp
       exact ⟨.binOp .and e₁' e₂, ρ', .sBinOpLeft .and _ e₁' e₂ emptyEnv ρ' hs₁⟩
+  | tOr e₁ e₂ h₁ h₂ ih₁ ih₂ =>
+    right
+    cases ih₁ with
+    | inl hv₁ =>
+      cases hv₁ with
+      | lit v₁ =>
+        cases ih₂ with
+        | inl hv₂ =>
+          cases hv₂ with
+          | lit v₂ =>
+            have ⟨b₁, hb₁⟩ := canonical_forms_bool v₁ h₁
+            have ⟨b₂, hb₂⟩ := canonical_forms_bool v₂ h₂
+            subst hb₁; subst hb₂
+            exact ⟨.lit (.vBool (b₁ || b₂)), emptyEnv, .sOr b₁ b₂ emptyEnv⟩
+          | error msg =>
+            exact ⟨.error msg, emptyEnv, .sBinOpErrRight .or v₁ msg emptyEnv⟩
+        | inr hstp =>
+          obtain ⟨e₂', ρ', hs₂⟩ := hstp
+          exact ⟨.binOp .or (.lit v₁) e₂', ρ', .sBinOpRight .or v₁ _ e₂' emptyEnv ρ' (.lit v₁) hs₂⟩
+      | error msg =>
+        exact ⟨.error msg, emptyEnv, .sBinOpErrLeft .or msg e₂ emptyEnv⟩
+    | inr hstp =>
+      obtain ⟨e₁', ρ', hs₁⟩ := hstp
+      exact ⟨.binOp .or e₁' e₂, ρ', .sBinOpLeft .or _ e₁' e₂ emptyEnv ρ' hs₁⟩
+  | tSubInt e₁ e₂ h₁ h₂ ih₁ ih₂ =>
+    right
+    cases ih₁ with
+    | inl hv₁ =>
+      cases hv₁ with
+      | lit v₁ =>
+        cases ih₂ with
+        | inl hv₂ =>
+          cases hv₂ with
+          | lit v₂ =>
+            have ⟨n₁, hn₁⟩ := canonical_forms_int v₁ h₁
+            have ⟨n₂, hn₂⟩ := canonical_forms_int v₂ h₂
+            subst hn₁; subst hn₂
+            exact ⟨.lit (.vInt (n₁ - n₂)), emptyEnv, .sSubInt n₁ n₂ emptyEnv⟩
+          | error msg =>
+            exact ⟨.error msg, emptyEnv, .sBinOpErrRight .sub v₁ msg emptyEnv⟩
+        | inr hstp =>
+          obtain ⟨e₂', ρ', hs₂⟩ := hstp
+          exact ⟨.binOp .sub (.lit v₁) e₂', ρ', .sBinOpRight .sub v₁ _ e₂' emptyEnv ρ' (.lit v₁) hs₂⟩
+      | error msg =>
+        exact ⟨.error msg, emptyEnv, .sBinOpErrLeft .sub msg e₂ emptyEnv⟩
+    | inr hstp =>
+      obtain ⟨e₁', ρ', hs₁⟩ := hstp
+      exact ⟨.binOp .sub e₁' e₂, ρ', .sBinOpLeft .sub _ e₁' e₂ emptyEnv ρ' hs₁⟩
+  | tMulInt e₁ e₂ h₁ h₂ ih₁ ih₂ =>
+    right
+    cases ih₁ with
+    | inl hv₁ =>
+      cases hv₁ with
+      | lit v₁ =>
+        cases ih₂ with
+        | inl hv₂ =>
+          cases hv₂ with
+          | lit v₂ =>
+            have ⟨n₁, hn₁⟩ := canonical_forms_int v₁ h₁
+            have ⟨n₂, hn₂⟩ := canonical_forms_int v₂ h₂
+            subst hn₁; subst hn₂
+            exact ⟨.lit (.vInt (n₁ * n₂)), emptyEnv, .sMulInt n₁ n₂ emptyEnv⟩
+          | error msg =>
+            exact ⟨.error msg, emptyEnv, .sBinOpErrRight .mul v₁ msg emptyEnv⟩
+        | inr hstp =>
+          obtain ⟨e₂', ρ', hs₂⟩ := hstp
+          exact ⟨.binOp .mul (.lit v₁) e₂', ρ', .sBinOpRight .mul v₁ _ e₂' emptyEnv ρ' (.lit v₁) hs₂⟩
+      | error msg =>
+        exact ⟨.error msg, emptyEnv, .sBinOpErrLeft .mul msg e₂ emptyEnv⟩
+    | inr hstp =>
+      obtain ⟨e₁', ρ', hs₁⟩ := hstp
+      exact ⟨.binOp .mul e₁' e₂, ρ', .sBinOpLeft .mul _ e₁' e₂ emptyEnv ρ' hs₁⟩
   | tNegInt e h₁ ih =>
     right
     cases ih with
@@ -583,6 +673,9 @@ theorem preservation : ∀ e e' t ρ ρ',
     | tAddString _ _ h₁ h₂ => exact .tAddString _ _ _ (ih _ h₁) h₂
     | tEq _ _ _ h₁ h₂ => exact .tEq _ _ _ _ (ih _ h₁) h₂
     | tAnd _ _ h₁ h₂ => exact .tAnd _ _ _ (ih _ h₁) h₂
+    | tOr _ _ h₁ h₂ => exact .tOr _ _ _ (ih _ h₁) h₂
+    | tSubInt _ _ h₁ h₂ => exact .tSubInt _ _ _ (ih _ h₁) h₂
+    | tMulInt _ _ h₁ h₂ => exact .tMulInt _ _ _ (ih _ h₁) h₂
   | sBinOpRight op v₁ e₂ e₂' ρ ρ' _hv hs₂ ih =>
     cases ht with
     | tAddInt _ _ h₁ h₂ => exact .tAddInt _ _ _ h₁ (ih _ h₂)
@@ -590,6 +683,9 @@ theorem preservation : ∀ e e' t ρ ρ',
     | tAddString _ _ h₁ h₂ => exact .tAddString _ _ _ h₁ (ih _ h₂)
     | tEq _ _ _ h₁ h₂ => exact .tEq _ _ _ _ h₁ (ih _ h₂)
     | tAnd _ _ h₁ h₂ => exact .tAnd _ _ _ h₁ (ih _ h₂)
+    | tOr _ _ h₁ h₂ => exact .tOr _ _ _ h₁ (ih _ h₂)
+    | tSubInt _ _ h₁ h₂ => exact .tSubInt _ _ _ h₁ (ih _ h₂)
+    | tMulInt _ _ h₁ h₂ => exact .tMulInt _ _ _ h₁ (ih _ h₂)
   | sAddInt n₁ n₂ _ =>
     cases ht with
     | tAddInt _ _ h₁ h₂ => exact .tInt _ _
@@ -614,6 +710,15 @@ theorem preservation : ∀ e e' t ρ ρ',
   | sAnd b₁ b₂ _ =>
     cases ht with
     | tAnd _ _ h₁ h₂ => exact .tBool _ _
+  | sOr b₁ b₂ _ =>
+    cases ht with
+    | tOr _ _ h₁ h₂ => exact .tBool _ _
+  | sSubInt n₁ n₂ _ =>
+    cases ht with
+    | tSubInt _ _ h₁ h₂ => exact .tInt _ _
+  | sMulInt n₁ n₂ _ =>
+    cases ht with
+    | tMulInt _ _ h₁ h₂ => exact .tInt _ _
   | sNegInt n _ =>
     cases ht with
     | tNegInt _ h₁ => exact .tInt _ _
@@ -666,6 +771,9 @@ theorem preservation : ∀ e e' t ρ ρ',
     | tAddString _ _ h₁ h₂ => exact .tError _ msg _
     | tEq _ _ _ h₁ h₂ => exact .tError _ msg _
     | tAnd _ _ h₁ h₂ => exact .tError _ msg _
+    | tOr _ _ h₁ h₂ => exact .tError _ msg _
+    | tSubInt _ _ h₁ h₂ => exact .tError _ msg _
+    | tMulInt _ _ h₁ h₂ => exact .tError _ msg _
   | sBinOpErrRight op v₁ msg _ =>
     cases ht with
     | tAddInt _ _ h₁ h₂ => exact .tError _ msg _
@@ -673,6 +781,9 @@ theorem preservation : ∀ e e' t ρ ρ',
     | tAddString _ _ h₁ h₂ => exact .tError _ msg _
     | tEq _ _ _ h₁ h₂ => exact .tError _ msg _
     | tAnd _ _ h₁ h₂ => exact .tError _ msg _
+    | tOr _ _ h₁ h₂ => exact .tError _ msg _
+    | tSubInt _ _ h₁ h₂ => exact .tError _ msg _
+    | tMulInt _ _ h₁ h₂ => exact .tError _ msg _
   | sUnOpErr op msg _ =>
     cases ht with
     | tNegInt _ h₁ => exact .tError _ msg _
@@ -763,6 +874,28 @@ def capSubsumes (c₁ c₂ : Capability) : Bool :=
 /-- Check if capability set contains a capability -/
 def hasCapability (c : Capability) (cs : CapabilitySet) : Bool :=
   cs.any (fun c' => capSubsumes c' c)
+
+-- Capability subsumption is a PREORDER (reflexive + transitive).
+-- This is the order shape that echo-types' `DecorationStructure` requires
+-- (`≤-refl`, `≤-trans`) to host echo decorations — see docs AUDIT.md
+-- "echo-types compatibility". Proving it here keeps WokeLang's capability
+-- lattice on-path for a future echo/loss layer (the Ephapax L3 precedent).
+
+/-- Capability subsumption is reflexive. -/
+theorem capSubsumes_refl (c : Capability) : capSubsumes c c = true := by
+  cases c with
+  | fileRead o => cases o <;> simp [capSubsumes]
+  | fileWrite o => cases o <;> simp [capSubsumes]
+  | network o => cases o <;> simp [capSubsumes]
+  | execute o => cases o <;> simp [capSubsumes]
+  | process => simp [capSubsumes]
+  | crypto => simp [capSubsumes]
+
+/-- Capability subsumption is transitive. -/
+theorem capSubsumes_trans (c₁ c₂ c₃ : Capability) :
+    capSubsumes c₁ c₂ = true → capSubsumes c₂ c₃ = true → capSubsumes c₁ c₃ = true := by
+  cases c₁ <;> cases c₂ <;> cases c₃ <;> simp_all [capSubsumes]
+  all_goals (rename_i a₁ a₂ a₃; cases a₁ <;> cases a₂ <;> cases a₃ <;> simp_all)
 
 -- =========================================================================
 -- 8. TODO Stubs
