@@ -55,7 +55,7 @@ inductive WokeType where
   | result : WokeType → WokeType → WokeType
   | function : List WokeType → WokeType → WokeType
   | typeVar : Nat → WokeType
-  deriving Repr, DecidableEq
+  deriving Repr
 
 /-- Runtime values -/
 inductive Value where
@@ -67,7 +67,7 @@ inductive Value where
   | vArray : List Value → Value
   | vOkay : Value → Value
   | vOops : String → Value
-  deriving Repr, DecidableEq
+  deriving Repr
 
 /-- Binary operators -/
 inductive BinOp where
@@ -323,8 +323,8 @@ theorem canonical_forms_result : ∀ v tOk tErr,
   (∃ inner, v = .vOkay inner) ∨ (∃ s, v = .vOops s) := by
   intro v tOk tErr h
   cases h with
-  | tOkayVal _ _ _ h₁ => left; exact ⟨_, rfl⟩
-  | tOopsVal _ _ _ => right; exact ⟨_, rfl⟩
+  | tOkayVal _ _ h₁ => left; exact ⟨_, rfl⟩
+  | tOopsVal _ _ => right; exact ⟨_, rfl⟩
 
 /-- Progress theorem: a well-typed closed expression is either a value or can step.
     unwrap of an error value steps to an error expression via sUnwrapError,
@@ -339,12 +339,12 @@ theorem progress : ∀ e t,
   | tString => left; constructor
   | tBool => left; constructor
   | tUnit => left; constructor
-  | tOkayVal _ _ _ _ => left; constructor
-  | tOopsVal _ _ _ => left; constructor
-  | tVar Γ x t hx =>
+  | tOkayVal _ _ _ => left; constructor
+  | tOopsVal _ _ => left; constructor
+  | tVar x t hx =>
     -- Variable in empty env is contradiction
     simp [emptyTypeEnv] at hx
-  | tAddInt Γ e₁ e₂ h₁ h₂ ih₁ ih₂ =>
+  | tAddInt e₁ e₂ h₁ h₂ ih₁ ih₂ =>
     right
     cases ih₁ with
     | inl hv₁ =>
@@ -360,13 +360,15 @@ theorem progress : ∀ e t,
             exact ⟨.lit (.vInt (n₁ + n₂)), emptyEnv, .sAddInt n₁ n₂ emptyEnv⟩
           | error msg =>
             exact ⟨.error msg, emptyEnv, .sBinOpErrRight .add v₁ msg emptyEnv⟩
-        | inr ⟨e₂', ρ', hs₂⟩ =>
+        | inr hstp =>
+          obtain ⟨e₂', ρ', hs₂⟩ := hstp
           exact ⟨.binOp .add (.lit v₁) e₂', ρ', .sBinOpRight .add v₁ _ e₂' emptyEnv ρ' (.lit v₁) hs₂⟩
       | error msg =>
         exact ⟨.error msg, emptyEnv, .sBinOpErrLeft .add msg e₂ emptyEnv⟩
-    | inr ⟨e₁', ρ', hs₁⟩ =>
+    | inr hstp =>
+      obtain ⟨e₁', ρ', hs₁⟩ := hstp
       exact ⟨.binOp .add e₁' e₂, ρ', .sBinOpLeft .add _ e₁' e₂ emptyEnv ρ' hs₁⟩
-  | tAddFloat Γ e₁ e₂ h₁ h₂ ih₁ ih₂ =>
+  | tAddFloat e₁ e₂ h₁ h₂ ih₁ ih₂ =>
     right
     cases ih₁ with
     | inl hv₁ =>
@@ -382,13 +384,15 @@ theorem progress : ∀ e t,
             exact ⟨.lit (.vFloat (f₁ + f₂)), emptyEnv, .sAddFloat f₁ f₂ emptyEnv⟩
           | error msg =>
             exact ⟨.error msg, emptyEnv, .sBinOpErrRight .add v₁ msg emptyEnv⟩
-        | inr ⟨e₂', ρ', hs₂⟩ =>
+        | inr hstp =>
+          obtain ⟨e₂', ρ', hs₂⟩ := hstp
           exact ⟨.binOp .add (.lit v₁) e₂', ρ', .sBinOpRight .add v₁ _ e₂' emptyEnv ρ' (.lit v₁) hs₂⟩
       | error msg =>
         exact ⟨.error msg, emptyEnv, .sBinOpErrLeft .add msg e₂ emptyEnv⟩
-    | inr ⟨e₁', ρ', hs₁⟩ =>
+    | inr hstp =>
+      obtain ⟨e₁', ρ', hs₁⟩ := hstp
       exact ⟨.binOp .add e₁' e₂, ρ', .sBinOpLeft .add _ e₁' e₂ emptyEnv ρ' hs₁⟩
-  | tAddString Γ e₁ e₂ h₁ h₂ ih₁ ih₂ =>
+  | tAddString e₁ e₂ h₁ h₂ ih₁ ih₂ =>
     right
     cases ih₁ with
     | inl hv₁ =>
@@ -404,13 +408,15 @@ theorem progress : ∀ e t,
             exact ⟨.lit (.vString (s₁ ++ s₂)), emptyEnv, .sAddString s₁ s₂ emptyEnv⟩
           | error msg =>
             exact ⟨.error msg, emptyEnv, .sBinOpErrRight .add v₁ msg emptyEnv⟩
-        | inr ⟨e₂', ρ', hs₂⟩ =>
+        | inr hstp =>
+          obtain ⟨e₂', ρ', hs₂⟩ := hstp
           exact ⟨.binOp .add (.lit v₁) e₂', ρ', .sBinOpRight .add v₁ _ e₂' emptyEnv ρ' (.lit v₁) hs₂⟩
       | error msg =>
         exact ⟨.error msg, emptyEnv, .sBinOpErrLeft .add msg e₂ emptyEnv⟩
-    | inr ⟨e₁', ρ', hs₁⟩ =>
+    | inr hstp =>
+      obtain ⟨e₁', ρ', hs₁⟩ := hstp
       exact ⟨.binOp .add e₁' e₂, ρ', .sBinOpLeft .add _ e₁' e₂ emptyEnv ρ' hs₁⟩
-  | tEq Γ e₁ e₂ t h₁ h₂ ih₁ ih₂ =>
+  | tEq e₁ e₂ _ h₁ h₂ ih₁ ih₂ =>
     right
     cases ih₁ with
     | inl hv₁ =>
@@ -426,13 +432,15 @@ theorem progress : ∀ e t,
             · exact ⟨.lit (.vBool false), emptyEnv, .sEqFalse v₁ v₂ emptyEnv heq⟩
           | error msg =>
             exact ⟨.error msg, emptyEnv, .sBinOpErrRight .eq v₁ msg emptyEnv⟩
-        | inr ⟨e₂', ρ', hs₂⟩ =>
+        | inr hstp =>
+          obtain ⟨e₂', ρ', hs₂⟩ := hstp
           exact ⟨.binOp .eq (.lit v₁) e₂', ρ', .sBinOpRight .eq v₁ _ e₂' emptyEnv ρ' (.lit v₁) hs₂⟩
       | error msg =>
         exact ⟨.error msg, emptyEnv, .sBinOpErrLeft .eq msg e₂ emptyEnv⟩
-    | inr ⟨e₁', ρ', hs₁⟩ =>
+    | inr hstp =>
+      obtain ⟨e₁', ρ', hs₁⟩ := hstp
       exact ⟨.binOp .eq e₁' e₂, ρ', .sBinOpLeft .eq _ e₁' e₂ emptyEnv ρ' hs₁⟩
-  | tAnd Γ e₁ e₂ h₁ h₂ ih₁ ih₂ =>
+  | tAnd e₁ e₂ h₁ h₂ ih₁ ih₂ =>
     right
     cases ih₁ with
     | inl hv₁ =>
@@ -448,13 +456,15 @@ theorem progress : ∀ e t,
             exact ⟨.lit (.vBool (b₁ && b₂)), emptyEnv, .sAnd b₁ b₂ emptyEnv⟩
           | error msg =>
             exact ⟨.error msg, emptyEnv, .sBinOpErrRight .and v₁ msg emptyEnv⟩
-        | inr ⟨e₂', ρ', hs₂⟩ =>
+        | inr hstp =>
+          obtain ⟨e₂', ρ', hs₂⟩ := hstp
           exact ⟨.binOp .and (.lit v₁) e₂', ρ', .sBinOpRight .and v₁ _ e₂' emptyEnv ρ' (.lit v₁) hs₂⟩
       | error msg =>
         exact ⟨.error msg, emptyEnv, .sBinOpErrLeft .and msg e₂ emptyEnv⟩
-    | inr ⟨e₁', ρ', hs₁⟩ =>
+    | inr hstp =>
+      obtain ⟨e₁', ρ', hs₁⟩ := hstp
       exact ⟨.binOp .and e₁' e₂, ρ', .sBinOpLeft .and _ e₁' e₂ emptyEnv ρ' hs₁⟩
-  | tNegInt Γ e h₁ ih =>
+  | tNegInt e h₁ ih =>
     right
     cases ih with
     | inl hv =>
@@ -465,9 +475,10 @@ theorem progress : ∀ e t,
         exact ⟨.lit (.vInt (-n)), emptyEnv, .sNegInt n emptyEnv⟩
       | error msg =>
         exact ⟨.error msg, emptyEnv, .sUnOpErr .neg msg emptyEnv⟩
-    | inr ⟨e', ρ', hs⟩ =>
+    | inr hstp =>
+      obtain ⟨e', ρ', hs⟩ := hstp
       exact ⟨.unOp .neg e', ρ', .sUnOpCong .neg _ e' emptyEnv ρ' hs⟩
-  | tNegFloat Γ e h₁ ih =>
+  | tNegFloat e h₁ ih =>
     right
     cases ih with
     | inl hv =>
@@ -478,9 +489,10 @@ theorem progress : ∀ e t,
         exact ⟨.lit (.vFloat (-f)), emptyEnv, .sNegFloat f emptyEnv⟩
       | error msg =>
         exact ⟨.error msg, emptyEnv, .sUnOpErr .neg msg emptyEnv⟩
-    | inr ⟨e', ρ', hs⟩ =>
+    | inr hstp =>
+      obtain ⟨e', ρ', hs⟩ := hstp
       exact ⟨.unOp .neg e', ρ', .sUnOpCong .neg _ e' emptyEnv ρ' hs⟩
-  | tNot Γ e h₁ ih =>
+  | tNot e h₁ ih =>
     right
     cases ih with
     | inl hv =>
@@ -491,9 +503,10 @@ theorem progress : ∀ e t,
         exact ⟨.lit (.vBool (!b)), emptyEnv, .sNot b emptyEnv⟩
       | error msg =>
         exact ⟨.error msg, emptyEnv, .sUnOpErr .not msg emptyEnv⟩
-    | inr ⟨e', ρ', hs⟩ =>
+    | inr hstp =>
+      obtain ⟨e', ρ', hs⟩ := hstp
       exact ⟨.unOp .not e', ρ', .sUnOpCong .not _ e' emptyEnv ρ' hs⟩
-  | tOkay Γ e t h₁ ih =>
+  | tOkay e _ h₁ ih =>
     right
     cases ih with
     | inl hv =>
@@ -502,9 +515,10 @@ theorem progress : ∀ e t,
         exact ⟨.lit (.vOkay v), emptyEnv, .sOkay v emptyEnv (.lit v)⟩
       | error msg =>
         exact ⟨.error msg, emptyEnv, .sOkayErr msg emptyEnv⟩
-    | inr ⟨e', ρ', hs⟩ =>
+    | inr hstp =>
+      obtain ⟨e', ρ', hs⟩ := hstp
       exact ⟨.okay e', ρ', .sOkayCong _ e' emptyEnv ρ' hs⟩
-  | tOops Γ e t h₁ ih =>
+  | tOops e _ h₁ ih =>
     right
     cases ih with
     | inl hv =>
@@ -515,9 +529,10 @@ theorem progress : ∀ e t,
         exact ⟨.lit (.vOops s), emptyEnv, .sOops s emptyEnv⟩
       | error msg =>
         exact ⟨.error msg, emptyEnv, .sOopsErr msg emptyEnv⟩
-    | inr ⟨e', ρ', hs⟩ =>
+    | inr hstp =>
+      obtain ⟨e', ρ', hs⟩ := hstp
       exact ⟨.oops e', ρ', .sOopsCong _ e' emptyEnv ρ' hs⟩
-  | tUnwrap Γ e tOk tErr h₁ ih =>
+  | tUnwrap e tOk tErr h₁ ih =>
     right
     cases ih with
     | inl hv =>
@@ -527,17 +542,20 @@ theorem progress : ∀ e t,
         -- sUnwrapOkay handles vOkay; sUnwrapError handles vOops.
         have hcf := canonical_forms_result v tOk tErr h₁
         cases hcf with
-        | inl ⟨inner, hinner⟩ =>
+        | inl hstp =>
+          obtain ⟨inner, hinner⟩ := hstp
           subst hinner
           exact ⟨.lit inner, emptyEnv, .sUnwrapOkay inner emptyEnv⟩
-        | inr ⟨s, hs⟩ =>
+        | inr hstp =>
+          obtain ⟨s, hs⟩ := hstp
           subst hs
           exact ⟨.error s, emptyEnv, .sUnwrapError s emptyEnv⟩
       | error msg =>
         exact ⟨.error msg, emptyEnv, .sUnwrapErr msg emptyEnv⟩
-    | inr ⟨e', ρ', hs⟩ =>
+    | inr hstp =>
+      obtain ⟨e', ρ', hs⟩ := hstp
       exact ⟨.unwrap e', ρ', .sUnwrapCong _ e' emptyEnv ρ' hs⟩
-  | tError _ msg _ =>
+  | tError msg _ =>
     -- Error expressions are terminal values (panics).
     left; exact .error msg
 
@@ -550,117 +568,125 @@ theorem preservation : ∀ e e' t ρ ρ',
   Step e ρ e' ρ' →
   HasType emptyTypeEnv e' t := by
   intro e e' t ρ ρ' ht hs
-  induction hs with
+  induction hs generalizing t with
   | sVar x ρ v hx =>
     -- Typed as (var x) in empty env ⇒ contradiction in progress,
     -- but preservation receives any ρ. By inversion on typing:
     -- HasType emptyTypeEnv (var x) t requires emptyTypeEnv x = some t,
     -- which is a contradiction.
     cases ht with
-    | tVar _ _ _ hx' => simp [emptyTypeEnv] at hx'
+    | tVar _ _ hx' => simp [emptyTypeEnv] at hx'
   | sBinOpLeft op e₁ e₁' e₂ ρ ρ' hs₁ ih =>
     cases ht with
-    | tAddInt _ _ _ h₁ h₂ => exact .tAddInt _ _ _ (ih h₁) h₂
-    | tAddFloat _ _ _ h₁ h₂ => exact .tAddFloat _ _ _ (ih h₁) h₂
-    | tAddString _ _ _ h₁ h₂ => exact .tAddString _ _ _ (ih h₁) h₂
-    | tEq _ _ _ _ h₁ h₂ => exact .tEq _ _ _ _ (ih h₁) h₂
-    | tAnd _ _ _ h₁ h₂ => exact .tAnd _ _ _ (ih h₁) h₂
+    | tAddInt _ _ h₁ h₂ => exact .tAddInt _ _ _ (ih _ h₁) h₂
+    | tAddFloat _ _ h₁ h₂ => exact .tAddFloat _ _ _ (ih _ h₁) h₂
+    | tAddString _ _ h₁ h₂ => exact .tAddString _ _ _ (ih _ h₁) h₂
+    | tEq _ _ _ h₁ h₂ => exact .tEq _ _ _ _ (ih _ h₁) h₂
+    | tAnd _ _ h₁ h₂ => exact .tAnd _ _ _ (ih _ h₁) h₂
   | sBinOpRight op v₁ e₂ e₂' ρ ρ' _hv hs₂ ih =>
     cases ht with
-    | tAddInt _ _ _ h₁ h₂ => exact .tAddInt _ _ _ h₁ (ih h₂)
-    | tAddFloat _ _ _ h₁ h₂ => exact .tAddFloat _ _ _ h₁ (ih h₂)
-    | tAddString _ _ _ h₁ h₂ => exact .tAddString _ _ _ h₁ (ih h₂)
-    | tEq _ _ _ _ h₁ h₂ => exact .tEq _ _ _ _ h₁ (ih h₂)
-    | tAnd _ _ _ h₁ h₂ => exact .tAnd _ _ _ h₁ (ih h₂)
+    | tAddInt _ _ h₁ h₂ => exact .tAddInt _ _ _ h₁ (ih _ h₂)
+    | tAddFloat _ _ h₁ h₂ => exact .tAddFloat _ _ _ h₁ (ih _ h₂)
+    | tAddString _ _ h₁ h₂ => exact .tAddString _ _ _ h₁ (ih _ h₂)
+    | tEq _ _ _ h₁ h₂ => exact .tEq _ _ _ _ h₁ (ih _ h₂)
+    | tAnd _ _ h₁ h₂ => exact .tAnd _ _ _ h₁ (ih _ h₂)
   | sAddInt n₁ n₂ _ =>
     cases ht with
-    | tAddInt _ _ _ h₁ h₂ => exact .tInt _ _
+    | tAddInt _ _ h₁ h₂ => exact .tInt _ _
+    | tAddFloat _ _ h₁ _ => nomatch h₁
+    | tAddString _ _ h₁ _ => nomatch h₁
   | sAddFloat f₁ f₂ _ =>
     cases ht with
-    | tAddFloat _ _ _ h₁ h₂ => exact .tFloat _ _
+    | tAddFloat _ _ h₁ h₂ => exact .tFloat _ _
+    | tAddInt _ _ h₁ _ => nomatch h₁
+    | tAddString _ _ h₁ _ => nomatch h₁
   | sAddString s₁ s₂ _ =>
     cases ht with
-    | tAddString _ _ _ h₁ h₂ => exact .tString _ _
+    | tAddString _ _ h₁ h₂ => exact .tString _ _
+    | tAddInt _ _ h₁ _ => nomatch h₁
+    | tAddFloat _ _ h₁ _ => nomatch h₁
   | sEqTrue v _ =>
     cases ht with
-    | tEq _ _ _ _ h₁ h₂ => exact .tBool _ _
+    | tEq _ _ _ h₁ h₂ => exact .tBool _ _
   | sEqFalse v₁ v₂ _ hneq =>
     cases ht with
-    | tEq _ _ _ _ h₁ h₂ => exact .tBool _ _
+    | tEq _ _ _ h₁ h₂ => exact .tBool _ _
   | sAnd b₁ b₂ _ =>
     cases ht with
-    | tAnd _ _ _ h₁ h₂ => exact .tBool _ _
+    | tAnd _ _ h₁ h₂ => exact .tBool _ _
   | sNegInt n _ =>
     cases ht with
-    | tNegInt _ _ h₁ => exact .tInt _ _
+    | tNegInt _ h₁ => exact .tInt _ _
+    | tNegFloat _ h₁ => nomatch h₁
   | sNegFloat f _ =>
     cases ht with
-    | tNegFloat _ _ h₁ => exact .tFloat _ _
+    | tNegFloat _ h₁ => exact .tFloat _ _
+    | tNegInt _ h₁ => nomatch h₁
   | sNot b _ =>
     cases ht with
-    | tNot _ _ h₁ => exact .tBool _ _
+    | tNot _ h₁ => exact .tBool _ _
   | sUnOpCong op e e' ρ ρ' hs₁ ih =>
     cases ht with
-    | tNegInt _ _ h₁ => exact .tNegInt _ _ (ih h₁)
-    | tNegFloat _ _ h₁ => exact .tNegFloat _ _ (ih h₁)
-    | tNot _ _ h₁ => exact .tNot _ _ (ih h₁)
+    | tNegInt _ h₁ => exact .tNegInt _ _ (ih _ h₁)
+    | tNegFloat _ h₁ => exact .tNegFloat _ _ (ih _ h₁)
+    | tNot _ h₁ => exact .tNot _ _ (ih _ h₁)
   | sOkay v _ _hv =>
     cases ht with
-    | tOkay _ _ _ h₁ => exact .tOkayVal _ v _ h₁
+    | tOkay _ _ h₁ => exact .tOkayVal _ v _ h₁
   | sOkayCong e e' ρ ρ' hs₁ ih =>
     cases ht with
-    | tOkay _ _ _ h₁ => exact .tOkay _ _ _ (ih h₁)
+    | tOkay _ _ h₁ => exact .tOkay _ _ _ (ih _ h₁)
   | sOops s _ =>
     cases ht with
-    | tOops _ _ _ h₁ => exact .tOopsVal _ s _
+    | tOops _ _ h₁ => exact .tOopsVal _ s _
   | sOopsCong e e' ρ ρ' hs₁ ih =>
     cases ht with
-    | tOops _ _ _ h₁ => exact .tOops _ _ _ (ih h₁)
+    | tOops _ _ h₁ => exact .tOops _ _ _ (ih _ h₁)
   | sUnwrapOkay v _ =>
     cases ht with
-    | tUnwrap _ _ tOk tErr h₁ =>
+    | tUnwrap _ tOk tErr h₁ =>
       -- h₁ : HasType emptyTypeEnv (lit (vOkay v)) (result tOk tErr)
       -- By inversion via tOkayVal, the inner value v has type tOk.
       cases h₁ with
-      | tOkayVal _ _ _ hinner => exact hinner
+      | tOkayVal _ _ hinner => exact hinner
   | sUnwrapError s _ =>
     cases ht with
-    | tUnwrap _ _ tOk tErr h₁ =>
+    | tUnwrap _ tOk tErr h₁ =>
       -- unwrap(oops(s)) steps to (error s), which is well-typed at any type
       -- via tError. This models runtime panic propagation.
-      exact .tError _ s tOk
+      exact .tError _ s t
   | sUnwrapCong e e' ρ ρ' hs₁ ih =>
     cases ht with
-    | tUnwrap _ _ tOk tErr h₁ => exact .tUnwrap _ _ tOk tErr (ih h₁)
+    | tUnwrap _ _ tErr h₁ => exact .tUnwrap _ _ _ _ (ih _ h₁)
   | sBinOpErrLeft op msg e₂ _ =>
     -- error propagates through binOp — result is error, typed at any type via tError.
     cases ht with
-    | tAddInt _ _ _ h₁ h₂ => exact .tError _ msg _
-    | tAddFloat _ _ _ h₁ h₂ => exact .tError _ msg _
-    | tAddString _ _ _ h₁ h₂ => exact .tError _ msg _
-    | tEq _ _ _ _ h₁ h₂ => exact .tError _ msg _
-    | tAnd _ _ _ h₁ h₂ => exact .tError _ msg _
+    | tAddInt _ _ h₁ h₂ => exact .tError _ msg _
+    | tAddFloat _ _ h₁ h₂ => exact .tError _ msg _
+    | tAddString _ _ h₁ h₂ => exact .tError _ msg _
+    | tEq _ _ _ h₁ h₂ => exact .tError _ msg _
+    | tAnd _ _ h₁ h₂ => exact .tError _ msg _
   | sBinOpErrRight op v₁ msg _ =>
     cases ht with
-    | tAddInt _ _ _ h₁ h₂ => exact .tError _ msg _
-    | tAddFloat _ _ _ h₁ h₂ => exact .tError _ msg _
-    | tAddString _ _ _ h₁ h₂ => exact .tError _ msg _
-    | tEq _ _ _ _ h₁ h₂ => exact .tError _ msg _
-    | tAnd _ _ _ h₁ h₂ => exact .tError _ msg _
+    | tAddInt _ _ h₁ h₂ => exact .tError _ msg _
+    | tAddFloat _ _ h₁ h₂ => exact .tError _ msg _
+    | tAddString _ _ h₁ h₂ => exact .tError _ msg _
+    | tEq _ _ _ h₁ h₂ => exact .tError _ msg _
+    | tAnd _ _ h₁ h₂ => exact .tError _ msg _
   | sUnOpErr op msg _ =>
     cases ht with
-    | tNegInt _ _ h₁ => exact .tError _ msg _
-    | tNegFloat _ _ h₁ => exact .tError _ msg _
-    | tNot _ _ h₁ => exact .tError _ msg _
+    | tNegInt _ h₁ => exact .tError _ msg _
+    | tNegFloat _ h₁ => exact .tError _ msg _
+    | tNot _ h₁ => exact .tError _ msg _
   | sOkayErr msg _ =>
     cases ht with
-    | tOkay _ _ _ h₁ => exact .tError _ msg _
+    | tOkay _ _ h₁ => exact .tError _ msg _
   | sOopsErr msg _ =>
     cases ht with
-    | tOops _ _ _ h₁ => exact .tError _ msg _
+    | tOops _ _ h₁ => exact .tError _ msg _
   | sUnwrapErr msg _ =>
     cases ht with
-    | tUnwrap _ _ tOk tErr h₁ => exact .tError _ msg _
+    | tUnwrap _ tOk tErr h₁ => exact .tError _ msg _
 
 /-- Type safety theorem -/
 theorem type_safety : ∀ e t v ρ,
@@ -668,17 +694,22 @@ theorem type_safety : ∀ e t v ρ,
   MultiStep e emptyEnv (.lit v) ρ →
   HasType emptyTypeEnv (.lit v) t := by
   intro e t v ρ ht hms
+  -- emptyEnv and (lit v) are concrete indices of hms; generalise them so the
+  -- induction on MultiStep is well-formed. The start value-env need not be
+  -- empty (preservation holds for any env), so its equation is cleared.
+  generalize hev : (Expr.lit v) = ev at hms ⊢
+  generalize hρ0 : emptyEnv = ρ0 at hms
+  clear hρ0
   induction hms with
   | refl => exact ht
   | step e₁ e₂ e₃ ρ₁ ρ₂ ρ₃ hs hms' ih =>
-    apply ih
-    exact preservation e₁ e₂ t ρ₁ ρ₂ ht hs
+    exact ih (preservation e₁ e₂ t ρ₁ ρ₂ ht hs) hev
 
 -- =========================================================================
 -- 6. Consent System
 -- =========================================================================
 
-def Permission := String
+abbrev Permission := String
 
 def ConsentState := Permission → Bool
 

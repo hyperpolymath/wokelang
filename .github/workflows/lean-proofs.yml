@@ -1,0 +1,46 @@
+# SPDX-License-Identifier: MPL-2.0
+# lean-proofs.yml — machine-checks the Lean 4 formal-verification proofs.
+#
+# Guards the root cause documented in docs/proofs/verification/AUDIT.md: the
+# proofs had bit-rotted because no CI ever ran the prover. This gate keeps the
+# "sorry-free, compiles" invariant honest from now on.
+name: lean-proofs
+
+on:
+  push:
+    paths:
+      - 'docs/proofs/verification/**'
+      - '.github/workflows/lean-proofs.yml'
+  pull_request:
+    paths:
+      - 'docs/proofs/verification/**'
+      - '.github/workflows/lean-proofs.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  lean-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Install Lean (version pinned by lean-toolchain)
+        run: |
+          set -euo pipefail
+          ver="$(sed -E 's#.*:v##' docs/proofs/verification/lean-toolchain)"
+          echo "Installing Lean ${ver}"
+          sudo apt-get update
+          sudo apt-get install -y zstd
+          curl -sSL -o /tmp/lean.tar.zst \
+            "https://github.com/leanprover/lean4/releases/download/v${ver}/lean-${ver}-linux.tar.zst"
+          sudo mkdir -p /opt/lean
+          sudo tar --use-compress-program=unzstd -xf /tmp/lean.tar.zst -C /opt/lean
+          echo "/opt/lean/lean-${ver}-linux/bin" >> "$GITHUB_PATH"
+
+      - name: Verify WokeLang.lean (sorry-free; must exit 0 with no errors)
+        run: |
+          set -euo pipefail
+          lean --version
+          lean docs/proofs/verification/WokeLang.lean
+          echo "✅ WokeLang.lean verified"
