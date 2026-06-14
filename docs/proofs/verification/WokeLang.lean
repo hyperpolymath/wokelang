@@ -183,6 +183,24 @@ inductive HasType : TypeEnv → Expr → WokeType → Prop where
   | tMulInt : ∀ Γ e₁ e₂,
       HasType Γ e₁ .int → HasType Γ e₂ .int →
       HasType Γ (.binOp .mul e₁ e₂) .int
+  | tLt : ∀ Γ e₁ e₂,
+      HasType Γ e₁ .int → HasType Γ e₂ .int →
+      HasType Γ (.binOp .lt e₁ e₂) .bool
+  | tGt : ∀ Γ e₁ e₂,
+      HasType Γ e₁ .int → HasType Γ e₂ .int →
+      HasType Γ (.binOp .gt e₁ e₂) .bool
+  | tLe : ∀ Γ e₁ e₂,
+      HasType Γ e₁ .int → HasType Γ e₂ .int →
+      HasType Γ (.binOp .le e₁ e₂) .bool
+  | tGe : ∀ Γ e₁ e₂,
+      HasType Γ e₁ .int → HasType Γ e₂ .int →
+      HasType Γ (.binOp .ge e₁ e₂) .bool
+  | tDivInt : ∀ Γ e₁ e₂,
+      HasType Γ e₁ .int → HasType Γ e₂ .int →
+      HasType Γ (.binOp .div e₁ e₂) .int
+  | tModInt : ∀ Γ e₁ e₂,
+      HasType Γ e₁ .int → HasType Γ e₂ .int →
+      HasType Γ (.binOp .mod e₁ e₂) .int
   | tNegInt : ∀ Γ e,
       HasType Γ e .int →
       HasType Γ (.unOp .neg e) .int
@@ -262,6 +280,30 @@ inductive Step : Expr → Env → Expr → Env → Prop where
   | sMulInt : ∀ n₁ n₂ ρ,
       Step (.binOp .mul (.lit (.vInt n₁)) (.lit (.vInt n₂))) ρ
            (.lit (.vInt (n₁ * n₂))) ρ
+  | sLt : ∀ n₁ n₂ ρ,
+      Step (.binOp .lt (.lit (.vInt n₁)) (.lit (.vInt n₂))) ρ
+           (.lit (.vBool (decide (n₁ < n₂)))) ρ
+  | sGt : ∀ n₁ n₂ ρ,
+      Step (.binOp .gt (.lit (.vInt n₁)) (.lit (.vInt n₂))) ρ
+           (.lit (.vBool (decide (n₁ > n₂)))) ρ
+  | sLe : ∀ n₁ n₂ ρ,
+      Step (.binOp .le (.lit (.vInt n₁)) (.lit (.vInt n₂))) ρ
+           (.lit (.vBool (decide (n₁ ≤ n₂)))) ρ
+  | sGe : ∀ n₁ n₂ ρ,
+      Step (.binOp .ge (.lit (.vInt n₁)) (.lit (.vInt n₂))) ρ
+           (.lit (.vBool (decide (n₁ ≥ n₂)))) ρ
+  | sDivInt : ∀ n₁ n₂ ρ, n₂ ≠ 0 →
+      Step (.binOp .div (.lit (.vInt n₁)) (.lit (.vInt n₂))) ρ
+           (.lit (.vInt (n₁ / n₂))) ρ
+  | sDivZero : ∀ n₁ n₂ ρ, n₂ = 0 →
+      Step (.binOp .div (.lit (.vInt n₁)) (.lit (.vInt n₂))) ρ
+           (.error "Division by zero") ρ
+  | sModInt : ∀ n₁ n₂ ρ, n₂ ≠ 0 →
+      Step (.binOp .mod (.lit (.vInt n₁)) (.lit (.vInt n₂))) ρ
+           (.lit (.vInt (n₁ % n₂))) ρ
+  | sModZero : ∀ n₁ n₂ ρ, n₂ = 0 →
+      Step (.binOp .mod (.lit (.vInt n₁)) (.lit (.vInt n₂))) ρ
+           (.error "Modulo by zero") ρ
   | sUnOpCong : ∀ op e e' ρ ρ',
       Step e ρ e' ρ' →
       Step (.unOp op e) ρ (.unOp op e') ρ'
@@ -554,6 +596,154 @@ theorem progress : ∀ e t,
     | inr hstp =>
       obtain ⟨e₁', ρ', hs₁⟩ := hstp
       exact ⟨.binOp .mul e₁' e₂, ρ', .sBinOpLeft .mul _ e₁' e₂ emptyEnv ρ' hs₁⟩
+  | tLt e₁ e₂ h₁ h₂ ih₁ ih₂ =>
+    right
+    cases ih₁ with
+    | inl hv₁ =>
+      cases hv₁ with
+      | lit v₁ =>
+        cases ih₂ with
+        | inl hv₂ =>
+          cases hv₂ with
+          | lit v₂ =>
+            have ⟨n₁, hn₁⟩ := canonical_forms_int v₁ h₁
+            have ⟨n₂, hn₂⟩ := canonical_forms_int v₂ h₂
+            subst hn₁; subst hn₂
+            exact ⟨.lit (.vBool (decide (n₁ < n₂))), emptyEnv, .sLt n₁ n₂ emptyEnv⟩
+          | error msg =>
+            exact ⟨.error msg, emptyEnv, .sBinOpErrRight .lt v₁ msg emptyEnv⟩
+        | inr hstp =>
+          obtain ⟨e₂', ρ', hs₂⟩ := hstp
+          exact ⟨.binOp .lt (.lit v₁) e₂', ρ', .sBinOpRight .lt v₁ _ e₂' emptyEnv ρ' (.lit v₁) hs₂⟩
+      | error msg =>
+        exact ⟨.error msg, emptyEnv, .sBinOpErrLeft .lt msg e₂ emptyEnv⟩
+    | inr hstp =>
+      obtain ⟨e₁', ρ', hs₁⟩ := hstp
+      exact ⟨.binOp .lt e₁' e₂, ρ', .sBinOpLeft .lt _ e₁' e₂ emptyEnv ρ' hs₁⟩
+  | tGt e₁ e₂ h₁ h₂ ih₁ ih₂ =>
+    right
+    cases ih₁ with
+    | inl hv₁ =>
+      cases hv₁ with
+      | lit v₁ =>
+        cases ih₂ with
+        | inl hv₂ =>
+          cases hv₂ with
+          | lit v₂ =>
+            have ⟨n₁, hn₁⟩ := canonical_forms_int v₁ h₁
+            have ⟨n₂, hn₂⟩ := canonical_forms_int v₂ h₂
+            subst hn₁; subst hn₂
+            exact ⟨.lit (.vBool (decide (n₁ > n₂))), emptyEnv, .sGt n₁ n₂ emptyEnv⟩
+          | error msg =>
+            exact ⟨.error msg, emptyEnv, .sBinOpErrRight .gt v₁ msg emptyEnv⟩
+        | inr hstp =>
+          obtain ⟨e₂', ρ', hs₂⟩ := hstp
+          exact ⟨.binOp .gt (.lit v₁) e₂', ρ', .sBinOpRight .gt v₁ _ e₂' emptyEnv ρ' (.lit v₁) hs₂⟩
+      | error msg =>
+        exact ⟨.error msg, emptyEnv, .sBinOpErrLeft .gt msg e₂ emptyEnv⟩
+    | inr hstp =>
+      obtain ⟨e₁', ρ', hs₁⟩ := hstp
+      exact ⟨.binOp .gt e₁' e₂, ρ', .sBinOpLeft .gt _ e₁' e₂ emptyEnv ρ' hs₁⟩
+  | tLe e₁ e₂ h₁ h₂ ih₁ ih₂ =>
+    right
+    cases ih₁ with
+    | inl hv₁ =>
+      cases hv₁ with
+      | lit v₁ =>
+        cases ih₂ with
+        | inl hv₂ =>
+          cases hv₂ with
+          | lit v₂ =>
+            have ⟨n₁, hn₁⟩ := canonical_forms_int v₁ h₁
+            have ⟨n₂, hn₂⟩ := canonical_forms_int v₂ h₂
+            subst hn₁; subst hn₂
+            exact ⟨.lit (.vBool (decide (n₁ ≤ n₂))), emptyEnv, .sLe n₁ n₂ emptyEnv⟩
+          | error msg =>
+            exact ⟨.error msg, emptyEnv, .sBinOpErrRight .le v₁ msg emptyEnv⟩
+        | inr hstp =>
+          obtain ⟨e₂', ρ', hs₂⟩ := hstp
+          exact ⟨.binOp .le (.lit v₁) e₂', ρ', .sBinOpRight .le v₁ _ e₂' emptyEnv ρ' (.lit v₁) hs₂⟩
+      | error msg =>
+        exact ⟨.error msg, emptyEnv, .sBinOpErrLeft .le msg e₂ emptyEnv⟩
+    | inr hstp =>
+      obtain ⟨e₁', ρ', hs₁⟩ := hstp
+      exact ⟨.binOp .le e₁' e₂, ρ', .sBinOpLeft .le _ e₁' e₂ emptyEnv ρ' hs₁⟩
+  | tGe e₁ e₂ h₁ h₂ ih₁ ih₂ =>
+    right
+    cases ih₁ with
+    | inl hv₁ =>
+      cases hv₁ with
+      | lit v₁ =>
+        cases ih₂ with
+        | inl hv₂ =>
+          cases hv₂ with
+          | lit v₂ =>
+            have ⟨n₁, hn₁⟩ := canonical_forms_int v₁ h₁
+            have ⟨n₂, hn₂⟩ := canonical_forms_int v₂ h₂
+            subst hn₁; subst hn₂
+            exact ⟨.lit (.vBool (decide (n₁ ≥ n₂))), emptyEnv, .sGe n₁ n₂ emptyEnv⟩
+          | error msg =>
+            exact ⟨.error msg, emptyEnv, .sBinOpErrRight .ge v₁ msg emptyEnv⟩
+        | inr hstp =>
+          obtain ⟨e₂', ρ', hs₂⟩ := hstp
+          exact ⟨.binOp .ge (.lit v₁) e₂', ρ', .sBinOpRight .ge v₁ _ e₂' emptyEnv ρ' (.lit v₁) hs₂⟩
+      | error msg =>
+        exact ⟨.error msg, emptyEnv, .sBinOpErrLeft .ge msg e₂ emptyEnv⟩
+    | inr hstp =>
+      obtain ⟨e₁', ρ', hs₁⟩ := hstp
+      exact ⟨.binOp .ge e₁' e₂, ρ', .sBinOpLeft .ge _ e₁' e₂ emptyEnv ρ' hs₁⟩
+  | tDivInt e₁ e₂ h₁ h₂ ih₁ ih₂ =>
+    right
+    cases ih₁ with
+    | inl hv₁ =>
+      cases hv₁ with
+      | lit v₁ =>
+        cases ih₂ with
+        | inl hv₂ =>
+          cases hv₂ with
+          | lit v₂ =>
+            have ⟨n₁, hn₁⟩ := canonical_forms_int v₁ h₁
+            have ⟨n₂, hn₂⟩ := canonical_forms_int v₂ h₂
+            subst hn₁; subst hn₂
+            by_cases hz : n₂ = 0
+            · exact ⟨.error "Division by zero", emptyEnv, .sDivZero n₁ n₂ emptyEnv hz⟩
+            · exact ⟨.lit (.vInt (n₁ / n₂)), emptyEnv, .sDivInt n₁ n₂ emptyEnv hz⟩
+          | error msg =>
+            exact ⟨.error msg, emptyEnv, .sBinOpErrRight .div v₁ msg emptyEnv⟩
+        | inr hstp =>
+          obtain ⟨e₂', ρ', hs₂⟩ := hstp
+          exact ⟨.binOp .div (.lit v₁) e₂', ρ', .sBinOpRight .div v₁ _ e₂' emptyEnv ρ' (.lit v₁) hs₂⟩
+      | error msg =>
+        exact ⟨.error msg, emptyEnv, .sBinOpErrLeft .div msg e₂ emptyEnv⟩
+    | inr hstp =>
+      obtain ⟨e₁', ρ', hs₁⟩ := hstp
+      exact ⟨.binOp .div e₁' e₂, ρ', .sBinOpLeft .div _ e₁' e₂ emptyEnv ρ' hs₁⟩
+  | tModInt e₁ e₂ h₁ h₂ ih₁ ih₂ =>
+    right
+    cases ih₁ with
+    | inl hv₁ =>
+      cases hv₁ with
+      | lit v₁ =>
+        cases ih₂ with
+        | inl hv₂ =>
+          cases hv₂ with
+          | lit v₂ =>
+            have ⟨n₁, hn₁⟩ := canonical_forms_int v₁ h₁
+            have ⟨n₂, hn₂⟩ := canonical_forms_int v₂ h₂
+            subst hn₁; subst hn₂
+            by_cases hz : n₂ = 0
+            · exact ⟨.error "Modulo by zero", emptyEnv, .sModZero n₁ n₂ emptyEnv hz⟩
+            · exact ⟨.lit (.vInt (n₁ % n₂)), emptyEnv, .sModInt n₁ n₂ emptyEnv hz⟩
+          | error msg =>
+            exact ⟨.error msg, emptyEnv, .sBinOpErrRight .mod v₁ msg emptyEnv⟩
+        | inr hstp =>
+          obtain ⟨e₂', ρ', hs₂⟩ := hstp
+          exact ⟨.binOp .mod (.lit v₁) e₂', ρ', .sBinOpRight .mod v₁ _ e₂' emptyEnv ρ' (.lit v₁) hs₂⟩
+      | error msg =>
+        exact ⟨.error msg, emptyEnv, .sBinOpErrLeft .mod msg e₂ emptyEnv⟩
+    | inr hstp =>
+      obtain ⟨e₁', ρ', hs₁⟩ := hstp
+      exact ⟨.binOp .mod e₁' e₂, ρ', .sBinOpLeft .mod _ e₁' e₂ emptyEnv ρ' hs₁⟩
   | tNegInt e h₁ ih =>
     right
     cases ih with
@@ -676,6 +866,12 @@ theorem preservation : ∀ e e' t ρ ρ',
     | tOr _ _ h₁ h₂ => exact .tOr _ _ _ (ih _ h₁) h₂
     | tSubInt _ _ h₁ h₂ => exact .tSubInt _ _ _ (ih _ h₁) h₂
     | tMulInt _ _ h₁ h₂ => exact .tMulInt _ _ _ (ih _ h₁) h₂
+    | tLt _ _ h₁ h₂ => exact .tLt _ _ _ (ih _ h₁) h₂
+    | tGt _ _ h₁ h₂ => exact .tGt _ _ _ (ih _ h₁) h₂
+    | tLe _ _ h₁ h₂ => exact .tLe _ _ _ (ih _ h₁) h₂
+    | tGe _ _ h₁ h₂ => exact .tGe _ _ _ (ih _ h₁) h₂
+    | tDivInt _ _ h₁ h₂ => exact .tDivInt _ _ _ (ih _ h₁) h₂
+    | tModInt _ _ h₁ h₂ => exact .tModInt _ _ _ (ih _ h₁) h₂
   | sBinOpRight op v₁ e₂ e₂' ρ ρ' _hv hs₂ ih =>
     cases ht with
     | tAddInt _ _ h₁ h₂ => exact .tAddInt _ _ _ h₁ (ih _ h₂)
@@ -686,6 +882,12 @@ theorem preservation : ∀ e e' t ρ ρ',
     | tOr _ _ h₁ h₂ => exact .tOr _ _ _ h₁ (ih _ h₂)
     | tSubInt _ _ h₁ h₂ => exact .tSubInt _ _ _ h₁ (ih _ h₂)
     | tMulInt _ _ h₁ h₂ => exact .tMulInt _ _ _ h₁ (ih _ h₂)
+    | tLt _ _ h₁ h₂ => exact .tLt _ _ _ h₁ (ih _ h₂)
+    | tGt _ _ h₁ h₂ => exact .tGt _ _ _ h₁ (ih _ h₂)
+    | tLe _ _ h₁ h₂ => exact .tLe _ _ _ h₁ (ih _ h₂)
+    | tGe _ _ h₁ h₂ => exact .tGe _ _ _ h₁ (ih _ h₂)
+    | tDivInt _ _ h₁ h₂ => exact .tDivInt _ _ _ h₁ (ih _ h₂)
+    | tModInt _ _ h₁ h₂ => exact .tModInt _ _ _ h₁ (ih _ h₂)
   | sAddInt n₁ n₂ _ =>
     cases ht with
     | tAddInt _ _ h₁ h₂ => exact .tInt _ _
@@ -719,6 +921,30 @@ theorem preservation : ∀ e e' t ρ ρ',
   | sMulInt n₁ n₂ _ =>
     cases ht with
     | tMulInt _ _ h₁ h₂ => exact .tInt _ _
+  | sLt n₁ n₂ _ =>
+    cases ht with
+    | tLt _ _ h₁ h₂ => exact .tBool _ _
+  | sGt n₁ n₂ _ =>
+    cases ht with
+    | tGt _ _ h₁ h₂ => exact .tBool _ _
+  | sLe n₁ n₂ _ =>
+    cases ht with
+    | tLe _ _ h₁ h₂ => exact .tBool _ _
+  | sGe n₁ n₂ _ =>
+    cases ht with
+    | tGe _ _ h₁ h₂ => exact .tBool _ _
+  | sDivInt n₁ n₂ _ _ =>
+    cases ht with
+    | tDivInt _ _ h₁ h₂ => exact .tInt _ _
+  | sDivZero n₁ n₂ _ _ =>
+    cases ht with
+    | tDivInt _ _ h₁ h₂ => exact .tError _ _ _
+  | sModInt n₁ n₂ _ _ =>
+    cases ht with
+    | tModInt _ _ h₁ h₂ => exact .tInt _ _
+  | sModZero n₁ n₂ _ _ =>
+    cases ht with
+    | tModInt _ _ h₁ h₂ => exact .tError _ _ _
   | sNegInt n _ =>
     cases ht with
     | tNegInt _ h₁ => exact .tInt _ _
@@ -774,6 +1000,12 @@ theorem preservation : ∀ e e' t ρ ρ',
     | tOr _ _ h₁ h₂ => exact .tError _ msg _
     | tSubInt _ _ h₁ h₂ => exact .tError _ msg _
     | tMulInt _ _ h₁ h₂ => exact .tError _ msg _
+    | tLt _ _ h₁ h₂ => exact .tError _ msg _
+    | tGt _ _ h₁ h₂ => exact .tError _ msg _
+    | tLe _ _ h₁ h₂ => exact .tError _ msg _
+    | tGe _ _ h₁ h₂ => exact .tError _ msg _
+    | tDivInt _ _ h₁ h₂ => exact .tError _ msg _
+    | tModInt _ _ h₁ h₂ => exact .tError _ msg _
   | sBinOpErrRight op v₁ msg _ =>
     cases ht with
     | tAddInt _ _ h₁ h₂ => exact .tError _ msg _
@@ -784,6 +1016,12 @@ theorem preservation : ∀ e e' t ρ ρ',
     | tOr _ _ h₁ h₂ => exact .tError _ msg _
     | tSubInt _ _ h₁ h₂ => exact .tError _ msg _
     | tMulInt _ _ h₁ h₂ => exact .tError _ msg _
+    | tLt _ _ h₁ h₂ => exact .tError _ msg _
+    | tGt _ _ h₁ h₂ => exact .tError _ msg _
+    | tLe _ _ h₁ h₂ => exact .tError _ msg _
+    | tGe _ _ h₁ h₂ => exact .tError _ msg _
+    | tDivInt _ _ h₁ h₂ => exact .tError _ msg _
+    | tModInt _ _ h₁ h₂ => exact .tError _ msg _
   | sUnOpErr op msg _ =>
     cases ht with
     | tNegInt _ h₁ => exact .tError _ msg _
