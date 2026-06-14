@@ -2,12 +2,14 @@
 SPDX-License-Identifier: MPL-2.0
 SPDX-FileCopyrightText: 2026 Hyperpolymath
 -->
-# WokeLang Lean4 Proof Audit
+# WokeLang Proof Audit (Lean 4 + Coq)
 
-This document records a completeness/correspondence audit of
-`WokeLang.lean`, answering the two questions raised in
-[`PROOF-NEEDS.md`](../../../PROOF-NEEDS.md): *is the sorry-free claim still
-true?* and *do the proofs cover the full type system or only a subset?*
+This document records a completeness/correspondence audit of the two formal
+developments — `WokeLang.lean` (Lean 4) and `WokeLang.v` (Coq) — answering the
+questions raised in [`PROOF-NEEDS.md`](../../../PROOF-NEEDS.md): *is the
+verified/sorry-free claim still true?* and *do the proofs cover the full type
+system or only a subset?* (The Lean sections come first; the Coq audit is its
+own section below.)
 
 ## Toolchain
 
@@ -150,6 +152,54 @@ theorems (`weaken_collapses_distinction`, `affine_canonical`,
 - **Tier 3 (capability):** `capSubsumes` is a preorder (`_refl`, `_trans`).
 - Still open in Tier 1: **float** arithmetic variants (`sub`/`mul`/`div` on
   `float`, mirroring `add` on float) and **`array`** typing/evaluation.
+
+## Coq proofs (`WokeLang.v`) — audited 2026-06-14
+
+A parallel Coq formalization exists. It was given the same meticulous
+treatment as the Lean file.
+
+- **Toolchain:** Coq **8.18.0** (ubuntu-24.04 apt). Build / verify (the oracle):
+  `cd docs/proofs/verification && coqc WokeLang.v` (exit 0 ⇒ verified). CI gate:
+  `.github/workflows/coq-proofs.yml` (pinned to ubuntu-24.04 — the file is
+  version-sensitive).
+
+- **Rot found and fixed.** Like the Lean file, `WokeLang.v` did **not compile**
+  (no CI ever ran the prover). The *only* breakage: `value_eq_dec` used `decide
+  equality; … apply list_eq_dec; assumption`, but the recursive IH for the
+  nested `list value` is no longer in scope under 8.18 → "No such assumption".
+  Fixed with an explicit fixpoint (`fix IH 1; …; apply list_eq_dec; exact IH`).
+  Everything else — including the large `preservation` proof — then compiled.
+
+- **Soundness (meticulous check).** No `Admitted`/`admit`/`Axiom`/`Conjecture`.
+  `Print Assumptions` on `progress`/`preservation`/`type_safety` shows they
+  depend **only** on `ClassicalDedekindReals.sig_forall_dec` +
+  `functional_extensionality` — both pulled in *unavoidably* by modelling
+  floats as real numbers (`R`), exactly as the file header claims ("no new
+  axioms beyond those implicit in `Coq.Reals`"). Consistent, standard, honest.
+
+- **Coverage vs. the Lean file.** Complementary, not identical:
+  - Coq is **ahead on arrays** — full `T_Array`/`T_Lit_Array`, array stepping
+    (`S_Array_step`/`S_Array_val`), and a `progress` that uses **well-founded
+    induction on `expr_size`** to get an IH for array elements. (This is exactly
+    the Tier-1 item still open on the Lean side.)
+  - Coq models floats as `ℝ` ⇒ `value_eq_dec` is fully decidable (`Req_EM_T`),
+    at the cost of the classical-reals axioms above. (Lean models `Float` as
+    opaque IEEE and decides equality classically via `by_cases`.)
+  - Coq is **behind on binops**: only `add`/`eq`/`and` have rules — none of
+    `sub/mul/div/mod` or the comparisons/`or` the Lean file now has.
+
+- **`cap_subsumes` bug fixed.** Its catch-all was `TODO: false`, so the relation
+  was **not even reflexive** (`cap_subsumes CapProcess CapProcess = false`).
+  Fixed to fall back to decidable equality (`capability_eq_dec`), and
+  `cap_subsumes_refl` is now proven (axiom-free). `cap_subsumes_trans` is a
+  documented follow-up (the relation is transitive; a robust Coq proof needs
+  explicit per-kind case analysis, not the brittle 6×6×6 automation).
+
+- **Quality follow-up (flagged, not blocking).** The `preservation` proof is a
+  large brute-force `try solve [...]` pile ending in a literal *"Nuclear
+  option"* — it compiles and is axiom-honest, but is fragile and unreviewable.
+  A clean per-case rewrite (in the style of the Lean `preservation`) is worth
+  doing. Also: bring the Coq binops up to parity with the extended Lean set.
 
 ## Status
 

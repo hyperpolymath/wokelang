@@ -129,12 +129,13 @@ Definition extend_type_env (x : string) (t : woke_type) (e : type_env) : type_en
     - VOkay: handled recursively by decide equality. *)
 Theorem value_eq_dec : forall (v1 v2 : value), {v1 = v2} + {v1 <> v2}.
 Proof.
+  fix IH 1.
   decide equality.
   - apply Z.eq_dec.
   - apply Req_EM_T.
   - apply String.string_dec.
   - apply Bool.bool_dec.
-  - apply list_eq_dec; assumption.
+  - apply list_eq_dec. exact IH.
   - apply String.string_dec.
 Qed.
 
@@ -1115,22 +1116,45 @@ Inductive capability : Type :=
 
 Definition capability_set := list capability.
 
-(* Capability subsumption *)
+(* Decidable equality on capabilities (used by cap_subsumes' exact-match case). *)
+Definition capability_eq_dec (c1 c2 : capability) : {c1 = c2} + {c1 <> c2}.
+Proof. decide equality; decide equality; apply String.string_dec. Defined.
+Opaque capability_eq_dec.
+
+(* Capability subsumption: a None-scoped capability subsumes any same-kind
+   capability; otherwise exact (decidable) equality. (Previously the catch-all
+   returned `false`, so subsumption was not even reflexive — fixed.) *)
 Definition cap_subsumes (c1 c2 : capability) : bool :=
   match c1, c2 with
   | CapFileRead None, CapFileRead _ => true
   | CapFileWrite None, CapFileWrite _ => true
   | CapNetwork None, CapNetwork _ => true
   | CapExecute None, CapExecute _ => true
-  | _, _ =>
-    (* TODO: Proper equality check *)
-    false
+  | _, _ => if capability_eq_dec c1 c2 then true else false
   end.
 
 Definition has_capability (c : capability) (cs : capability_set) : bool :=
   existsb (fun c' => cap_subsumes c' c) cs.
 
-(* TODO: Capability safety theorems *)
+(* Capability subsumption is a PREORDER (reflexive + transitive) — the order
+   shape echo-types' DecorationStructure requires. Mirrors capSubsumes_refl /
+   capSubsumes_trans in WokeLang.lean (cross-prover parity). *)
+Theorem cap_subsumes_refl : forall c, cap_subsumes c c = true.
+Proof.
+  intros c; destruct c as [o|o|o|o| |]; try destruct o; simpl;
+    try reflexivity;
+    match goal with
+    | [ |- (if capability_eq_dec ?a ?b then _ else _) = true ] =>
+      destruct (capability_eq_dec a b) as [_ | Hneq];
+        [ reflexivity | exfalso; apply Hneq; reflexivity ]
+    end.
+Qed.
+
+(* cap_subsumes_trans (transitivity) — FOLLOW-UP. The relation is transitive,
+   but a robust Coq proof needs explicit per-kind case analysis; brute-force
+   automation over the 6x6x6 capability cases is brittle. Deliberately left
+   unproven rather than shipped with fragile automation. The load-bearing fix
+   (reflexivity above — broken by the old `false` catch-all) is proven. *)
 
 (* ========================================================================= *)
 (* 8. Compiler Correctness (Stubs)                                           *)

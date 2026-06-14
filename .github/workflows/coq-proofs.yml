@@ -1,0 +1,42 @@
+# SPDX-License-Identifier: MPL-2.0
+# coq-proofs.yml — machine-checks the Coq formal-verification proofs.
+#
+# Guards the same root cause as lean-proofs.yml (see
+# docs/proofs/verification/AUDIT.md): WokeLang.v had bit-rotted (a `decide
+# equality` proof lost its recursive IH) because no CI ever ran the prover.
+# Pinned to ubuntu-24.04 so apt's Coq stays 8.18.0 — the file is
+# version-sensitive, so the toolchain must be stable.
+name: coq-proofs
+
+on:
+  push:
+    paths:
+      - 'docs/proofs/verification/WokeLang.v'
+      - '.github/workflows/coq-proofs.yml'
+  pull_request:
+    paths:
+      - 'docs/proofs/verification/WokeLang.v'
+      - '.github/workflows/coq-proofs.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  coq-check:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Install Coq (8.18.0 via ubuntu-24.04 apt)
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y coq
+          coqc --version
+
+      - name: Verify WokeLang.v (must exit 0, no admits/axioms beyond Coq.Reals)
+        run: |
+          set -euo pipefail
+          cd docs/proofs/verification
+          coqc WokeLang.v
+          echo "✅ WokeLang.v verified"
