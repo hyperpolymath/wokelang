@@ -139,12 +139,17 @@ theorems (`weaken_collapses_distinction`, `affine_canonical`,
 
 ## Extensions landed (2026-06-14)
 
-- **Tier 1 (base operators):** `or` (logical), `sub`/`mul` (integer) — each
-  with `HasType` + `Step` rules and full `progress`/`preservation` coverage.
+- **Tier 1 (base operators)** — each with `HasType` + `Step` rules and full
+  `progress`/`preservation` coverage:
+  - logical: `or`;
+  - integer arithmetic: `sub`, `mul`, `div`, `mod` — where `div`/`mod` panic on
+    a zero divisor (step to `error`, reusing the proven `unwrap`-of-`oops`
+    panic fragment);
+  - ordering comparisons: `lt`, `gt`, `le`, `ge` (integer → `bool`, via
+    `decide`).
 - **Tier 3 (capability):** `capSubsumes` is a preorder (`_refl`, `_trans`).
-- Still open in Tier 1: ordering comparisons (`lt`/`gt`/`le`/`ge`), `div`/`mod`
-  (with divide-by-zero → `error` panic, reusing the proven panic fragment),
-  float variants, and `array` typing.
+- Still open in Tier 1: **float** arithmetic variants (`sub`/`mul`/`div` on
+  `float`, mirroring `add` on float) and **`array`** typing/evaluation.
 
 ## Status
 
