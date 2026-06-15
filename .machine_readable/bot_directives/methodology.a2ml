@@ -9,7 +9,7 @@
 
 [metadata]
 version = "1.0.0"
-last-updated = "2026-03-24"
+last-updated = "2026-06-15"
 spec = "https://github.com/hyperpolymath/standards/blob/main/agentic-a2ml/docs/ADR-002-methodology-layer.adoc"
 
 # ============================================================================
@@ -70,11 +70,13 @@ deepen-not-broaden = true
 #   If parallel → stop. Note as cross-project insight.
 
 [methodology.divergent-invariants]
+# Real invariants for wokelang's formal-verification strength (populated
+# 2026-06-15 from PRs #79-#82). The generic template examples below are
+# DELIBERATELY NOT used — wokelang's provers are Lean 4 + Coq, not Idris2.
 rules = [
-  # Customise per project. Examples:
-  # "Idris2 only for formal verification — no Lean4, Coq, Agda",
-  # "believe_me count must remain zero",
-  # "FFI architecture: Idris2 → RefC → Zig → C ABI (no shortcuts)",
+  "Verification provers for docs/proofs/verification/ are Lean 4 and Coq — deepen these two; do NOT switch to Idris2/Isabelle or add a third prover for the type-safety track (the STATE [frontier] echo-types narrative is a separate, additive layer, not a prover swap)",
+  "sorry / admit / Admitted count in WokeLang.lean and WokeLang.v must remain zero; the ONLY permitted axioms are Coq.Reals' ClassicalDedekindReals.sig_forall_dec + functional_extensionality (unavoidable from modelling float as the reals R) — these are NOT escape hatches, and an Axiom-scanner must not flag them",
+  "The proofs are a deliberate strict SUBSET of the surface language (the expression core) — broaden along the existing Step/HasType + progress/preservation pattern; do not claim full-language verification",
 ]
 
 # Optional: language invariant for the core strength
@@ -88,10 +90,12 @@ rules = [
 # Updated at session end with newly discovered constraints.
 
 [methodology.known-constraints]
+# Discovered 2026-06-14/15 (PRs #79-#82). See docs/proofs/verification/AUDIT.md.
 constraints = [
-  # Customise per project. Examples:
-  # "End-to-end build has never been verified",
-  # "libproject.so does not exist yet — all bindings call stubs",
+  "Formal proofs live in docs/proofs/verification/: WokeLang.lean (Lean 4, pinned v4.30.0 via lean-toolchain) + WokeLang.v (Coq 8.18.0, ubuntu-24.04), both now CI-gated (lean-proofs.yml, coq-proofs.yml)",
+  "Both proof files had silently bit-rotted because no CI ever ran a prover; the toolchain pins are load-bearing and WokeLang.v is version-sensitive — do not bump Coq blindly",
+  "Lean and Coq cover COMPLEMENTARY subsets: Coq is ahead on arrays (T_Array + well-founded expr_size induction); Lean is ahead on binops (sub/mul/div/mod, lt/gt/le/ge, or). Neither is full-language",
+  "PROOF-NEEDS #2 (eval matches the Lean spec) is NOT a well-posed single theorem: core/eval.ml models a different language (units-of-measure, to_bool coercions, no Result) than the Lean/Coq Step relation. Needs a maintainer decision — (a) treat WokeLang.lean as normative and converge implementations, or (b) build a second model faithful to core/eval.ml — before attempting it",
 ]
 
 # ============================================================================

@@ -9,7 +9,7 @@
 
 [metadata]
 version = "1.0.0"
-last-updated = "2026-03-24"
+last-updated = "2026-06-15"
 
 # ============================================================================
 # COVERAGE STATE
@@ -34,6 +34,12 @@ coverage-percent = 0
 # ring = 2
 # fixes = 3
 # notes = "boot-guardian built, shutdown-marshal built"
+
+[coverage.visited.proofs-verification]
+date = "2026-06-15"
+ring = 1
+fixes = 4
+notes = "docs/proofs/verification/. Repaired bit-rotted WokeLang.lean (Lean 4.30.0) + WokeLang.v (Coq 8.18.0) to compile sorry/admit/axiom-free; extended the Lean type-safety core (or, sub/mul/div/mod with zero-divisor panic, lt/gt/le/ge, capability preorder); fixed Coq cap_subsumes reflexivity (proved cap_subsumes_refl); added lean-proofs + coq-proofs CI gates (no prover had ever run in CI); wrote AUDIT.md. PRs #79-#82, all merged. Carry-forward recorded in debt.a2ml."
 
 # ============================================================================
 # SKIPPED COMPONENTS WITH MUSTS
