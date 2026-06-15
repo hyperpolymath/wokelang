@@ -9,7 +9,7 @@
 
 [metadata]
 version = "1.0.0"
-last-updated = "2026-03-24"
+last-updated = "2026-06-15"
 
 # ============================================================================
 # DEBT ITEMS
@@ -34,6 +34,30 @@ last-updated = "2026-03-24"
 # impact = "medium"
 # discovered = "2026-03-23"
 
+# --- Formal-proof carry-forward from PRs #79-#82 (2026-06-14/15). See
+# --- docs/proofs/verification/AUDIT.md §"Recommended next proof steps". ---
+
+[[debt.should]]
+component = "docs/proofs/verification/WokeLang.v (Coq)"
+issue = "Binops behind the Lean file: only add/eq/and have rules. Bring Coq up to parity with the extended Lean set — sub/mul/div/mod (div/mod panic to error on zero divisor), comparisons lt/gt/le/ge, and or."
+effort = "medium"
+impact = "medium"
+discovered = "2026-06-14"
+
+[[debt.should]]
+component = "docs/proofs/verification/WokeLang.lean (Lean)"
+issue = "Array typing/evaluation not modelled (tArray + an array congruence/value rule). The Coq file already has this (T_Array/T_Lit_Array + S_Array_step/S_Array_val + well-founded expr_size induction) and is a ready template."
+effort = "medium"
+impact = "medium"
+discovered = "2026-06-14"
+
+[[debt.should]]
+component = "docs/proofs/verification/WokeLang.v (Coq)"
+issue = "cap_subsumes_trans not yet proven (cap_subsumes_refl is). The relation IS transitive; a robust proof needs explicit per-kind case analysis, not the brittle 6x6x6 automation."
+effort = "medium"
+impact = "low"
+discovered = "2026-06-14"
+
 # ============================================================================
 # COULD — would fix eventually
 # ============================================================================
@@ -47,3 +71,24 @@ last-updated = "2026-03-24"
 # effort = "easy"
 # impact = "low"
 # discovered = "2026-03-23"
+
+[[debt.could]]
+component = "docs/proofs/verification/WokeLang.v (Coq)"
+issue = "preservation is a large brute-force `try solve [...]` pile ending in a literal 'Nuclear option' — it compiles and is axiom-honest but is fragile/unreviewable. Rewrite per-case in the style of the Lean preservation."
+effort = "hard"
+impact = "low"
+discovered = "2026-06-14"
+
+[[debt.could]]
+component = "docs/proofs/verification/WokeLang.lean (Lean)"
+issue = "Float arithmetic variants (sub/mul/div on float, mirroring add on float) not modelled."
+effort = "easy"
+impact = "low"
+discovered = "2026-06-14"
+
+[[debt.could]]
+component = "docs/proofs/verification/ (echo-types integration)"
+issue = "Echo-types L3 integration blueprint not started: a Lean port of EchoLinear + EchoResidue as WokeLang/Echo.lean (a Mode-indexed decoration on top of the base type system, leaving progress/preservation intact), modelled on Ephapax's formal/Echo.v Coq port. Connects to the STATE [frontier] echo-types goal."
+effort = "hard"
+impact = "medium"
+discovered = "2026-06-14"

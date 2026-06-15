@@ -5,7 +5,7 @@
 [metadata]
 project = "wokelang"
 version = "0.1.0"
-last-updated = "2026-06-12"
+last-updated = "2026-06-15"
 status = "active"
 
 [project-context]
@@ -27,11 +27,14 @@ proof-assistant = "Isabelle (preferred)"
 echo-types-source = "hyperpolymath/echo-types (constructive Agda formalization of fiber-based structured loss)"
 goal = "the language sorts the hard consent/affine-safety reasoning so users never have to"
 typechecker-note = "TypeChecker::new seeds a ~64-binding builtin prelude (incl. Result/echo constructors)"
+type-safety-proofs = "docs/proofs/verification/ — WokeLang.lean (Lean 4.30.0) + WokeLang.v (Coq 8.18.0): both compile sorry/admit/axiom-free (Coq only the unavoidable Coq.Reals classical+funext axioms from modelling float as the reals) and are CI-gated (lean-proofs.yml, coq-proofs.yml). Proven for the expression core: canonical_forms, progress, preservation, type_safety (multi-step), consent_{monotonicity,preservation}. Strict subset of the surface language; Lean/Coq cover complementary fragments. Repaired from bit-rot + extended 2026-06-14/15 (PRs #79-#82, merged). Full audit: docs/proofs/verification/AUDIT.md"
 
 [ci]
 workflows = "20 GitHub Actions; thin-wrapper reusables from hyperpolymath/standards"
 gates = "rust-ci, dogfood-gate, e2e (Rust+OCaml), governance, security, codeql, scorecard, secret-scanner, hypatia-scan, clusterfuzzlite, mirror, instant-sync"
+proof-gates = "lean-proofs.yml + coq-proofs.yml (added 2026-06-14): machine-check the Lean/Coq developments on every push. Before this NO CI ran a prover, so the 'verified/sorry-free' claim had silently rotted."
 last-shepherd = "2026-06-12 PR #77: fixed 3 Rust tests, empty wokelang.opam, removed banned ReScript VSCode client (governance); issue #78 tracks AffineScript reimpl"
+last-proof-shepherd = "2026-06-14/15 PRs #79-#82 (merged): repaired bit-rotted WokeLang.lean + WokeLang.v; extended the Lean type-safety core; fixed Coq cap_subsumes reflexivity; added the two prover CI gates; wrote docs/proofs/verification/AUDIT.md"
 
 [spec]
 location = "spec/ — grammar.ebnf, axiomatic-semantics.md, system-specs.md, SPEC.core.scm"
