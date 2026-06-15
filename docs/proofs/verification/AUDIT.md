@@ -185,8 +185,13 @@ treatment as the Lean file.
   - Coq models floats as `ℝ` ⇒ `value_eq_dec` is fully decidable (`Req_EM_T`),
     at the cost of the classical-reals axioms above. (Lean models `Float` as
     opaque IEEE and decides equality classically via `by_cases`.)
-  - Coq is **behind on binops**: only `add`/`eq`/`and` have rules — none of
-    `sub/mul/div/mod` or the comparisons/`or` the Lean file now has.
+  - Coq is now **at parity on integer binops** (landed 2026-06-15): on top of
+    `add`/`eq`/`and` it gains `or`, `sub`, `mul`, `div`/`mod` (which panic to
+    `VOops` on a zero divisor, mirroring the proven unwrap-of-oops fragment) and
+    the comparisons `lt`/`gt`/`le`/`ge` (`Z` → `bool`) — each with a `has_type`
+    rule, a `step` rule, and full `progress`/`preservation` coverage, axiom-free.
+    Float arithmetic variants remain unmodelled on both sides, and `BNeq` is a
+    symmetric gap (neither Lean nor Coq has it).
 
 - **`cap_subsumes` bug fixed.** Its catch-all was `TODO: false`, so the relation
   was **not even reflexive** (`cap_subsumes CapProcess CapProcess = false`).
@@ -199,7 +204,10 @@ treatment as the Lean file.
   large brute-force `try solve [...]` pile ending in a literal *"Nuclear
   option"* — it compiles and is axiom-honest, but is fragile and unreviewable.
   A clean per-case rewrite (in the style of the Lean `preservation`) is worth
-  doing. Also: bring the Coq binops up to parity with the extended Lean set.
+  doing — the binop-parity work (2026-06-15) extended its `first [...]`
+  reconstruction block and added an early literal-result closer rather than
+  rewriting it. (That cascade also scales badly: the new ops had to be closed
+  early and deterministically to avoid a multi-minute typecheck.)
 
 ## Status
 
