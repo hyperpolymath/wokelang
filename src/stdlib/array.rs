@@ -239,9 +239,7 @@ pub fn repeat(args: &[Value], _caps: &mut CapabilityRegistry) -> Result<Value, S
         ));
     }
 
-    let arr: Vec<Value> = std::iter::repeat(args[0].clone())
-        .take(count as usize)
-        .collect();
+    let arr: Vec<Value> = std::iter::repeat_n(args[0].clone(), count as usize).collect();
     Ok(Value::Array(arr))
 }
 

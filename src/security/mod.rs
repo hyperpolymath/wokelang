@@ -218,7 +218,7 @@ impl CapabilityRegistry {
 
         self.capabilities
             .entry(scope.to_string())
-            .or_insert_with(Vec::new)
+            .or_default()
             .push(entry);
 
         self.audit(capability, AuditAction::Granted, scope, true);
@@ -237,7 +237,7 @@ impl CapabilityRegistry {
 
         self.capabilities
             .entry(scope.to_string())
-            .or_insert_with(Vec::new)
+            .or_default()
             .push(entry);
 
         self.audit(capability, AuditAction::Granted, scope, true);

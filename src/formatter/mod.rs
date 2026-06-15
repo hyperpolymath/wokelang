@@ -6,7 +6,7 @@
 //! Provides AST-based code formatting with consistent style.
 
 use crate::ast::{Expr, Program, Statement, TopLevelItem};
-use crate::lexer::{Lexer, Spanned};
+use crate::lexer::Lexer;
 use crate::parser::Parser;
 
 /// Formatter for WokeLang code
@@ -96,7 +96,7 @@ impl Formatter {
                 output.push_str(&self.format_expr(&expr.node));
                 output.push_str(";\n");
             }
-            Statement::Return(ret_stmt) => {
+            Statement::Return(_ret_stmt) => {
                 output.push_str(&indent_str);
                 output.push_str("give back ...;\n");
             }

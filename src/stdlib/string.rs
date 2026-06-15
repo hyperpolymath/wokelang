@@ -220,9 +220,7 @@ pub fn pad_start(args: &[Value], _caps: &mut CapabilityRegistry) -> Result<Value
         return Ok(Value::String(s));
     }
 
-    let padding: String = std::iter::repeat(pad_char)
-        .take(target_len - current_len)
-        .collect();
+    let padding: String = std::iter::repeat_n(pad_char, target_len - current_len).collect();
     Ok(Value::String(format!("{}{}", padding, s)))
 }
 
@@ -243,9 +241,7 @@ pub fn pad_end(args: &[Value], _caps: &mut CapabilityRegistry) -> Result<Value, 
         return Ok(Value::String(s));
     }
 
-    let padding: String = std::iter::repeat(pad_char)
-        .take(target_len - current_len)
-        .collect();
+    let padding: String = std::iter::repeat_n(pad_char, target_len - current_len).collect();
     Ok(Value::String(format!("{}{}", s, padding)))
 }
 

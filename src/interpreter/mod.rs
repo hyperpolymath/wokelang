@@ -776,7 +776,7 @@ impl Interpreter {
                         })
                     }
                     _ => Err(RuntimeError {
-                        message: format!("Cannot access field of non-record value"),
+                        message: "Cannot access field of non-record value".to_string(),
                     }),
                 }
             }

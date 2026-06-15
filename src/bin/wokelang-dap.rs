@@ -4,7 +4,7 @@
 
 use std::io::{BufRead, BufReader, Write};
 use std::net::{TcpListener, TcpStream};
-use wokelang::dap::{DapRequest, DapResponse, DapServer};
+use wokelang::dap::{DapRequest, DapServer};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let listener = TcpListener::bind("127.0.0.1:4712")?;

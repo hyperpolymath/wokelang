@@ -28,6 +28,7 @@ pub enum CompileError {
 /// Local variable information
 struct Local {
     name: String,
+    #[allow(dead_code)] // scope depth; reserved for nested-scope resolution
     depth: usize,
 }
 
@@ -74,7 +75,7 @@ impl BytecodeCompiler {
         }
 
         // Second pass: compile function bodies
-        for (_idx, item) in program.items.iter().enumerate() {
+        for item in program.items.iter() {
             if let TopLevelItem::Function(func) = item {
                 let func_idx = *self.function_indices.get(&func.name).unwrap();
 
@@ -110,7 +111,7 @@ impl BytecodeCompiler {
         self.scope_depth = 0;
 
         // Add parameters as locals
-        for (i, param) in func.params.iter().enumerate() {
+        for param in func.params.iter() {
             self.add_local(param.name.clone());
         }
 

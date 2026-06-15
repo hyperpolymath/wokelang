@@ -83,7 +83,7 @@ impl Linter {
 
     fn lint_function(&mut self, func: &FunctionDef) {
         // Check function name style
-        if !func.name.chars().next().map_or(false, |c| c.is_lowercase()) {
+        if !func.name.chars().next().is_some_and(|c| c.is_lowercase()) {
             self.diagnostics.push(Diagnostic {
                 severity: Severity::Warning,
                 message: format!("Function '{}' should start with lowercase", func.name),

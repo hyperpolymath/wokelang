@@ -260,7 +260,7 @@ pub fn map(args: &[Value], _caps: &mut CapabilityRegistry) -> Result<Value, Stdl
     check_arity(args, 2)?;
 
     match (&args[0], &args[1]) {
-        (Value::Array(arr), Value::Function(closure)) => {
+        (Value::Array(_arr), Value::Function(_closure)) => {
             // Note: Actual mapping would require interpreter context
             // This is a placeholder showing the signature
             Err(StdlibError::RuntimeError(

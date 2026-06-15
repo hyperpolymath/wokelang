@@ -6,7 +6,6 @@
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::path::PathBuf;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct DapRequest {
@@ -119,6 +118,12 @@ pub struct DapServer {
     pub current_thread: i64,
     pub call_stack: Vec<String>,
     pub variables: HashMap<String, String>,
+}
+
+impl Default for DapServer {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl DapServer {
