@@ -393,7 +393,7 @@ fn pattern_to_sexpr(pat: &Pattern, out: &mut String) {
     match pat {
         Pattern::Literal(lit) => literal_to_sexpr(lit, out),
         Pattern::Identifier(name) => out.push_str(&format!("(pat-id \"{}\")", name)),
-        Pattern::Wildcard => out.push_str("_"),
+        Pattern::Wildcard => out.push('_'),
         Pattern::Constructor(name, inner) => {
             out.push_str(&format!("(pat-ctor \"{}\"", name));
             if let Some(ref p) = inner {
@@ -520,7 +520,7 @@ fn expr_to_sexpr(expr: &Expr, out: &mut String, indent: usize) {
             out.push(')');
         }
         Expr::FieldAccess(obj, field) => {
-            out.push_str(&format!("(field-access "));
+            out.push_str("(field-access ");
             expr_to_sexpr(&obj.node, out, indent + 2);
             out.push_str(&format!(" \"{}\")", field));
         }

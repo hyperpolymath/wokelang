@@ -55,6 +55,8 @@ enum Precedence {
     Factor = 6,     // * / %
     Unary = 7,      // - not
     Call = 8,       // f(x) arr[i]
+    // Highest precedence; kept for ladder completeness (not constructed directly yet).
+    #[allow(dead_code)]
     Primary = 9,
 }
 
@@ -97,6 +99,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Peek at next token (lookahead)
+    #[allow(dead_code)] // lookahead helper retained for upcoming grammar rules
     fn peek_next(&self) -> &Token {
         if self.current + 1 < self.tokens.len() {
             &self.tokens[self.current + 1].value
@@ -199,7 +202,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_precedence(&mut self, precedence: Precedence) -> Result<Spanned<Expr>, ParseError> {
-        let start = self.current_span().start;
+        let _start = self.current_span().start;
 
         // Parse prefix expression
         let mut expr = self.parse_prefix()?;
@@ -711,7 +714,7 @@ impl<'a> Parser<'a> {
             while !matches!(self.peek(), Token::RBrace) && !self.is_at_end() {
                 stmts.push(self.parse_statement()?);
             }
-            let end_span = self.expect(Token::RBrace, "}")?;
+            let _end_span = self.expect(Token::RBrace, "}")?;
             Some(stmts)
         } else {
             None
@@ -989,7 +992,7 @@ impl<'a> Parser<'a> {
                 self.advance();
 
                 // Check if it's a constructor pattern (capitalized identifier followed by optional parens)
-                if name.chars().next().map_or(false, |c| c.is_uppercase()) {
+                if name.chars().next().is_some_and(|c| c.is_uppercase()) {
                     if self.match_tokens(&[Token::LParen]) {
                         let inner = self.parse_pattern()?;
                         self.expect(Token::RParen, ")")?;

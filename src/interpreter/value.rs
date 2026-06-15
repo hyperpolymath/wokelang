@@ -180,14 +180,9 @@ impl ChannelHandle {
         let receiver = self.receiver.lock().unwrap();
         let mut count = 0usize;
         let mut drained = Vec::new();
-        loop {
-            match receiver.try_recv() {
-                Ok(val) => {
-                    drained.push(val);
-                    count += 1;
-                }
-                Err(_) => break,
-            }
+        while let Ok(val) = receiver.try_recv() {
+            drained.push(val);
+            count += 1;
         }
         // Put them back via the sender
         for val in drained {

@@ -117,10 +117,10 @@ fn parse_url(url: &str) -> Result<(String, String, u16, String), StdlibError> {
     let url = url.trim();
 
     // Remove protocol
-    let (is_https, rest) = if url.starts_with("https://") {
-        (true, &url[8..])
-    } else if url.starts_with("http://") {
-        (false, &url[7..])
+    let (is_https, rest) = if let Some(rest) = url.strip_prefix("https://") {
+        (true, rest)
+    } else if let Some(rest) = url.strip_prefix("http://") {
+        (false, rest)
     } else {
         (false, url)
     };

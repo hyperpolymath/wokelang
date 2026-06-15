@@ -5,7 +5,7 @@
 //! Stack-based bytecode interpreter for executing compiled WokeLang programs.
 
 use crate::interpreter::Value;
-use crate::vm::bytecode::{CompiledFunction, CompiledProgram, OpCode};
+use crate::vm::bytecode::{CompiledProgram, OpCode};
 use std::collections::HashMap;
 use thiserror::Error;
 

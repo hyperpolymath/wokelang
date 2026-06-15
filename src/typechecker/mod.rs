@@ -725,7 +725,7 @@ impl TypeChecker {
                 // For now, treat generics as basic types
                 TypeInfo::Record(name.clone())
             }
-            Type::TypeVar(name) => {
+            Type::TypeVar(_name) => {
                 // Type variable - use fresh var
                 TypeInfo::Var(0) // This is a simplification
             }
@@ -1100,18 +1100,16 @@ impl TypeChecker {
                 match &s1.apply(&record_ty) {
                     TypeInfo::Record(name) => {
                         // Look up struct definition to get field type
-                        if let Some(type_def) = self.type_defs.get(name) {
-                            if let TypeVariant::Struct(fields) = type_def {
-                                for field in fields {
-                                    if &field.name == field_name {
-                                        let field_ty = self.type_from_ast(&field.ty);
-                                        return Ok((field_ty, s1));
-                                    }
+                        if let Some(TypeVariant::Struct(fields)) = self.type_defs.get(name) {
+                            for field in fields {
+                                if &field.name == field_name {
+                                    let field_ty = self.type_from_ast(&field.ty);
+                                    return Ok((field_ty, s1));
                                 }
-                                return Err(TypeError {
-                                    message: format!("Record {} has no field {}", name, field_name),
-                                });
                             }
+                            return Err(TypeError {
+                                message: format!("Record {} has no field {}", name, field_name),
+                            });
                         }
                         Err(TypeError {
                             message: format!("Unknown record type: {}", name),

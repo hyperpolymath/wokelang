@@ -402,7 +402,8 @@ fn parse_file(file: &PathBuf, format: &str) -> Result<()> {
             "sexpr" | "sexp" => {
                 println!("{}", sexpr::program_to_sexpr(&program));
             }
-            "pretty" | _ => {
+            // "pretty" is the default for any unrecognised format
+            _ => {
                 println!("{:#?}", program);
                 println!(
                     "\nParsed {} top-level items successfully.",

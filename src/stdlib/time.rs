@@ -196,9 +196,7 @@ fn parse_date_string(date_str: &str, format_str: &str) -> Result<i64, StdlibErro
 
     // Try ISO 8601 format: YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS
     if format_str.contains("%Y") && format_str.contains("%m") && format_str.contains("%d") {
-        let parts: Vec<&str> = date_str
-            .split(|c| c == '-' || c == 'T' || c == ':' || c == ' ')
-            .collect();
+        let parts: Vec<&str> = date_str.split(['-', 'T', ':', ' ']).collect();
 
         if parts.len() >= 3 {
             let year: i32 = parts[0]
@@ -248,8 +246,8 @@ fn ymd_to_timestamp(year: i32, month: u32, day: u32, hour: u32, minute: u32, sec
         [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
     };
 
-    for m in 0..(month - 1) as usize {
-        days += days_in_months[m] as i64;
+    for dim in days_in_months.iter().take((month - 1) as usize) {
+        days += *dim as i64;
     }
     days += (day - 1) as i64;
 
