@@ -364,9 +364,10 @@ fn http_request_binary_with_body(
             .map_err(|e| StdlibError::NetworkError(format!("Read body failed: {}", e)))?;
         buf
     } else {
-        // Read until connection closes
+        // Read until connection closes (limit to 5MB)
         let mut buf = Vec::new();
         reader
+            .take(5 * 1024 * 1024)
             .read_to_end(&mut buf)
             .map_err(|e| StdlibError::NetworkError(format!("Read body failed: {}", e)))?;
         buf

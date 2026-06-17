@@ -99,7 +99,13 @@ impl ConsentStore {
             return Ok(());
         }
 
-        let content = fs::read_to_string(&self.path)?;
+        let content = {
+            use std::io::Read;
+            let mut file = std::fs::File::open(&self.path)?;
+            let mut buf = String::new();
+            file.take(1024 * 1024).read_to_string(&mut buf)?;
+            buf
+        };
 
         for line in content.lines() {
             if line.trim().is_empty() || line.starts_with('#') {

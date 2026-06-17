@@ -151,7 +151,13 @@ fn main() -> Result<()> {
 }
 
 fn run_program(file: &PathBuf) -> Result<()> {
-    let source = fs::read_to_string(file).expect("Failed to read file");
+    let source = {
+        use std::io::Read;
+        let mut file_handle = std::fs::File::open(file).expect("Failed to open file");
+        let mut buf = String::new();
+        file_handle.take(10 * 1024 * 1024).read_to_string(&mut buf).expect("Failed to read file");
+        buf
+    };
     let lexer = Lexer::new(&source);
 
     let tokens = match lexer.tokenize() {
@@ -189,7 +195,13 @@ fn run_program(file: &PathBuf) -> Result<()> {
 }
 
 fn compile_program(file: &PathBuf, _output: Option<PathBuf>) -> Result<()> {
-    let source = fs::read_to_string(file).expect("Failed to read file");
+    let source = {
+        use std::io::Read;
+        let mut file_handle = std::fs::File::open(file).expect("Failed to open file");
+        let mut buf = String::new();
+        file_handle.take(10 * 1024 * 1024).read_to_string(&mut buf).expect("Failed to read file");
+        buf
+    };
     let lexer = Lexer::new(&source);
 
     let tokens = match lexer.tokenize() {
@@ -245,7 +257,13 @@ fn compile_program(file: &PathBuf, _output: Option<PathBuf>) -> Result<()> {
 }
 
 fn run_vm(file: &PathBuf) -> Result<()> {
-    let source = fs::read_to_string(file).expect("Failed to read file");
+    let source = {
+        use std::io::Read;
+        let mut file_handle = std::fs::File::open(file).expect("Failed to open file");
+        let mut buf = String::new();
+        file_handle.take(10 * 1024 * 1024).read_to_string(&mut buf).expect("Failed to read file");
+        buf
+    };
 
     // Use the vm::run_vm helper which compiles and runs
     match wokelang::vm::run_vm(&source) {
@@ -261,7 +279,13 @@ fn run_vm(file: &PathBuf) -> Result<()> {
 }
 
 fn disassemble(file: &PathBuf) -> Result<()> {
-    let source = fs::read_to_string(file).expect("Failed to read file");
+    let source = {
+        use std::io::Read;
+        let mut file_handle = std::fs::File::open(file).expect("Failed to open file");
+        let mut buf = String::new();
+        file_handle.take(10 * 1024 * 1024).read_to_string(&mut buf).expect("Failed to read file");
+        buf
+    };
 
     // Compile to bytecode
     let compiled = match wokelang::vm::compile(&source) {
@@ -280,7 +304,13 @@ fn disassemble(file: &PathBuf) -> Result<()> {
 }
 
 fn typecheck_program(file: &PathBuf) -> Result<()> {
-    let source = fs::read_to_string(file).expect("Failed to read file");
+    let source = {
+        use std::io::Read;
+        let mut file_handle = std::fs::File::open(file).expect("Failed to open file");
+        let mut buf = String::new();
+        file_handle.take(10 * 1024 * 1024).read_to_string(&mut buf).expect("Failed to read file");
+        buf
+    };
     let lexer = Lexer::new(&source);
 
     let tokens = match lexer.tokenize() {
@@ -314,7 +344,13 @@ fn typecheck_program(file: &PathBuf) -> Result<()> {
 }
 
 fn lint_program(file: &PathBuf) -> Result<()> {
-    let source = fs::read_to_string(file).expect("Failed to read file");
+    let source = {
+        use std::io::Read;
+        let mut file_handle = std::fs::File::open(file).expect("Failed to open file");
+        let mut buf = String::new();
+        file_handle.take(10 * 1024 * 1024).read_to_string(&mut buf).expect("Failed to read file");
+        buf
+    };
     let lexer = Lexer::new(&source);
 
     let tokens = match lexer.tokenize() {
@@ -355,7 +391,13 @@ fn lint_program(file: &PathBuf) -> Result<()> {
 }
 
 fn tokenize_file(file: &PathBuf) -> Result<()> {
-    let source = fs::read_to_string(file).expect("Failed to read file");
+    let source = {
+        use std::io::Read;
+        let mut file_handle = std::fs::File::open(file).expect("Failed to open file");
+        let mut buf = String::new();
+        file_handle.take(10 * 1024 * 1024).read_to_string(&mut buf).expect("Failed to read file");
+        buf
+    };
     let lexer = Lexer::new(&source);
 
     let tokens = match lexer.tokenize() {
@@ -381,7 +423,13 @@ fn tokenize_file(file: &PathBuf) -> Result<()> {
 /// - `sexpr` / `sexp`: S-expression representation
 /// - `json`: JSON serialization via serde_json
 fn parse_file(file: &PathBuf, format: &str) -> Result<()> {
-    let source = fs::read_to_string(file).expect("Failed to read file");
+    let source = {
+        use std::io::Read;
+        let mut file_handle = std::fs::File::open(file).expect("Failed to open file");
+        let mut buf = String::new();
+        file_handle.take(10 * 1024 * 1024).read_to_string(&mut buf).expect("Failed to read file");
+        buf
+    };
     let lexer = Lexer::new(&source);
 
     let tokens = match lexer.tokenize() {

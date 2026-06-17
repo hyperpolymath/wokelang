@@ -138,8 +138,15 @@ impl ModuleLoader {
         self.loading.insert(path.clone());
 
         // Load and parse the file
-        let source = fs::read_to_string(&path)
-            .map_err(|e| ModuleError::IoError(format!("Failed to read {}: {}", path.display(), e)))?;
+        let source = {
+            use std::io::Read;
+            let mut file = std::fs::File::open(&path)
+                .map_err(|e| ModuleError::IoError(format!("Failed to open {}: {}", path.display(), e)))?;
+            let mut buf = String::new();
+            file.take(5 * 1024 * 1024).read_to_string(&mut buf)
+                .map_err(|e| ModuleError::IoError(format!("Failed to read {}: {}", path.display(), e)))?;
+            buf
+        };
 
         let lexer = Lexer::new(&source);
         let tokens = lexer
@@ -186,8 +193,15 @@ impl ModuleLoader {
         }
 
         // Load and parse
-        let source = fs::read_to_string(&path)
-            .map_err(|e| ModuleError::IoError(format!("Failed to read {}: {}", path.display(), e)))?;
+        let source = {
+            use std::io::Read;
+            let mut file = std::fs::File::open(&path)
+                .map_err(|e| ModuleError::IoError(format!("Failed to open {}: {}", path.display(), e)))?;
+            let mut buf = String::new();
+            file.take(5 * 1024 * 1024).read_to_string(&mut buf)
+                .map_err(|e| ModuleError::IoError(format!("Failed to read {}: {}", path.display(), e)))?;
+            buf
+        };
 
         let lexer = Lexer::new(&source);
         let tokens = lexer
