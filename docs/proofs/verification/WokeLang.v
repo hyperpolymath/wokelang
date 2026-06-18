@@ -187,6 +187,42 @@ Inductive has_type : type_env -> expr -> woke_type -> Prop :=
       has_type G e1 TBool ->
       has_type G e2 TBool ->
       has_type G (EBinOp BAnd e1 e2) TBool
+  | T_Or : forall G e1 e2,
+      has_type G e1 TBool ->
+      has_type G e2 TBool ->
+      has_type G (EBinOp BOr e1 e2) TBool
+  | T_Sub_Int : forall G e1 e2,
+      has_type G e1 TInt ->
+      has_type G e2 TInt ->
+      has_type G (EBinOp BSub e1 e2) TInt
+  | T_Mul_Int : forall G e1 e2,
+      has_type G e1 TInt ->
+      has_type G e2 TInt ->
+      has_type G (EBinOp BMul e1 e2) TInt
+  | T_Div_Int : forall G e1 e2,
+      has_type G e1 TInt ->
+      has_type G e2 TInt ->
+      has_type G (EBinOp BDiv e1 e2) TInt
+  | T_Mod_Int : forall G e1 e2,
+      has_type G e1 TInt ->
+      has_type G e2 TInt ->
+      has_type G (EBinOp BMod e1 e2) TInt
+  | T_Lt_Int : forall G e1 e2,
+      has_type G e1 TInt ->
+      has_type G e2 TInt ->
+      has_type G (EBinOp BLt e1 e2) TBool
+  | T_Gt_Int : forall G e1 e2,
+      has_type G e1 TInt ->
+      has_type G e2 TInt ->
+      has_type G (EBinOp BGt e1 e2) TBool
+  | T_Le_Int : forall G e1 e2,
+      has_type G e1 TInt ->
+      has_type G e2 TInt ->
+      has_type G (EBinOp BLe e1 e2) TBool
+  | T_Ge_Int : forall G e1 e2,
+      has_type G e1 TInt ->
+      has_type G e2 TInt ->
+      has_type G (EBinOp BGe e1 e2) TBool
   | T_Neg_Int : forall G e,
       has_type G e TInt ->
       has_type G (EUnOp UNeg e) TInt
@@ -276,6 +312,41 @@ Inductive step : expr -> env -> expr -> env -> Prop :=
   | S_And : forall b1 b2 rho,
       step (EBinOp BAnd (ELit (VBool b1)) (ELit (VBool b2))) rho
            (ELit (VBool (andb b1 b2))) rho
+  | S_Or : forall b1 b2 rho,
+      step (EBinOp BOr (ELit (VBool b1)) (ELit (VBool b2))) rho
+           (ELit (VBool (orb b1 b2))) rho
+  | S_Sub_Int : forall n1 n2 rho,
+      step (EBinOp BSub (ELit (VInt n1)) (ELit (VInt n2))) rho
+           (ELit (VInt (n1 - n2)%Z)) rho
+  | S_Mul_Int : forall n1 n2 rho,
+      step (EBinOp BMul (ELit (VInt n1)) (ELit (VInt n2))) rho
+           (ELit (VInt (n1 * n2)%Z)) rho
+  | S_Div_Int : forall n1 n2 rho,
+      n2 <> 0%Z ->
+      step (EBinOp BDiv (ELit (VInt n1)) (ELit (VInt n2))) rho
+           (ELit (VInt (n1 / n2)%Z)) rho
+  | S_Div_Zero : forall n1 rho,
+      step (EBinOp BDiv (ELit (VInt n1)) (ELit (VInt 0%Z))) rho
+           (ELit (VOops "division by zero"%string)) rho
+  | S_Mod_Int : forall n1 n2 rho,
+      n2 <> 0%Z ->
+      step (EBinOp BMod (ELit (VInt n1)) (ELit (VInt n2))) rho
+           (ELit (VInt (n1 mod n2)%Z)) rho
+  | S_Mod_Zero : forall n1 rho,
+      step (EBinOp BMod (ELit (VInt n1)) (ELit (VInt 0%Z))) rho
+           (ELit (VOops "modulo by zero"%string)) rho
+  | S_Lt : forall n1 n2 rho,
+      step (EBinOp BLt (ELit (VInt n1)) (ELit (VInt n2))) rho
+           (ELit (VBool (Z.ltb n1 n2))) rho
+  | S_Gt : forall n1 n2 rho,
+      step (EBinOp BGt (ELit (VInt n1)) (ELit (VInt n2))) rho
+           (ELit (VBool (Z.gtb n1 n2))) rho
+  | S_Le : forall n1 n2 rho,
+      step (EBinOp BLe (ELit (VInt n1)) (ELit (VInt n2))) rho
+           (ELit (VBool (Z.leb n1 n2))) rho
+  | S_Ge : forall n1 n2 rho,
+      step (EBinOp BGe (ELit (VInt n1)) (ELit (VInt n2))) rho
+           (ELit (VBool (Z.geb n1 n2))) rho
   | S_Eq_False : forall v1 v2 rho,
       v1 <> v2 ->
       step (EBinOp BEq (ELit v1) (ELit v2)) rho (ELit (VBool false)) rho
@@ -793,6 +864,246 @@ Proof.
            apply S_BinOp_Right; [constructor | assumption].
         -- exists (ELit (VOops s1)), empty_env. apply S_BinOp_Error_Left.
     + exists (EBinOp BAnd e1' e2), rho1'. apply S_BinOp_Left. assumption.
+  - (* T_Or *)
+    right.
+    assert (IH1 : is_value e1 \/ exists e' rho', step e1 empty_env e' rho').
+    { eapply IH. unfold ltof. simpl. lia. eassumption. }
+    assert (IH2 : is_value e2 \/ exists e' rho', step e2 empty_env e' rho').
+    { eapply IH. unfold ltof. simpl. lia. eassumption. }
+    destruct IH1 as [Hv1 | [e1' [rho1' Hs1]]].
+    + destruct IH2 as [Hv2 | [e2' [rho2' Hs2]]].
+      * match goal with
+        | [ H1 : has_type _ e1 TBool, H2 : has_type _ e2 TBool |- _ ] =>
+          destruct (canonical_forms_bool_expr _ H1 Hv1) as [[b1 Heq1] | [s1 Heq1]];
+          destruct (canonical_forms_bool_expr _ H2 Hv2) as [[b2 Heq2] | [s2 Heq2]];
+          subst
+        end.
+        -- exists (ELit (VBool (orb b1 b2))), empty_env. apply S_Or.
+        -- exists (ELit (VOops s2)), empty_env. apply S_BinOp_Error_Right.
+        -- exists (ELit (VOops s1)), empty_env. apply S_BinOp_Error_Left.
+        -- exists (ELit (VOops s1)), empty_env. apply S_BinOp_Error_Left.
+      * match goal with
+        | [ H1 : has_type _ e1 TBool |- _ ] =>
+          destruct (canonical_forms_bool_expr _ H1 Hv1) as [[b1 Heq1] | [s1 Heq1]]; subst
+        end.
+        -- exists (EBinOp BOr (ELit (VBool b1)) e2'), rho2'.
+           apply S_BinOp_Right; [constructor | assumption].
+        -- exists (ELit (VOops s1)), empty_env. apply S_BinOp_Error_Left.
+    + exists (EBinOp BOr e1' e2), rho1'. apply S_BinOp_Left. assumption.
+  - (* T_Sub_Int *)
+    right.
+    assert (IH1 : is_value e1 \/ exists e' rho', step e1 empty_env e' rho').
+    { eapply IH. unfold ltof. simpl. lia. eassumption. }
+    assert (IH2 : is_value e2 \/ exists e' rho', step e2 empty_env e' rho').
+    { eapply IH. unfold ltof. simpl. lia. eassumption. }
+    destruct IH1 as [Hv1 | [e1' [rho1' Hs1]]].
+    + destruct IH2 as [Hv2 | [e2' [rho2' Hs2]]].
+      * match goal with
+        | [ H1 : has_type _ e1 TInt, H2 : has_type _ e2 TInt |- _ ] =>
+          destruct (canonical_forms_int_expr _ H1 Hv1) as [[n1 Heq1] | [s1 Heq1]];
+          destruct (canonical_forms_int_expr _ H2 Hv2) as [[n2 Heq2] | [s2 Heq2]];
+          subst
+        end.
+        -- exists (ELit (VInt (n1 - n2)%Z)), empty_env. apply S_Sub_Int.
+        -- exists (ELit (VOops s2)), empty_env. apply S_BinOp_Error_Right.
+        -- exists (ELit (VOops s1)), empty_env. apply S_BinOp_Error_Left.
+        -- exists (ELit (VOops s1)), empty_env. apply S_BinOp_Error_Left.
+      * match goal with
+        | [ H1 : has_type _ e1 TInt |- _ ] =>
+          destruct (canonical_forms_int_expr _ H1 Hv1) as [[n1 Heq1] | [s1 Heq1]]; subst
+        end.
+        -- exists (EBinOp BSub (ELit (VInt n1)) e2'), rho2'.
+           apply S_BinOp_Right; [constructor | assumption].
+        -- exists (ELit (VOops s1)), empty_env. apply S_BinOp_Error_Left.
+    + exists (EBinOp BSub e1' e2), rho1'. apply S_BinOp_Left. assumption.
+  - (* T_Mul_Int *)
+    right.
+    assert (IH1 : is_value e1 \/ exists e' rho', step e1 empty_env e' rho').
+    { eapply IH. unfold ltof. simpl. lia. eassumption. }
+    assert (IH2 : is_value e2 \/ exists e' rho', step e2 empty_env e' rho').
+    { eapply IH. unfold ltof. simpl. lia. eassumption. }
+    destruct IH1 as [Hv1 | [e1' [rho1' Hs1]]].
+    + destruct IH2 as [Hv2 | [e2' [rho2' Hs2]]].
+      * match goal with
+        | [ H1 : has_type _ e1 TInt, H2 : has_type _ e2 TInt |- _ ] =>
+          destruct (canonical_forms_int_expr _ H1 Hv1) as [[n1 Heq1] | [s1 Heq1]];
+          destruct (canonical_forms_int_expr _ H2 Hv2) as [[n2 Heq2] | [s2 Heq2]];
+          subst
+        end.
+        -- exists (ELit (VInt (n1 * n2)%Z)), empty_env. apply S_Mul_Int.
+        -- exists (ELit (VOops s2)), empty_env. apply S_BinOp_Error_Right.
+        -- exists (ELit (VOops s1)), empty_env. apply S_BinOp_Error_Left.
+        -- exists (ELit (VOops s1)), empty_env. apply S_BinOp_Error_Left.
+      * match goal with
+        | [ H1 : has_type _ e1 TInt |- _ ] =>
+          destruct (canonical_forms_int_expr _ H1 Hv1) as [[n1 Heq1] | [s1 Heq1]]; subst
+        end.
+        -- exists (EBinOp BMul (ELit (VInt n1)) e2'), rho2'.
+           apply S_BinOp_Right; [constructor | assumption].
+        -- exists (ELit (VOops s1)), empty_env. apply S_BinOp_Error_Left.
+    + exists (EBinOp BMul e1' e2), rho1'. apply S_BinOp_Left. assumption.
+  - (* T_Div_Int *)
+    right.
+    assert (IH1 : is_value e1 \/ exists e' rho', step e1 empty_env e' rho').
+    { eapply IH. unfold ltof. simpl. lia. eassumption. }
+    assert (IH2 : is_value e2 \/ exists e' rho', step e2 empty_env e' rho').
+    { eapply IH. unfold ltof. simpl. lia. eassumption. }
+    destruct IH1 as [Hv1 | [e1' [rho1' Hs1]]].
+    + destruct IH2 as [Hv2 | [e2' [rho2' Hs2]]].
+      * match goal with
+        | [ H1 : has_type _ e1 TInt, H2 : has_type _ e2 TInt |- _ ] =>
+          destruct (canonical_forms_int_expr _ H1 Hv1) as [[n1 Heq1] | [s1 Heq1]];
+          destruct (canonical_forms_int_expr _ H2 Hv2) as [[n2 Heq2] | [s2 Heq2]];
+          subst
+        end.
+        -- destruct (Z.eq_dec n2 0%Z) as [Hz | Hnz].
+           ++ subst. exists (ELit (VOops "division by zero"%string)), empty_env.
+              apply S_Div_Zero.
+           ++ exists (ELit (VInt (n1 / n2)%Z)), empty_env. apply S_Div_Int. assumption.
+        -- exists (ELit (VOops s2)), empty_env. apply S_BinOp_Error_Right.
+        -- exists (ELit (VOops s1)), empty_env. apply S_BinOp_Error_Left.
+        -- exists (ELit (VOops s1)), empty_env. apply S_BinOp_Error_Left.
+      * match goal with
+        | [ H1 : has_type _ e1 TInt |- _ ] =>
+          destruct (canonical_forms_int_expr _ H1 Hv1) as [[n1 Heq1] | [s1 Heq1]]; subst
+        end.
+        -- exists (EBinOp BDiv (ELit (VInt n1)) e2'), rho2'.
+           apply S_BinOp_Right; [constructor | assumption].
+        -- exists (ELit (VOops s1)), empty_env. apply S_BinOp_Error_Left.
+    + exists (EBinOp BDiv e1' e2), rho1'. apply S_BinOp_Left. assumption.
+  - (* T_Mod_Int *)
+    right.
+    assert (IH1 : is_value e1 \/ exists e' rho', step e1 empty_env e' rho').
+    { eapply IH. unfold ltof. simpl. lia. eassumption. }
+    assert (IH2 : is_value e2 \/ exists e' rho', step e2 empty_env e' rho').
+    { eapply IH. unfold ltof. simpl. lia. eassumption. }
+    destruct IH1 as [Hv1 | [e1' [rho1' Hs1]]].
+    + destruct IH2 as [Hv2 | [e2' [rho2' Hs2]]].
+      * match goal with
+        | [ H1 : has_type _ e1 TInt, H2 : has_type _ e2 TInt |- _ ] =>
+          destruct (canonical_forms_int_expr _ H1 Hv1) as [[n1 Heq1] | [s1 Heq1]];
+          destruct (canonical_forms_int_expr _ H2 Hv2) as [[n2 Heq2] | [s2 Heq2]];
+          subst
+        end.
+        -- destruct (Z.eq_dec n2 0%Z) as [Hz | Hnz].
+           ++ subst. exists (ELit (VOops "modulo by zero"%string)), empty_env.
+              apply S_Mod_Zero.
+           ++ exists (ELit (VInt (n1 mod n2)%Z)), empty_env. apply S_Mod_Int. assumption.
+        -- exists (ELit (VOops s2)), empty_env. apply S_BinOp_Error_Right.
+        -- exists (ELit (VOops s1)), empty_env. apply S_BinOp_Error_Left.
+        -- exists (ELit (VOops s1)), empty_env. apply S_BinOp_Error_Left.
+      * match goal with
+        | [ H1 : has_type _ e1 TInt |- _ ] =>
+          destruct (canonical_forms_int_expr _ H1 Hv1) as [[n1 Heq1] | [s1 Heq1]]; subst
+        end.
+        -- exists (EBinOp BMod (ELit (VInt n1)) e2'), rho2'.
+           apply S_BinOp_Right; [constructor | assumption].
+        -- exists (ELit (VOops s1)), empty_env. apply S_BinOp_Error_Left.
+    + exists (EBinOp BMod e1' e2), rho1'. apply S_BinOp_Left. assumption.
+  - (* T_Lt_Int *)
+    right.
+    assert (IH1 : is_value e1 \/ exists e' rho', step e1 empty_env e' rho').
+    { eapply IH. unfold ltof. simpl. lia. eassumption. }
+    assert (IH2 : is_value e2 \/ exists e' rho', step e2 empty_env e' rho').
+    { eapply IH. unfold ltof. simpl. lia. eassumption. }
+    destruct IH1 as [Hv1 | [e1' [rho1' Hs1]]].
+    + destruct IH2 as [Hv2 | [e2' [rho2' Hs2]]].
+      * match goal with
+        | [ H1 : has_type _ e1 TInt, H2 : has_type _ e2 TInt |- _ ] =>
+          destruct (canonical_forms_int_expr _ H1 Hv1) as [[n1 Heq1] | [s1 Heq1]];
+          destruct (canonical_forms_int_expr _ H2 Hv2) as [[n2 Heq2] | [s2 Heq2]];
+          subst
+        end.
+        -- exists (ELit (VBool (Z.ltb n1 n2))), empty_env. apply S_Lt.
+        -- exists (ELit (VOops s2)), empty_env. apply S_BinOp_Error_Right.
+        -- exists (ELit (VOops s1)), empty_env. apply S_BinOp_Error_Left.
+        -- exists (ELit (VOops s1)), empty_env. apply S_BinOp_Error_Left.
+      * match goal with
+        | [ H1 : has_type _ e1 TInt |- _ ] =>
+          destruct (canonical_forms_int_expr _ H1 Hv1) as [[n1 Heq1] | [s1 Heq1]]; subst
+        end.
+        -- exists (EBinOp BLt (ELit (VInt n1)) e2'), rho2'.
+           apply S_BinOp_Right; [constructor | assumption].
+        -- exists (ELit (VOops s1)), empty_env. apply S_BinOp_Error_Left.
+    + exists (EBinOp BLt e1' e2), rho1'. apply S_BinOp_Left. assumption.
+  - (* T_Gt_Int *)
+    right.
+    assert (IH1 : is_value e1 \/ exists e' rho', step e1 empty_env e' rho').
+    { eapply IH. unfold ltof. simpl. lia. eassumption. }
+    assert (IH2 : is_value e2 \/ exists e' rho', step e2 empty_env e' rho').
+    { eapply IH. unfold ltof. simpl. lia. eassumption. }
+    destruct IH1 as [Hv1 | [e1' [rho1' Hs1]]].
+    + destruct IH2 as [Hv2 | [e2' [rho2' Hs2]]].
+      * match goal with
+        | [ H1 : has_type _ e1 TInt, H2 : has_type _ e2 TInt |- _ ] =>
+          destruct (canonical_forms_int_expr _ H1 Hv1) as [[n1 Heq1] | [s1 Heq1]];
+          destruct (canonical_forms_int_expr _ H2 Hv2) as [[n2 Heq2] | [s2 Heq2]];
+          subst
+        end.
+        -- exists (ELit (VBool (Z.gtb n1 n2))), empty_env. apply S_Gt.
+        -- exists (ELit (VOops s2)), empty_env. apply S_BinOp_Error_Right.
+        -- exists (ELit (VOops s1)), empty_env. apply S_BinOp_Error_Left.
+        -- exists (ELit (VOops s1)), empty_env. apply S_BinOp_Error_Left.
+      * match goal with
+        | [ H1 : has_type _ e1 TInt |- _ ] =>
+          destruct (canonical_forms_int_expr _ H1 Hv1) as [[n1 Heq1] | [s1 Heq1]]; subst
+        end.
+        -- exists (EBinOp BGt (ELit (VInt n1)) e2'), rho2'.
+           apply S_BinOp_Right; [constructor | assumption].
+        -- exists (ELit (VOops s1)), empty_env. apply S_BinOp_Error_Left.
+    + exists (EBinOp BGt e1' e2), rho1'. apply S_BinOp_Left. assumption.
+  - (* T_Le_Int *)
+    right.
+    assert (IH1 : is_value e1 \/ exists e' rho', step e1 empty_env e' rho').
+    { eapply IH. unfold ltof. simpl. lia. eassumption. }
+    assert (IH2 : is_value e2 \/ exists e' rho', step e2 empty_env e' rho').
+    { eapply IH. unfold ltof. simpl. lia. eassumption. }
+    destruct IH1 as [Hv1 | [e1' [rho1' Hs1]]].
+    + destruct IH2 as [Hv2 | [e2' [rho2' Hs2]]].
+      * match goal with
+        | [ H1 : has_type _ e1 TInt, H2 : has_type _ e2 TInt |- _ ] =>
+          destruct (canonical_forms_int_expr _ H1 Hv1) as [[n1 Heq1] | [s1 Heq1]];
+          destruct (canonical_forms_int_expr _ H2 Hv2) as [[n2 Heq2] | [s2 Heq2]];
+          subst
+        end.
+        -- exists (ELit (VBool (Z.leb n1 n2))), empty_env. apply S_Le.
+        -- exists (ELit (VOops s2)), empty_env. apply S_BinOp_Error_Right.
+        -- exists (ELit (VOops s1)), empty_env. apply S_BinOp_Error_Left.
+        -- exists (ELit (VOops s1)), empty_env. apply S_BinOp_Error_Left.
+      * match goal with
+        | [ H1 : has_type _ e1 TInt |- _ ] =>
+          destruct (canonical_forms_int_expr _ H1 Hv1) as [[n1 Heq1] | [s1 Heq1]]; subst
+        end.
+        -- exists (EBinOp BLe (ELit (VInt n1)) e2'), rho2'.
+           apply S_BinOp_Right; [constructor | assumption].
+        -- exists (ELit (VOops s1)), empty_env. apply S_BinOp_Error_Left.
+    + exists (EBinOp BLe e1' e2), rho1'. apply S_BinOp_Left. assumption.
+  - (* T_Ge_Int *)
+    right.
+    assert (IH1 : is_value e1 \/ exists e' rho', step e1 empty_env e' rho').
+    { eapply IH. unfold ltof. simpl. lia. eassumption. }
+    assert (IH2 : is_value e2 \/ exists e' rho', step e2 empty_env e' rho').
+    { eapply IH. unfold ltof. simpl. lia. eassumption. }
+    destruct IH1 as [Hv1 | [e1' [rho1' Hs1]]].
+    + destruct IH2 as [Hv2 | [e2' [rho2' Hs2]]].
+      * match goal with
+        | [ H1 : has_type _ e1 TInt, H2 : has_type _ e2 TInt |- _ ] =>
+          destruct (canonical_forms_int_expr _ H1 Hv1) as [[n1 Heq1] | [s1 Heq1]];
+          destruct (canonical_forms_int_expr _ H2 Hv2) as [[n2 Heq2] | [s2 Heq2]];
+          subst
+        end.
+        -- exists (ELit (VBool (Z.geb n1 n2))), empty_env. apply S_Ge.
+        -- exists (ELit (VOops s2)), empty_env. apply S_BinOp_Error_Right.
+        -- exists (ELit (VOops s1)), empty_env. apply S_BinOp_Error_Left.
+        -- exists (ELit (VOops s1)), empty_env. apply S_BinOp_Error_Left.
+      * match goal with
+        | [ H1 : has_type _ e1 TInt |- _ ] =>
+          destruct (canonical_forms_int_expr _ H1 Hv1) as [[n1 Heq1] | [s1 Heq1]]; subst
+        end.
+        -- exists (EBinOp BGe (ELit (VInt n1)) e2'), rho2'.
+           apply S_BinOp_Right; [constructor | assumption].
+        -- exists (ELit (VOops s1)), empty_env. apply S_BinOp_Error_Left.
+    + exists (EBinOp BGe e1' e2), rho1'. apply S_BinOp_Left. assumption.
   - (* T_Neg_Int *)
     right.
     assert (IHe : is_value e0 \/ exists e' rho', step e0 empty_env e' rho').
@@ -920,6 +1231,11 @@ Proof.
      derivation and reconstruct with the IH. Error cases use T_Oops_Any. *)
   induction Hs; intros t Ht;
     try solve [apply T_Oops_Any];
+    (* New binop value results (or/sub/mul/div/mod/lt/gt/le/ge): invert the
+       single relevant typing rule and rebuild via T_Int/T_Bool. Placed early
+       so these dispatch in one step instead of grinding through the cascade
+       below; div/mod-by-zero results are VOops, already closed by T_Oops_Any. *)
+    try solve [match goal with |- has_type _ (ELit _) _ => inversion Ht; subst; constructor end];
     try solve [
       inversion Ht; subst;
       first [ apply T_Add_Int; [apply IHHs; assumption | assumption]
@@ -927,11 +1243,29 @@ Proof.
             | apply T_Add_String; [apply IHHs; assumption | assumption]
             | eapply T_Eq; [apply IHHs; eassumption | eassumption]
             | apply T_And; [apply IHHs; assumption | assumption]
+            | apply T_Or; [apply IHHs; assumption | assumption]
+            | apply T_Sub_Int; [apply IHHs; assumption | assumption]
+            | apply T_Mul_Int; [apply IHHs; assumption | assumption]
+            | apply T_Div_Int; [apply IHHs; assumption | assumption]
+            | apply T_Mod_Int; [apply IHHs; assumption | assumption]
+            | apply T_Lt_Int; [apply IHHs; assumption | assumption]
+            | apply T_Gt_Int; [apply IHHs; assumption | assumption]
+            | apply T_Le_Int; [apply IHHs; assumption | assumption]
+            | apply T_Ge_Int; [apply IHHs; assumption | assumption]
             | apply T_Add_Int; [assumption | apply IHHs; assumption]
             | apply T_Add_Float; [assumption | apply IHHs; assumption]
             | apply T_Add_String; [assumption | apply IHHs; assumption]
             | eapply T_Eq; [eassumption | apply IHHs; eassumption]
             | apply T_And; [assumption | apply IHHs; assumption]
+            | apply T_Or; [assumption | apply IHHs; assumption]
+            | apply T_Sub_Int; [assumption | apply IHHs; assumption]
+            | apply T_Mul_Int; [assumption | apply IHHs; assumption]
+            | apply T_Div_Int; [assumption | apply IHHs; assumption]
+            | apply T_Mod_Int; [assumption | apply IHHs; assumption]
+            | apply T_Lt_Int; [assumption | apply IHHs; assumption]
+            | apply T_Gt_Int; [assumption | apply IHHs; assumption]
+            | apply T_Le_Int; [assumption | apply IHHs; assumption]
+            | apply T_Ge_Int; [assumption | apply IHHs; assumption]
             | apply T_Neg_Int; apply IHHs; assumption
             | apply T_Neg_Float; apply IHHs; assumption
             | apply T_Not; apply IHHs; assumption
