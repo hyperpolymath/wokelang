@@ -35,6 +35,17 @@
   - preservation: stepping preserves types
   - type_safety: multi-step evaluation preserves types (by induction + preservation)
   - consent_monotonicity / consent_preservation: consent system properties
+
+  ### Arrays (parity with Coq's WokeLang.v):
+  `tArray` / `tArrayVal` type array expressions and array literal values
+  (the mirror of Coq's `T_Array` / `T_Lit_Array`); `Step` gains `sArrayStep`
+  (left-most-element congruence), `sArrayVal` (normalise a fully-evaluated
+  array to a `.vArray` literal value), and `sArrayErr` (panic propagation).
+  `progress` and `preservation` cover all three. The `∀ e ∈ es` premise shape
+  yields a per-element induction hypothesis directly, so — unlike the Coq
+  development — no well-founded recursion on an expression-size measure is
+  needed: `array_split` does the pure-list decomposition and the IH answers
+  value-or-steps per element.
 -/
 
 namespace WokeLang
@@ -221,6 +232,18 @@ inductive HasType : TypeEnv → Expr → WokeType → Prop where
       HasType Γ (.unwrap e) tOk
   | tError : ∀ Γ msg t,
       HasType Γ (.error msg) t
+  -- Arrays (mirror of Coq's `T_Array` / `T_Lit_Array` in WokeLang.v).
+  -- `tArray` types an array *expression* elementwise; `tArrayVal` types a
+  -- fully-evaluated array *literal value*. Both premises use the `∀ e ∈ es`
+  -- shape, which (unlike Coq's `Forall`) yields a per-element induction
+  -- hypothesis directly from `induction`, so the `progress`/`preservation`
+  -- array cases need no well-founded recursion on an `expr_size` measure.
+  | tArray : ∀ Γ es t,
+      (∀ e, e ∈ es → HasType Γ e t) →
+      HasType Γ (.array es) (.array t)
+  | tArrayVal : ∀ Γ vs t,
+      (∀ v, v ∈ vs → HasType Γ (.lit v) t) →
+      HasType Γ (.lit (.vArray vs)) (.array t)
 
 -- =========================================================================
 -- 4. Operational Semantics
@@ -332,6 +355,20 @@ inductive Step : Expr → Env → Expr → Env → Prop where
       Step (.oops (.error msg)) ρ (.error msg) ρ
   | sUnwrapErr : ∀ msg ρ,
       Step (.unwrap (.error msg)) ρ (.error msg) ρ
+  -- Array evaluation (mirror of Coq's `S_Array_step` / `S_Array_val`, plus
+  -- panic propagation). `sArrayStep` reduces the left-most non-value element;
+  -- `sArrayVal` normalises a fully-evaluated array to an array literal value;
+  -- `sArrayErr` propagates a panic out of an array, as the binop rules do.
+  -- A fully-evaluated array is *not* an `IsValue` (it always steps via
+  -- `sArrayVal`); the `IsValue` is the resulting `.lit (.vArray vs)`.
+  | sArrayStep : ∀ (vs : List Value) (e e' : Expr) (es : List Expr) (ρ ρ' : Env),
+      Step e ρ e' ρ' →
+      Step (.array (vs.map Expr.lit ++ e :: es)) ρ
+           (.array (vs.map Expr.lit ++ e' :: es)) ρ'
+  | sArrayVal : ∀ (vs : List Value) (ρ : Env),
+      Step (.array (vs.map Expr.lit)) ρ (.lit (.vArray vs)) ρ
+  | sArrayErr : ∀ (vs : List Value) (msg : String) (es : List Expr) (ρ : Env),
+      Step (.array (vs.map Expr.lit ++ .error msg :: es)) ρ (.error msg) ρ
 
 /-- Multi-step reduction (reflexive transitive closure) -/
 inductive MultiStep : Expr → Env → Expr → Env → Prop where
@@ -385,6 +422,40 @@ theorem canonical_forms_result : ∀ v tOk tErr,
   cases h with
   | tOkayVal _ _ h₁ => left; exact ⟨_, rfl⟩
   | tOopsVal _ _ => right; exact ⟨_, rfl⟩
+
+/-- `isLitB e` is `true` exactly when `e` is a literal-value expression.
+    Used by `array_split` to locate the left-most non-literal array element. -/
+def isLitB : Expr → Bool
+  | .lit _ => true
+  | _ => false
+
+theorem isLitB_true {e : Expr} : isLitB e = true → ∃ v, e = .lit v := by
+  cases e <;> simp [isLitB]
+
+theorem isLitB_false {e : Expr} : isLitB e = false → ∀ v, e ≠ .lit v := by
+  cases e <;> simp [isLitB]
+
+/-- A list of expressions is either all literal values, or splits as a prefix
+    of literal values, a left-most non-literal element, and a remainder. This
+    is the Lean analogue of Coq's `array_elements_progress` decomposition;
+    here it is pure list reasoning, with the "is it a value or does it step?"
+    question deferred to the per-element IH in the `tArray` progress case. -/
+theorem array_split (es : List Expr) :
+    (∃ vs : List Value, es = vs.map Expr.lit) ∨
+    (∃ (vs : List Value) (e : Expr) (rest : List Expr),
+        es = vs.map Expr.lit ++ e :: rest ∧ ∀ v, e ≠ .lit v) := by
+  induction es with
+  | nil => left; exact ⟨[], rfl⟩
+  | cons hd tl ih =>
+    cases hb : isLitB hd with
+    | true =>
+      obtain ⟨v, rfl⟩ := isLitB_true hb
+      cases ih with
+      | inl h => obtain ⟨vs, rfl⟩ := h; left; exact ⟨v :: vs, rfl⟩
+      | inr h => obtain ⟨vs, e, rest, rfl, hne⟩ := h
+                 right; exact ⟨v :: vs, e, rest, rfl, hne⟩
+    | false =>
+      right; exact ⟨[], hd, tl, rfl, isLitB_false hb⟩
 
 /-- Progress theorem: a well-typed closed expression is either a value or can step.
     unwrap of an error value steps to an error expression via sUnwrapError,
@@ -838,6 +909,32 @@ theorem progress : ∀ e t,
   | tError msg _ =>
     -- Error expressions are terminal values (panics).
     left; exact .error msg
+  | tArray es t hall ih =>
+    -- An array expression is never a value: it either normalises (all
+    -- elements are literals ⇒ sArrayVal), propagates a panic (left-most
+    -- non-literal is an error ⇒ sArrayErr), or steps its left-most
+    -- non-literal element (⇒ sArrayStep). The per-element progress IH `ih`
+    -- discharges the last two via `array_split`.
+    right
+    cases array_split es with
+    | inl hsplit =>
+      obtain ⟨vs, rfl⟩ := hsplit
+      exact ⟨.lit (.vArray vs), emptyEnv, .sArrayVal vs emptyEnv⟩
+    | inr hsplit =>
+      obtain ⟨vs, e, rest, rfl, hne⟩ := hsplit
+      have hin : e ∈ vs.map Expr.lit ++ e :: rest := by simp
+      cases ih e hin with
+      | inl hv =>
+        cases hv with
+        | lit v => exact absurd rfl (hne v)
+        | error msg => exact ⟨.error msg, emptyEnv, .sArrayErr vs msg rest emptyEnv⟩
+      | inr hstp =>
+        obtain ⟨e', ρ', hs⟩ := hstp
+        exact ⟨.array (vs.map Expr.lit ++ e' :: rest), ρ',
+               .sArrayStep vs e e' rest emptyEnv ρ' hs⟩
+  | tArrayVal vs t hall ih =>
+    -- A fully-evaluated array literal `.lit (.vArray vs)` is a value.
+    left; constructor
 
 /-- Preservation theorem: if a well-typed expression steps, the result is well-typed.
     Proof by induction on the Step derivation with inversion on the typing derivation.
@@ -1036,6 +1133,26 @@ theorem preservation : ∀ e e' t ρ ρ',
   | sUnwrapErr msg _ =>
     cases ht with
     | tUnwrap _ tOk tErr h₁ => exact .tError _ msg _
+  | sArrayStep vs e e' rest ρ ρ' hs ih =>
+    -- Congruence: the stepped element keeps its type (by the IH); every other
+    -- element keeps the witness it had from the original `tArray` derivation.
+    cases ht with
+    | tArray _ t' hall =>
+      refine .tArray _ _ t' (fun x hx => ?_)
+      rcases List.mem_append.1 hx with hpre | hcons
+      · exact hall x (List.mem_append.2 (Or.inl hpre))
+      · rcases List.mem_cons.1 hcons with rfl | htail
+        · exact ih t' (hall e (List.mem_append.2 (Or.inr List.mem_cons_self)))
+        · exact hall x (List.mem_append.2 (Or.inr (List.mem_cons_of_mem _ htail)))
+  | sArrayVal vs ρ =>
+    -- Normalisation: `.array (vs.map lit) : array t'` becomes the literal value
+    -- `.lit (.vArray vs) : array t'`, re-typed via `tArrayVal`.
+    cases ht with
+    | tArray _ t' hall =>
+      exact .tArrayVal _ vs t' (fun v hv => hall (Expr.lit v) (List.mem_map.2 ⟨v, hv, rfl⟩))
+  | sArrayErr vs msg rest ρ =>
+    -- Panic propagation: the result `.error msg` is well-typed at any type.
+    exact .tError _ msg _
 
 /-- Type safety theorem -/
 theorem type_safety : ∀ e t v ρ,
