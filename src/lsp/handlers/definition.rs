@@ -63,14 +63,12 @@ pub async fn goto_definition(
                     })));
                 }
             }
-            TopLevelItem::TypeDef(type_def) => {
-                if type_def.name == word {
-                    let range = span_to_range(&type_def.span, &doc.source);
-                    return Ok(Some(GotoDefinitionResponse::Scalar(Location {
-                        uri: uri.clone(),
-                        range,
-                    })));
-                }
+            TopLevelItem::TypeDef(type_def) if type_def.name == word => {
+                let range = span_to_range(&type_def.span, &doc.source);
+                return Ok(Some(GotoDefinitionResponse::Scalar(Location {
+                    uri: uri.clone(),
+                    range,
+                })));
             }
             _ => {}
         }

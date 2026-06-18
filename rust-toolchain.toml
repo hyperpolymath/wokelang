@@ -1,0 +1,15 @@
+# SPDX-License-Identifier: MPL-2.0
+# Pin the Rust toolchain so local builds and CI use the SAME compiler + clippy.
+#
+# Why this exists: CI installs `stable` (dtolnay/rust-toolchain@stable in
+# .github/workflows/security.yml + e2e.yml). When a developer's local `stable`
+# lagged CI's, clippy versions diverged (1.94 local vs 1.96 CI) and the
+# `Build Check` gate (`cargo clippy -- -D warnings`) failed on `main` with
+# `collapsible_match` lints that local clippy could not see. Pinning a single
+# version makes `cargo clippy` / `cargo fmt` deterministic across local and CI.
+#
+# Bump this deliberately (and re-run `cargo clippy` + `cargo fmt` locally)
+# rather than letting `stable` drift underneath the lint gate.
+[toolchain]
+channel = "1.96.0"
+components = ["clippy", "rustfmt"]
