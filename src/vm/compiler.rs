@@ -85,6 +85,16 @@ impl BytecodeCompiler {
             }
         }
 
+        // Record whether the `#care` consent-checking pragma is enabled, so the
+        // VM enforces consent blocks (deny-by-default) rather than running them.
+        for item in &program.items {
+            if let TopLevelItem::Pragma(p) = item {
+                if matches!(p.directive, PragmaDirective::Care) {
+                    self.program.care = p.enabled;
+                }
+            }
+        }
+
         // Second pass: compile function bodies
         for item in program.items.iter() {
             if let TopLevelItem::Function(func) = item {
@@ -278,22 +288,21 @@ impl BytecodeCompiler {
             }
 
             Statement::ConsentBlock(consent) => {
-                // Runtime consent checking
-                // Push permission string as constant
-                let perm_const = func.add_constant(Value::String(consent.permission.clone()));
-                func.emit(OpCode::Const(perm_const));
+                // Gate the body on a runtime consent check (`only if okay "..."`).
+                // `CheckConsent` pushes a Bool; if denied, skip the body. Under
+                // `#care` an ungranted permission is denied (deny-by-default,
+                // mirroring the non-interactive interpreter); with `#care` off the
+                // check passes. Seeding grants from `superpower` declarations is a
+                // follow-up.
+                func.emit(OpCode::CheckConsent(consent.permission.clone()));
+                let skip_body = func.emit(OpCode::JumpIfFalse(0));
 
-                // TODO: Add OpCode::CheckConsent when security system is integrated
-                // For now, assume consent is granted and execute body
-
-                // Pop permission string
-                func.emit(OpCode::Pop);
-
-                // Execute body
                 for stmt in &consent.body {
                     self.compile_statement(stmt, func)?;
                 }
 
+                let after_body = func.current_offset();
+                func.patch_jump(skip_body, after_body);
                 Ok(())
             }
 

@@ -211,4 +211,36 @@ mod tests {
         let err = run_vm(source).unwrap_err();
         assert!(err.contains("boom"), "expected error mentioning boom, got: {err}");
     }
+
+    #[test]
+    fn test_vm_consent_denied_under_care() {
+        // Under `#care on`, an ungranted consent block is skipped (deny-by-default),
+        // so the assignment inside it does not run.
+        let source = r#"
+            #care on;
+            to main() {
+                remember x = 1;
+                only if okay "file.read" {
+                    x = 99;
+                }
+                give back x;
+            }
+        "#;
+        assert_eq!(run_vm(source).unwrap(), Value::Int(1));
+    }
+
+    #[test]
+    fn test_vm_consent_runs_without_care() {
+        // With `#care` off (the default), the consent block executes.
+        let source = r#"
+            to main() {
+                remember x = 1;
+                only if okay "file.read" {
+                    x = 99;
+                }
+                give back x;
+            }
+        "#;
+        assert_eq!(run_vm(source).unwrap(), Value::Int(99));
+    }
 }

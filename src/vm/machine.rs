@@ -6,7 +6,7 @@
 
 use crate::interpreter::Value;
 use crate::vm::bytecode::{CompiledProgram, OpCode};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -63,6 +63,9 @@ pub struct VirtualMachine {
     frames: Vec<CallFrame>,
     /// Global variables
     globals: HashMap<String, Value>,
+    /// Permissions granted for this run; seeds `CheckConsent`. Empty by default,
+    /// so under `#care` consent is denied unless a permission was granted.
+    granted: HashSet<String>,
 }
 
 impl VirtualMachine {
@@ -73,6 +76,7 @@ impl VirtualMachine {
             stack: Vec::new(),
             frames: Vec::new(),
             globals: HashMap::new(),
+            granted: HashSet::new(),
         }
     }
 
@@ -454,6 +458,14 @@ impl VirtualMachine {
                         other => other.to_string(),
                     };
                     return Err(VMError::Runtime(msg));
+                }
+
+                OpCode::CheckConsent(permission) => {
+                    // `#care` off => always granted; `#care` on => granted only
+                    // if pre-granted (deny-by-default for the non-interactive VM,
+                    // matching the interpreter's non-interactive consent path).
+                    let granted = !self.program.care || self.granted.contains(&permission);
+                    self.push(Value::Bool(granted));
                 }
 
                 _ => {
