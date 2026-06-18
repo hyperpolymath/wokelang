@@ -282,10 +282,10 @@ impl Optimizer {
                         *target = new_indices[*target];
                     }
                 }
-                OpCode::JumpIfFalse(ref mut target) | OpCode::JumpIfTrue(ref mut target) => {
-                    if *target < new_indices.len() {
-                        *target = new_indices[*target];
-                    }
+                OpCode::JumpIfFalse(ref mut target) | OpCode::JumpIfTrue(ref mut target)
+                    if *target < new_indices.len() =>
+                {
+                    *target = new_indices[*target];
                 }
                 _ => {}
             }
