@@ -102,6 +102,8 @@ pub enum OpCode {
     Nop,
     /// Halt execution
     Halt,
+    /// Pop a string and raise it as a runtime error (compiles `complain "msg"`)
+    Throw,
 }
 
 /// A compiled function

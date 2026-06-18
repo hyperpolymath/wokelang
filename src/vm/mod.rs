@@ -155,4 +155,60 @@ mod tests {
         assert!(disasm.contains("main"));
         assert!(disasm.contains("Code:"));
     }
+
+    // --- Newly supported VM features ---
+
+    #[test]
+    fn test_vm_while_loop() {
+        let source = r#"
+            to main() {
+                remember k = 0;
+                while k < 5 {
+                    k = k + 1;
+                }
+                give back k;
+            }
+        "#;
+        assert_eq!(run_vm(source).unwrap(), Value::Int(5));
+    }
+
+    #[test]
+    fn test_vm_while_break() {
+        let source = r#"
+            to main() {
+                remember m = 0;
+                while true {
+                    m = m + 1;
+                    when m == 3 {
+                        break;
+                    }
+                }
+                give back m;
+            }
+        "#;
+        assert_eq!(run_vm(source).unwrap(), Value::Int(3));
+    }
+
+    #[test]
+    fn test_vm_array_index() {
+        let source = r#"
+            to main() {
+                remember xs = [10, 20, 30];
+                give back xs[1];
+            }
+        "#;
+        assert_eq!(run_vm(source).unwrap(), Value::Int(20));
+    }
+
+    #[test]
+    fn test_vm_complain_raises_error() {
+        let source = r#"
+            to main() {
+                complain "boom";
+                give back 0;
+            }
+        "#;
+        let err = run_vm(source).unwrap_err();
+        assert!(err.contains("boom"), "expected error mentioning boom, got: {err}");
+    }
 }
