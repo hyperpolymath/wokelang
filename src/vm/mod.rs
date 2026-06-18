@@ -311,4 +311,28 @@ mod tests {
         "#;
         assert_eq!(run_vm(source).unwrap(), Value::Int(42));
     }
+
+    #[test]
+    fn test_vm_closure_captures_upvalue() {
+        // The lambda captures the enclosing local `n` (= 10) by value.
+        let source = r#"
+            to main() {
+                remember n = 10;
+                give back (|x| x + n)(5);
+            }
+        "#;
+        assert_eq!(run_vm(source).unwrap(), Value::Int(15));
+    }
+
+    #[test]
+    fn test_vm_closure_captures_multiple() {
+        let source = r#"
+            to main() {
+                remember a = 100;
+                remember b = 20;
+                give back (|x| x + a + b)(3);
+            }
+        "#;
+        assert_eq!(run_vm(source).unwrap(), Value::Int(123));
+    }
 }

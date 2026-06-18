@@ -1056,7 +1056,7 @@ impl Interpreter {
             Value::Okay(inner) => format!("Okay({})", self.value_to_string(inner)),
             Value::Oops(msg) => format!("Oops({})", msg),
             Value::Channel(_) => "<channel>".to_string(),
-            Value::VmClosure(_) => "<vm-closure>".to_string(),
+            Value::VmClosure { .. } => "<vm-closure>".to_string(),
         }
     }
 }

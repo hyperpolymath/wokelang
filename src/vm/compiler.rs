@@ -40,13 +40,31 @@ struct LoopCtx {
     break_jumps: Vec<usize>,
 }
 
+/// A lexical scope (a function or lambda body): its locals plus the upvalues it
+/// captures from the immediately enclosing scope (recorded as enclosing-local
+/// indices, captured by value).
+struct Scope {
+    locals: Vec<Local>,
+    upvalues: Vec<usize>,
+}
+
+impl Scope {
+    fn new() -> Self {
+        Self {
+            locals: Vec::new(),
+            upvalues: Vec::new(),
+        }
+    }
+}
+
 /// Compiler state
 pub struct BytecodeCompiler {
     /// Current function being compiled
     current_function: Option<CompiledFunction>,
-    /// Local variables in current scope
-    locals: Vec<Local>,
-    /// Current scope depth
+    /// Stack of lexical scopes; the top is the current scope. Lambdas push a
+    /// scope so they can capture upvalues from the enclosing scope.
+    scopes: Vec<Scope>,
+    /// Current scope depth (used only for lambda naming).
     scope_depth: usize,
     /// Function names to indices
     function_indices: HashMap<String, usize>,
@@ -60,7 +78,7 @@ impl BytecodeCompiler {
     pub fn new() -> Self {
         Self {
             current_function: None,
-            locals: Vec::new(),
+            scopes: vec![Scope::new()],
             scope_depth: 0,
             function_indices: HashMap::new(),
             program: CompiledProgram::new(),
@@ -128,7 +146,7 @@ impl BytecodeCompiler {
         compiled_func: &mut CompiledFunction,
     ) -> Result<(), CompileError> {
         self.current_function = Some(compiled_func.clone());
-        self.locals.clear();
+        self.scopes = vec![Scope::new()];
         self.scope_depth = 0;
 
         // Add parameters as locals
@@ -528,6 +546,8 @@ impl BytecodeCompiler {
             Expr::Identifier(name) => {
                 if let Some(local_idx) = self.resolve_local(name) {
                     func.emit(OpCode::LoadLocal(local_idx));
+                } else if let Some(upvalue_idx) = self.resolve_upvalue(name) {
+                    func.emit(OpCode::LoadUpvalue(upvalue_idx));
                 } else {
                     func.emit(OpCode::LoadGlobal(name.clone()));
                 }
@@ -681,9 +701,10 @@ impl BytecodeCompiler {
                 let lambda_name = format!("<lambda_{}>", self.scope_depth);
                 let mut lambda_func = CompiledFunction::new(lambda_name, lambda.params.len());
 
-                // Enter new scope for lambda
+                // Enter a new scope; the enclosing scope stays accessible for
+                // upvalue capture.
                 self.scope_depth += 1;
-                let old_locals = std::mem::take(&mut self.locals);
+                self.scopes.push(Scope::new());
 
                 // Add parameters as locals
                 for param in &lambda.params {
@@ -708,15 +729,14 @@ impl BytecodeCompiler {
                     }
                 }
 
-                // Restore scope
+                // Pop the lambda scope, recovering the upvalues it captured.
+                let lambda_scope = self.scopes.pop().expect("lambda scope");
                 self.scope_depth -= 1;
-                self.locals = old_locals;
 
-                // Add lambda function to program
+                // Add the lambda to the program and create a closure that
+                // captures the recorded enclosing locals by value.
                 let func_idx = self.program.add_function(lambda_func);
-
-                // Create closure from function
-                func.emit(OpCode::MakeClosure(func_idx));
+                func.emit(OpCode::MakeClosure(func_idx, lambda_scope.upvalues));
                 Ok(())
             }
 
@@ -758,24 +778,54 @@ impl BytecodeCompiler {
         }
     }
 
-    /// Add a local variable
+    /// Add a local variable to the current scope.
     fn add_local(&mut self, name: String) -> usize {
-        let idx = self.locals.len();
-        self.locals.push(Local {
-            name,
-            depth: self.scope_depth,
-        });
+        let depth = self.scope_depth;
+        let scope = self.scopes.last_mut().expect("at least one scope");
+        let idx = scope.locals.len();
+        scope.locals.push(Local { name, depth });
         idx
     }
 
-    /// Resolve a local variable by name
+    /// Resolve a local variable by name in the current scope.
     fn resolve_local(&self, name: &str) -> Option<usize> {
-        for (idx, local) in self.locals.iter().enumerate().rev() {
+        let scope = self.scopes.last()?;
+        for (idx, local) in scope.locals.iter().enumerate().rev() {
             if local.name == name {
                 return Some(idx);
             }
         }
         None
+    }
+
+    /// Resolve `name` as an upvalue captured from the immediately enclosing
+    /// scope. Registers the capture (deduplicated) in the current scope and
+    /// returns its upvalue index. Single-level capture only.
+    fn resolve_upvalue(&mut self, name: &str) -> Option<usize> {
+        let n = self.scopes.len();
+        if n < 2 {
+            return None;
+        }
+        // Find `name` among the immediately enclosing scope's locals.
+        let enclosing_local = {
+            let enclosing = &self.scopes[n - 2];
+            let mut found = None;
+            for (idx, local) in enclosing.locals.iter().enumerate().rev() {
+                if local.name == name {
+                    found = Some(idx);
+                    break;
+                }
+            }
+            found?
+        };
+        // Register (or reuse) an upvalue capturing that enclosing local.
+        let scope = self.scopes.last_mut().unwrap();
+        if let Some(uidx) = scope.upvalues.iter().position(|&s| s == enclosing_local) {
+            return Some(uidx);
+        }
+        let uidx = scope.upvalues.len();
+        scope.upvalues.push(enclosing_local);
+        Some(uidx)
     }
 }
 
