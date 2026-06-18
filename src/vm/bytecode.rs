@@ -69,8 +69,10 @@ pub enum OpCode {
     Call(usize),
     /// Return from function
     Return,
-    /// Create a closure
+    /// Create a closure: push a `VmClosure` for the given function index
     MakeClosure(usize),
+    /// Call a closure value sitting just below its `usize` arguments on the stack
+    CallValue(usize),
 
     // Array/Record operations
     /// Create an array from N elements on stack

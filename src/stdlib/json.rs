@@ -147,6 +147,9 @@ fn value_to_json_string(value: &Value) -> Result<String, StdlibError> {
         Value::Okay(_) | Value::Oops(_) => Err(StdlibError::RuntimeError(
             "Cannot stringify Result to JSON".to_string(),
         )),
+        Value::VmClosure(_) => Err(StdlibError::RuntimeError(
+            "Cannot stringify closure to JSON".to_string(),
+        )),
     }
 }
 

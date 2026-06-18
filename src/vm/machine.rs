@@ -469,11 +469,38 @@ impl VirtualMachine {
                     self.push(Value::Bool(granted));
                 }
 
-                _ => {
-                    return Err(VMError::TypeError(format!(
-                        "Unimplemented opcode: {:?}",
-                        opcode
-                    )));
+                OpCode::MakeClosure(func_idx) => {
+                    // Non-capturing closure: just the bytecode function index.
+                    self.push(Value::VmClosure(func_idx));
+                }
+
+                OpCode::CallValue(argc) => {
+                    // Stack: [callee_closure, arg0, .., arg{argc-1}]. Remove the
+                    // closure from below the args, then enter its frame with the
+                    // args as locals 0..argc.
+                    let cpos = self
+                        .stack
+                        .len()
+                        .checked_sub(argc + 1)
+                        .ok_or(VMError::StackUnderflow)?;
+                    let callee = self.stack.remove(cpos);
+                    let func_idx = match callee {
+                        Value::VmClosure(idx) => idx,
+                        other => {
+                            return Err(VMError::TypeError(format!(
+                                "cannot call non-closure value: {:?}",
+                                other
+                            )))
+                        }
+                    };
+                    if self.program.get_function(func_idx).is_none() {
+                        return Err(VMError::InvalidFunctionIndex(func_idx));
+                    }
+                    self.frames.push(CallFrame {
+                        function_idx: func_idx,
+                        ip: 0,
+                        bp: cpos,
+                    });
                 }
             }
         }

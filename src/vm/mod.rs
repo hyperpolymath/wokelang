@@ -288,4 +288,27 @@ mod tests {
             Value::String("42".to_string())
         );
     }
+
+    // --- Closures (immediately-invoked lambda via CallExpr) ---
+
+    #[test]
+    fn test_vm_immediately_invoked_lambda() {
+        // (|x| x * 2)(21) -> 42 : MakeClosure + CallValue calling convention.
+        let source = r#"
+            to main() {
+                give back (|x| x * 2)(21);
+            }
+        "#;
+        assert_eq!(run_vm(source).unwrap(), Value::Int(42));
+    }
+
+    #[test]
+    fn test_vm_lambda_two_args() {
+        let source = r#"
+            to main() {
+                give back (|a, b| a + b)(15, 27);
+            }
+        "#;
+        assert_eq!(run_vm(source).unwrap(), Value::Int(42));
+    }
 }

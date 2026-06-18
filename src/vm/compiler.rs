@@ -671,8 +671,8 @@ impl BytecodeCompiler {
                     self.compile_expr(&arg.node, func)?;
                 }
 
-                // Call the closure
-                func.emit(OpCode::Call(args.len()));
+                // Call the closure value (now below its args on the stack).
+                func.emit(OpCode::CallValue(args.len()));
                 Ok(())
             }
 
