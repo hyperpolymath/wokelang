@@ -1399,6 +1399,130 @@ Proof.
 Qed.
 
 (* ========================================================================= *)
+(* 5b. Statement Typing                                                       *)
+(* ========================================================================= *)
+
+(** Statement typing threads a type context: [StmtWellTyped G s G'] reads
+    "in context [G], statement [s] is well-typed and yields context [G']".
+    [SVarDecl] extends the context; [SAssign] requires the variable already
+    declared at the assigned type; compound statements ([SIf]/[SLoop]/
+    [SAttempt]/[SConsent]) are block-scoped, so they return the incoming
+    context. Mutually inductive with [StmtsWellTyped] for blocks. Mirrors
+    StmtWellTyped/StmtsWellTyped in WokeLang.lean (cross-prover parity).
+
+    This is the statement-level analogue of the [has_type] expression
+    judgment; statements were previously declared ([stmt]) but had no typing
+    rules. A statement execution relation + store-typing preservation is the
+    natural next step (see AUDIT.md). *)
+
+Inductive StmtWellTyped : type_env -> stmt -> type_env -> Prop :=
+  | SWT_VarDecl : forall G x e t,
+      has_type G e t ->
+      StmtWellTyped G (SVarDecl x e) (extend_type_env x t G)
+  | SWT_Assign : forall G x e t,
+      G x = Some t -> has_type G e t ->
+      StmtWellTyped G (SAssign x e) G
+  | SWT_Return : forall G e t,
+      has_type G e t ->
+      StmtWellTyped G (SReturn e) G
+  | SWT_If : forall G c thn els G1 G2,
+      has_type G c TBool ->
+      StmtsWellTyped G thn G1 -> StmtsWellTyped G els G2 ->
+      StmtWellTyped G (SIf c thn els) G
+  | SWT_Loop : forall G c body G1,
+      has_type G c TBool -> StmtsWellTyped G body G1 ->
+      StmtWellTyped G (SLoop c body) G
+  | SWT_Attempt : forall G body h G1,
+      StmtsWellTyped G body G1 ->
+      StmtWellTyped G (SAttempt body h) G
+  | SWT_Consent : forall G p body G1,
+      StmtsWellTyped G body G1 ->
+      StmtWellTyped G (SConsent p body) G
+  | SWT_Expr : forall G e t,
+      has_type G e t ->
+      StmtWellTyped G (SExpr e) G
+  | SWT_Complain : forall G m,
+      StmtWellTyped G (SComplain m) G
+
+with StmtsWellTyped : type_env -> list stmt -> type_env -> Prop :=
+  | SsWT_nil : forall G, StmtsWellTyped G nil G
+  | SsWT_cons : forall G s ss G1 G2,
+      StmtWellTyped G s G1 -> StmtsWellTyped G1 ss G2 ->
+      StmtsWellTyped G (s :: ss) G2.
+
+(** Domain containment: every variable declared in [G] is still declared
+    (at some type) in [G']. *)
+Definition CtxDomSub (G G' : type_env) : Prop :=
+  forall x t, G x = Some t -> exists t', G' x = Some t'.
+
+Lemma ctxDomSub_refl : forall G, CtxDomSub G G.
+Proof. intros G x t H. exists t. exact H. Qed.
+
+Lemma ctxDomSub_trans : forall G1 G2 G3,
+  CtxDomSub G1 G2 -> CtxDomSub G2 G3 -> CtxDomSub G1 G3.
+Proof.
+  intros G1 G2 G3 H12 H23 x t H.
+  destruct (H12 x t H) as [t' H']. exact (H23 x t' H').
+Qed.
+
+Lemma ctxDomSub_extend : forall G x t, CtxDomSub G (extend_type_env x t G).
+Proof.
+  intros G x t y ty Hy. unfold extend_type_env.
+  destruct (String.eqb x y) eqn:Hxy.
+  - exists t. reflexivity.
+  - exists ty. exact Hy.
+Qed.
+
+(** Context monotonicity (single statement): a well-typed statement never
+    undeclares a variable. *)
+Lemma stmt_wellTyped_mono : forall G s G',
+  StmtWellTyped G s G' -> CtxDomSub G G'.
+Proof.
+  intros G s G' H. inversion H; subst;
+    first [ apply ctxDomSub_refl | apply ctxDomSub_extend ].
+Qed.
+
+(** Context monotonicity (statement block), by induction on the block. *)
+Lemma stmts_wellTyped_mono : forall ss G G',
+  StmtsWellTyped G ss G' -> CtxDomSub G G'.
+Proof.
+  induction ss as [| s rest IH]; intros G G' H; inversion H; subst.
+  - apply ctxDomSub_refl.
+  - eapply ctxDomSub_trans.
+    + eapply stmt_wellTyped_mono; eassumption.
+    + eapply IH; eassumption.
+Qed.
+
+(** Sequencing composes: typing a block then another from the resulting
+    context types their concatenation. *)
+Lemma stmts_wellTyped_append : forall ss1 G G' ss2 G'',
+  StmtsWellTyped G ss1 G' -> StmtsWellTyped G' ss2 G'' ->
+  StmtsWellTyped G (ss1 ++ ss2) G''.
+Proof.
+  induction ss1 as [| s rest IH]; intros G G' ss2 G'' H1 H2;
+    inversion H1; subst; simpl.
+  - exact H2.
+  - eapply SsWT_cons.
+    + eassumption.
+    + eapply IH; eassumption.
+Qed.
+
+(** Inhabitation smoke: [let x = 0; x] is a well-typed block, yielding a
+    context in which [x : TInt]. *)
+Example stmts_wellTyped_example :
+  StmtsWellTyped empty_type_env
+    (SVarDecl "x"%string (ELit (VInt 0)) :: SExpr (EVar "x"%string) :: nil)
+    (extend_type_env "x"%string TInt empty_type_env).
+Proof.
+  eapply SsWT_cons.
+  - apply SWT_VarDecl with (t := TInt). apply T_Int.
+  - eapply SsWT_cons.
+    + apply SWT_Expr with (t := TInt). apply T_Var.
+      unfold extend_type_env. rewrite String.eqb_refl. reflexivity.
+    + apply SsWT_nil.
+Qed.
+
+(* ========================================================================= *)
 (* 6. Consent System                                                         *)
 (* ========================================================================= *)
 

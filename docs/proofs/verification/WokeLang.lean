@@ -1172,6 +1172,120 @@ theorem type_safety : ∀ e t v ρ,
     exact ih (preservation e₁ e₂ t ρ₁ ρ₂ ht hs) hev
 
 -- =========================================================================
+-- 5b. Statement Typing
+-- =========================================================================
+
+/- Statement typing threads a type context: `StmtWellTyped Γ s Γ'` reads
+   "in context `Γ`, statement `s` is well-typed and yields context `Γ'`".
+   `varDecl` extends the context with the declared binding; `assign` requires
+   the variable to already be declared at the assigned type; compound
+   statements (`if`/`loop`/`attempt`/`consent`) are block-scoped, so they
+   return the incoming context. Mutually inductive with `StmtsWellTyped`,
+   which threads the context left-to-right through a block.
+
+   This is the statement-level analogue of the expression `HasType` judgment;
+   statements were previously declared (`Stmt`) but had no typing rules. The
+   dynamic story (a statement execution relation + a store-typing preservation
+   theorem) is the natural next step and is noted in AUDIT.md. -/
+mutual
+inductive StmtWellTyped : TypeEnv → Stmt → TypeEnv → Prop where
+  | varDecl : ∀ Γ x e t,
+      HasType Γ e t →
+      StmtWellTyped Γ (.varDecl x e) (extendTypeEnv x t Γ)
+  | assign : ∀ Γ x e t,
+      Γ x = some t → HasType Γ e t →
+      StmtWellTyped Γ (.assign x e) Γ
+  | return_ : ∀ Γ e t,
+      HasType Γ e t →
+      StmtWellTyped Γ (.return_ e) Γ
+  | if_ : ∀ Γ c thn els Γ₁ Γ₂,
+      HasType Γ c .bool → StmtsWellTyped Γ thn Γ₁ → StmtsWellTyped Γ els Γ₂ →
+      StmtWellTyped Γ (.if_ c thn els) Γ
+  | loop : ∀ Γ c body Γ₁,
+      HasType Γ c .bool → StmtsWellTyped Γ body Γ₁ →
+      StmtWellTyped Γ (.loop c body) Γ
+  | attempt : ∀ Γ body hname Γ₁,
+      StmtsWellTyped Γ body Γ₁ →
+      StmtWellTyped Γ (.attempt body hname) Γ
+  | consent : ∀ Γ p body Γ₁,
+      StmtsWellTyped Γ body Γ₁ →
+      StmtWellTyped Γ (.consent p body) Γ
+  | expr : ∀ Γ e t,
+      HasType Γ e t →
+      StmtWellTyped Γ (.expr e) Γ
+  | complain : ∀ Γ m,
+      StmtWellTyped Γ (.complain m) Γ
+inductive StmtsWellTyped : TypeEnv → List Stmt → TypeEnv → Prop where
+  | nil : ∀ Γ, StmtsWellTyped Γ [] Γ
+  | cons : ∀ Γ s ss Γ₁ Γ₂,
+      StmtWellTyped Γ s Γ₁ → StmtsWellTyped Γ₁ ss Γ₂ →
+      StmtsWellTyped Γ (s :: ss) Γ₂
+end
+
+/-- Domain containment on type contexts: every variable declared in `Γ` is
+    still declared (at some type) in `Γ'`. -/
+def CtxDomSub (Γ Γ' : TypeEnv) : Prop := ∀ x t, Γ x = some t → ∃ t', Γ' x = some t'
+
+theorem ctxDomSub_refl (Γ : TypeEnv) : CtxDomSub Γ Γ := fun _ t h => ⟨t, h⟩
+
+theorem ctxDomSub_trans {Γ₁ Γ₂ Γ₃ : TypeEnv}
+    (h₁₂ : CtxDomSub Γ₁ Γ₂) (h₂₃ : CtxDomSub Γ₂ Γ₃) : CtxDomSub Γ₁ Γ₃ :=
+  fun x t h => let ⟨t', h'⟩ := h₁₂ x t h; h₂₃ x t' h'
+
+theorem ctxDomSub_extend (Γ : TypeEnv) (x : String) (t : WokeType) :
+    CtxDomSub Γ (extendTypeEnv x t Γ) := by
+  intro y ty hy
+  by_cases hxy : x = y
+  · exact ⟨t, by simp [extendTypeEnv, hxy]⟩
+  · exact ⟨ty, by simp [extendTypeEnv, hxy, hy]⟩
+
+/-- Context monotonicity (single statement): a well-typed statement never
+    undeclares a variable. Non-recursive — compound statements are
+    block-scoped, which breaks the mutual dependency for the proof. -/
+theorem stmt_wellTyped_mono {Γ s Γ'} (h : StmtWellTyped Γ s Γ') : CtxDomSub Γ Γ' := by
+  cases h with
+  | varDecl Γ x e t _ => exact ctxDomSub_extend Γ x t
+  | assign => exact ctxDomSub_refl _
+  | return_ => exact ctxDomSub_refl _
+  | if_ => exact ctxDomSub_refl _
+  | loop => exact ctxDomSub_refl _
+  | attempt => exact ctxDomSub_refl _
+  | consent => exact ctxDomSub_refl _
+  | expr => exact ctxDomSub_refl _
+  | complain => exact ctxDomSub_refl _
+
+/-- Context monotonicity (statement block), by induction on the block. -/
+theorem stmts_wellTyped_mono {Γ ss Γ'} (h : StmtsWellTyped Γ ss Γ') : CtxDomSub Γ Γ' := by
+  induction ss generalizing Γ Γ' with
+  | nil => cases h; exact ctxDomSub_refl _
+  | cons s rest ih =>
+    cases h with
+    | cons _ _ _ Γ₁ _ hs hrest => exact ctxDomSub_trans (stmt_wellTyped_mono hs) (ih hrest)
+
+/-- Sequencing composes: typing a block then another block from the resulting
+    context types their concatenation. -/
+theorem stmts_wellTyped_append {Γ ss₁ Γ' ss₂ Γ''}
+    (h₁ : StmtsWellTyped Γ ss₁ Γ') (h₂ : StmtsWellTyped Γ' ss₂ Γ'') :
+    StmtsWellTyped Γ (ss₁ ++ ss₂) Γ'' := by
+  induction ss₁ generalizing Γ Γ' with
+  | nil => cases h₁; exact h₂
+  | cons s rest ih =>
+    cases h₁ with
+    | cons _ _ _ Γ₁ _ hs hrest => exact .cons _ _ _ _ _ hs (ih hrest h₂)
+
+/-- Inhabitation smoke: `let x = 0; x` is a well-typed block, yielding a
+    context in which `x : int`. -/
+theorem stmts_wellTyped_example :
+    StmtsWellTyped emptyTypeEnv
+      [Stmt.varDecl "x" (.lit (.vInt 0)), Stmt.expr (.var "x")]
+      (extendTypeEnv "x" .int emptyTypeEnv) :=
+  .cons _ _ _ _ _
+    (.varDecl _ "x" (.lit (.vInt 0)) .int (.tInt _ _))
+    (.cons _ _ _ _ _
+      (.expr _ (.var "x") .int (.tVar _ "x" .int (by simp [extendTypeEnv])))
+      (.nil _))
+
+-- =========================================================================
 -- 6. Consent System
 -- =========================================================================
 
