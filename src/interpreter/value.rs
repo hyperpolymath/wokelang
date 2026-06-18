@@ -223,6 +223,9 @@ pub enum Value {
     Function(Closure),
     /// Go-style channel for concurrent communication
     Channel(ChannelHandle),
+    /// A VM bytecode closure: an index into the compiled function table.
+    /// Non-capturing for now (uses params + globals, not enclosing locals).
+    VmClosure(usize),
 }
 
 impl Value {
@@ -240,6 +243,7 @@ impl Value {
             Value::Oops(_) => false,
             Value::Function(_) => true,
             Value::Channel(ch) => !ch.is_closed(),
+            Value::VmClosure(_) => true,
         }
     }
 
@@ -304,6 +308,7 @@ impl fmt::Display for Value {
                     None => write!(f, "<chan {}>", status),
                 }
             }
+            Value::VmClosure(idx) => write!(f, "<vm-closure {}>", idx),
         }
     }
 }

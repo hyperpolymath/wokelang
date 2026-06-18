@@ -85,6 +85,7 @@ impl Repl {
                     crate::interpreter::Value::Float(f) => println!("{}", f),
                     crate::interpreter::Value::String(s) => println!("\"{}\"", s),
                     crate::interpreter::Value::Bool(b) => println!("{}", b),
+                    crate::interpreter::Value::VmClosure(idx) => println!("<vm-closure {}>", idx),
                     crate::interpreter::Value::Array(arr) => {
                         print!("[");
                         for (i, val) in arr.iter().enumerate() {

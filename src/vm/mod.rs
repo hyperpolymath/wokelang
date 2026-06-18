@@ -246,4 +246,69 @@ mod tests {
         "#;
         assert_eq!(run_vm(source).unwrap(), Value::Int(99));
     }
+
+    // --- Result constructors + built-ins from surface syntax ---
+
+    #[test]
+    fn test_vm_okay_oops_builtins() {
+        assert_eq!(
+            run_vm(r#"to main() { give back Okay(42); }"#).unwrap(),
+            Value::Okay(Box::new(Value::Int(42)))
+        );
+        assert_eq!(
+            run_vm(r#"to main() { give back Oops(99); }"#).unwrap(),
+            Value::Oops("99".to_string())
+        );
+    }
+
+    #[test]
+    fn test_vm_result_builtins() {
+        assert_eq!(
+            run_vm(r#"to main() { give back isOkay(Okay(1)); }"#).unwrap(),
+            Value::Bool(true)
+        );
+        assert_eq!(
+            run_vm(r#"to main() { give back isOops(Oops(1)); }"#).unwrap(),
+            Value::Bool(true)
+        );
+        assert_eq!(
+            run_vm(r#"to main() { give back unwrap(Okay(5)); }"#).unwrap(),
+            Value::Int(5)
+        );
+    }
+
+    #[test]
+    fn test_vm_len_and_tostring_builtins() {
+        assert_eq!(
+            run_vm(r#"to main() { give back len([1, 2, 3]); }"#).unwrap(),
+            Value::Int(3)
+        );
+        assert_eq!(
+            run_vm(r#"to main() { give back toString(42); }"#).unwrap(),
+            Value::String("42".to_string())
+        );
+    }
+
+    // --- Closures (immediately-invoked lambda via CallExpr) ---
+
+    #[test]
+    fn test_vm_immediately_invoked_lambda() {
+        // (|x| x * 2)(21) -> 42 : MakeClosure + CallValue calling convention.
+        let source = r#"
+            to main() {
+                give back (|x| x * 2)(21);
+            }
+        "#;
+        assert_eq!(run_vm(source).unwrap(), Value::Int(42));
+    }
+
+    #[test]
+    fn test_vm_lambda_two_args() {
+        let source = r#"
+            to main() {
+                give back (|a, b| a + b)(15, 27);
+            }
+        "#;
+        assert_eq!(run_vm(source).unwrap(), Value::Int(42));
+    }
 }
