@@ -101,7 +101,7 @@ impl ConsentStore {
 
         let content = {
             use std::io::Read;
-            let mut file = std::fs::File::open(&self.path)?;
+            let file = std::fs::File::open(&self.path)?;
             let mut buf = String::new();
             file.take(1024 * 1024).read_to_string(&mut buf)?;
             buf

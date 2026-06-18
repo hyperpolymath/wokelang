@@ -4,7 +4,6 @@
 // WokeLang CLI - main entry point with S-expression and JSON AST dump support
 use clap::{Parser, Subcommand};
 use miette::Result;
-use std::fs;
 use std::path::PathBuf;
 use wokelang::{
     disassemble as disasm_bytecode, BytecodeCompiler, Interpreter, Lexer, Linter,
@@ -153,9 +152,12 @@ fn main() -> Result<()> {
 fn run_program(file: &PathBuf) -> Result<()> {
     let source = {
         use std::io::Read;
-        let mut file_handle = std::fs::File::open(file).expect("Failed to open file");
+        let file_handle = std::fs::File::open(file).expect("Failed to open file");
         let mut buf = String::new();
-        file_handle.take(10 * 1024 * 1024).read_to_string(&mut buf).expect("Failed to read file");
+        file_handle
+            .take(10 * 1024 * 1024)
+            .read_to_string(&mut buf)
+            .expect("Failed to read file");
         buf
     };
     let lexer = Lexer::new(&source);
@@ -197,9 +199,12 @@ fn run_program(file: &PathBuf) -> Result<()> {
 fn compile_program(file: &PathBuf, _output: Option<PathBuf>) -> Result<()> {
     let source = {
         use std::io::Read;
-        let mut file_handle = std::fs::File::open(file).expect("Failed to open file");
+        let file_handle = std::fs::File::open(file).expect("Failed to open file");
         let mut buf = String::new();
-        file_handle.take(10 * 1024 * 1024).read_to_string(&mut buf).expect("Failed to read file");
+        file_handle
+            .take(10 * 1024 * 1024)
+            .read_to_string(&mut buf)
+            .expect("Failed to read file");
         buf
     };
     let lexer = Lexer::new(&source);
@@ -259,9 +264,12 @@ fn compile_program(file: &PathBuf, _output: Option<PathBuf>) -> Result<()> {
 fn run_vm(file: &PathBuf) -> Result<()> {
     let source = {
         use std::io::Read;
-        let mut file_handle = std::fs::File::open(file).expect("Failed to open file");
+        let file_handle = std::fs::File::open(file).expect("Failed to open file");
         let mut buf = String::new();
-        file_handle.take(10 * 1024 * 1024).read_to_string(&mut buf).expect("Failed to read file");
+        file_handle
+            .take(10 * 1024 * 1024)
+            .read_to_string(&mut buf)
+            .expect("Failed to read file");
         buf
     };
 
@@ -281,9 +289,12 @@ fn run_vm(file: &PathBuf) -> Result<()> {
 fn disassemble(file: &PathBuf) -> Result<()> {
     let source = {
         use std::io::Read;
-        let mut file_handle = std::fs::File::open(file).expect("Failed to open file");
+        let file_handle = std::fs::File::open(file).expect("Failed to open file");
         let mut buf = String::new();
-        file_handle.take(10 * 1024 * 1024).read_to_string(&mut buf).expect("Failed to read file");
+        file_handle
+            .take(10 * 1024 * 1024)
+            .read_to_string(&mut buf)
+            .expect("Failed to read file");
         buf
     };
 
@@ -306,9 +317,12 @@ fn disassemble(file: &PathBuf) -> Result<()> {
 fn typecheck_program(file: &PathBuf) -> Result<()> {
     let source = {
         use std::io::Read;
-        let mut file_handle = std::fs::File::open(file).expect("Failed to open file");
+        let file_handle = std::fs::File::open(file).expect("Failed to open file");
         let mut buf = String::new();
-        file_handle.take(10 * 1024 * 1024).read_to_string(&mut buf).expect("Failed to read file");
+        file_handle
+            .take(10 * 1024 * 1024)
+            .read_to_string(&mut buf)
+            .expect("Failed to read file");
         buf
     };
     let lexer = Lexer::new(&source);
@@ -346,9 +360,12 @@ fn typecheck_program(file: &PathBuf) -> Result<()> {
 fn lint_program(file: &PathBuf) -> Result<()> {
     let source = {
         use std::io::Read;
-        let mut file_handle = std::fs::File::open(file).expect("Failed to open file");
+        let file_handle = std::fs::File::open(file).expect("Failed to open file");
         let mut buf = String::new();
-        file_handle.take(10 * 1024 * 1024).read_to_string(&mut buf).expect("Failed to read file");
+        file_handle
+            .take(10 * 1024 * 1024)
+            .read_to_string(&mut buf)
+            .expect("Failed to read file");
         buf
     };
     let lexer = Lexer::new(&source);
@@ -393,9 +410,12 @@ fn lint_program(file: &PathBuf) -> Result<()> {
 fn tokenize_file(file: &PathBuf) -> Result<()> {
     let source = {
         use std::io::Read;
-        let mut file_handle = std::fs::File::open(file).expect("Failed to open file");
+        let file_handle = std::fs::File::open(file).expect("Failed to open file");
         let mut buf = String::new();
-        file_handle.take(10 * 1024 * 1024).read_to_string(&mut buf).expect("Failed to read file");
+        file_handle
+            .take(10 * 1024 * 1024)
+            .read_to_string(&mut buf)
+            .expect("Failed to read file");
         buf
     };
     let lexer = Lexer::new(&source);
@@ -425,9 +445,12 @@ fn tokenize_file(file: &PathBuf) -> Result<()> {
 fn parse_file(file: &PathBuf, format: &str) -> Result<()> {
     let source = {
         use std::io::Read;
-        let mut file_handle = std::fs::File::open(file).expect("Failed to open file");
+        let file_handle = std::fs::File::open(file).expect("Failed to open file");
         let mut buf = String::new();
-        file_handle.take(10 * 1024 * 1024).read_to_string(&mut buf).expect("Failed to read file");
+        file_handle
+            .take(10 * 1024 * 1024)
+            .read_to_string(&mut buf)
+            .expect("Failed to read file");
         buf
     };
     let lexer = Lexer::new(&source);

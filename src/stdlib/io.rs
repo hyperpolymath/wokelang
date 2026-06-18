@@ -95,14 +95,15 @@ pub fn read_file(args: &[Value], caps: &mut CapabilityRegistry) -> Result<Value,
     // Check file size to prevent memory exhaustion
     check_file_size(&validated_path)?;
 
-    match {
+    let res = {
         use std::io::Read;
-        std::fs::File::open(&validated_path).and_then(|mut f| {
+        std::fs::File::open(&validated_path).and_then(|f| {
             let mut buf = String::new();
             f.take(10 * 1024 * 1024).read_to_string(&mut buf)?;
             Ok(buf)
         })
-    } {
+    };
+    match res {
         Ok(contents) => Ok(Value::String(contents)),
         Err(e) => Err(StdlibError::IoError(e.to_string())),
     }
