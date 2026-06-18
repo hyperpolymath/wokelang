@@ -6,7 +6,7 @@
 
 use crate::interpreter::Value;
 use crate::vm::bytecode::{CompiledProgram, OpCode};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -37,6 +37,9 @@ pub enum VMError {
 
     #[error("Invalid instruction pointer")]
     InvalidIP,
+
+    #[error("Runtime error: {0}")]
+    Runtime(String),
 }
 
 /// Call frame for function calls
@@ -60,6 +63,9 @@ pub struct VirtualMachine {
     frames: Vec<CallFrame>,
     /// Global variables
     globals: HashMap<String, Value>,
+    /// Permissions granted for this run; seeds `CheckConsent`. Empty by default,
+    /// so under `#care` consent is denied unless a permission was granted.
+    granted: HashSet<String>,
 }
 
 impl VirtualMachine {
@@ -70,6 +76,7 @@ impl VirtualMachine {
             stack: Vec::new(),
             frames: Vec::new(),
             globals: HashMap::new(),
+            granted: HashSet::new(),
         }
     }
 
@@ -343,6 +350,124 @@ impl VirtualMachine {
                     return Ok(self.pop().unwrap_or(Value::Unit));
                 }
 
+                OpCode::MakeOkay => {
+                    let v = self.pop()?;
+                    self.push(Value::Okay(Box::new(v)));
+                }
+
+                OpCode::MakeOops => {
+                    let v = self.pop()?;
+                    let msg = match v {
+                        Value::String(s) => s,
+                        other => other.to_string(),
+                    };
+                    self.push(Value::Oops(msg));
+                }
+
+                OpCode::IsOkay => {
+                    let v = self.pop()?;
+                    self.push(Value::Bool(v.is_okay()));
+                }
+
+                OpCode::TryUnwrap => {
+                    let v = self.pop()?;
+                    match v {
+                        Value::Okay(inner) => self.push(*inner),
+                        // Unwrapping an Oops short-circuits: the program yields the
+                        // error. (A future refinement returns from the current
+                        // function only, matching the interpreter's propagation.)
+                        Value::Oops(e) => return Ok(Value::Oops(e)),
+                        other => self.push(other),
+                    }
+                }
+
+                OpCode::Index => {
+                    let index = self.pop()?;
+                    let collection = self.pop()?;
+                    let value = match (collection, index) {
+                        (Value::Array(a), Value::Int(i)) => {
+                            let idx = if i < 0 { i + a.len() as i64 } else { i };
+                            if idx < 0 || idx as usize >= a.len() {
+                                return Err(VMError::IndexOutOfBounds(i));
+                            }
+                            a[idx as usize].clone()
+                        }
+                        (Value::String(s), Value::Int(i)) => {
+                            let chars: Vec<char> = s.chars().collect();
+                            let idx = if i < 0 { i + chars.len() as i64 } else { i };
+                            if idx < 0 || idx as usize >= chars.len() {
+                                return Err(VMError::IndexOutOfBounds(i));
+                            }
+                            Value::String(chars[idx as usize].to_string())
+                        }
+                        (Value::Record(m), Value::String(k)) => m
+                            .get(&k)
+                            .cloned()
+                            .ok_or_else(|| VMError::Runtime(format!("no field '{}'", k)))?,
+                        _ => return Err(VMError::TypeError("invalid index operation".to_string())),
+                    };
+                    self.push(value);
+                }
+
+                OpCode::Len => {
+                    let v = self.pop()?;
+                    let len = match v {
+                        Value::Array(a) => a.len(),
+                        Value::String(s) => s.chars().count(),
+                        Value::Record(m) => m.len(),
+                        _ => {
+                            return Err(VMError::TypeError(
+                                "len expects an array, string, or record".to_string(),
+                            ))
+                        }
+                    };
+                    self.push(Value::Int(len as i64));
+                }
+
+                OpCode::MakeRecord(n) => {
+                    // Fields are pushed as key then value; pop value then key.
+                    let mut map = HashMap::new();
+                    for _ in 0..n {
+                        let value = self.pop()?;
+                        let key = match self.pop()? {
+                            Value::String(s) => s,
+                            other => other.to_string(),
+                        };
+                        map.insert(key, value);
+                    }
+                    self.push(Value::Record(map));
+                }
+
+                OpCode::Concat => {
+                    let b = self.pop()?;
+                    let a = self.pop()?;
+                    self.push(Value::String(format!("{}{}", a, b)));
+                }
+
+                OpCode::ToString => {
+                    let v = self.pop()?;
+                    self.push(Value::String(v.to_string()));
+                }
+
+                OpCode::Nop => {}
+
+                OpCode::Throw => {
+                    let v = self.pop()?;
+                    let msg = match v {
+                        Value::String(s) => s,
+                        other => other.to_string(),
+                    };
+                    return Err(VMError::Runtime(msg));
+                }
+
+                OpCode::CheckConsent(permission) => {
+                    // `#care` off => always granted; `#care` on => granted only
+                    // if pre-granted (deny-by-default for the non-interactive VM,
+                    // matching the interpreter's non-interactive consent path).
+                    let granted = !self.program.care || self.granted.contains(&permission);
+                    self.push(Value::Bool(granted));
+                }
+
                 _ => {
                     return Err(VMError::TypeError(format!(
                         "Unimplemented opcode: {:?}",
@@ -431,6 +556,46 @@ mod tests {
         let result = vm.run().unwrap();
 
         assert_eq!(result, Value::Int(8));
+    }
+
+    #[test]
+    fn test_vm_record_index_okay_unwrap() {
+        // {age: 42} -> ["age"] -> Okay(_) -> unwrap == 42
+        let mut program = CompiledProgram::new();
+        let mut func = CompiledFunction::new("main".to_string(), 0);
+        let k = func.add_constant(Value::String("age".to_string()));
+        let v = func.add_constant(Value::Int(42));
+        func.emit(OpCode::Const(k));
+        func.emit(OpCode::Const(v));
+        func.emit(OpCode::MakeRecord(1));
+        let field = func.add_constant(Value::String("age".to_string()));
+        func.emit(OpCode::Const(field));
+        func.emit(OpCode::Index);
+        func.emit(OpCode::MakeOkay);
+        func.emit(OpCode::TryUnwrap);
+        func.emit(OpCode::Return);
+        program.add_function(func);
+
+        let mut vm = VirtualMachine::new(program);
+        assert_eq!(vm.run().unwrap(), Value::Int(42));
+    }
+
+    #[test]
+    fn test_vm_array_len() {
+        // len([10, 20]) == 2
+        let mut program = CompiledProgram::new();
+        let mut func = CompiledFunction::new("main".to_string(), 0);
+        let a = func.add_constant(Value::Int(10));
+        let b = func.add_constant(Value::Int(20));
+        func.emit(OpCode::Const(a));
+        func.emit(OpCode::Const(b));
+        func.emit(OpCode::MakeArray(2));
+        func.emit(OpCode::Len);
+        func.emit(OpCode::Return);
+        program.add_function(func);
+
+        let mut vm = VirtualMachine::new(program);
+        assert_eq!(vm.run().unwrap(), Value::Int(2));
     }
 
     #[test]

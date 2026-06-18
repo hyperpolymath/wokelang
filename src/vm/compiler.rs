@@ -32,6 +32,14 @@ struct Local {
     depth: usize,
 }
 
+/// Jump fix-ups for `break`/`continue` inside the innermost `while` loop.
+struct LoopCtx {
+    /// Where `continue` jumps to (re-test the loop condition).
+    continue_target: usize,
+    /// `break` jump-instruction indices, patched to just after the loop.
+    break_jumps: Vec<usize>,
+}
+
 /// Compiler state
 pub struct BytecodeCompiler {
     /// Current function being compiled
@@ -44,6 +52,8 @@ pub struct BytecodeCompiler {
     function_indices: HashMap<String, usize>,
     /// Compiled program being built
     program: CompiledProgram,
+    /// Stack of enclosing `while` loops (for `break`/`continue`)
+    loop_stack: Vec<LoopCtx>,
 }
 
 impl BytecodeCompiler {
@@ -54,6 +64,7 @@ impl BytecodeCompiler {
             scope_depth: 0,
             function_indices: HashMap::new(),
             program: CompiledProgram::new(),
+            loop_stack: Vec::new(),
         }
     }
 
@@ -71,6 +82,16 @@ impl BytecodeCompiler {
                 // Create compiled function
                 let compiled_func = CompiledFunction::new(func.name.clone(), func.params.len());
                 self.program.functions.push(compiled_func);
+            }
+        }
+
+        // Record whether the `#care` consent-checking pragma is enabled, so the
+        // VM enforces consent blocks (deny-by-default) rather than running them.
+        for item in &program.items {
+            if let TopLevelItem::Pragma(p) = item {
+                if matches!(p.directive, PragmaDirective::Care) {
+                    self.program.care = p.enabled;
+                }
             }
         }
 
@@ -267,22 +288,21 @@ impl BytecodeCompiler {
             }
 
             Statement::ConsentBlock(consent) => {
-                // Runtime consent checking
-                // Push permission string as constant
-                let perm_const = func.add_constant(Value::String(consent.permission.clone()));
-                func.emit(OpCode::Const(perm_const));
+                // Gate the body on a runtime consent check (`only if okay "..."`).
+                // `CheckConsent` pushes a Bool; if denied, skip the body. Under
+                // `#care` an ungranted permission is denied (deny-by-default,
+                // mirroring the non-interactive interpreter); with `#care` off the
+                // check passes. Seeding grants from `superpower` declarations is a
+                // follow-up.
+                func.emit(OpCode::CheckConsent(consent.permission.clone()));
+                let skip_body = func.emit(OpCode::JumpIfFalse(0));
 
-                // TODO: Add OpCode::CheckConsent when security system is integrated
-                // For now, assume consent is granted and execute body
-
-                // Pop permission string
-                func.emit(OpCode::Pop);
-
-                // Execute body
                 for stmt in &consent.body {
                     self.compile_statement(stmt, func)?;
                 }
 
+                let after_body = func.current_offset();
+                func.patch_jump(skip_body, after_body);
                 Ok(())
             }
 
@@ -410,6 +430,72 @@ impl BytecodeCompiler {
                 }
 
                 Ok(())
+            }
+
+            Statement::While(while_loop) => {
+                // Re-evaluate the condition at the top of every iteration.
+                let loop_start = func.current_offset();
+                self.compile_expr(&while_loop.condition.node, func)?;
+                let exit_jump = func.emit(OpCode::JumpIfFalse(0));
+
+                // `continue` re-tests the condition; `break` exits the loop.
+                self.loop_stack.push(LoopCtx {
+                    continue_target: loop_start,
+                    break_jumps: Vec::new(),
+                });
+
+                for stmt in &while_loop.body {
+                    self.compile_statement(stmt, func)?;
+                }
+
+                // Back-edge to the condition, then patch the false-exit.
+                func.emit(OpCode::Jump(loop_start));
+                let after_loop = func.current_offset();
+                func.patch_jump(exit_jump, after_loop);
+
+                // Patch every `break` in this loop to jump past it.
+                let ctx = self.loop_stack.pop().expect("loop_stack underflow");
+                for bj in ctx.break_jumps {
+                    func.patch_jump(bj, after_loop);
+                }
+                Ok(())
+            }
+
+            Statement::Break(_span) => {
+                let jump_idx = func.emit(OpCode::Jump(0));
+                match self.loop_stack.last_mut() {
+                    Some(ctx) => {
+                        ctx.break_jumps.push(jump_idx);
+                        Ok(())
+                    }
+                    None => Err(CompileError::Internal(
+                        "`break` used outside of a while loop".to_string(),
+                    )),
+                }
+            }
+
+            Statement::Continue(_span) => match self.loop_stack.last() {
+                Some(ctx) => {
+                    let target = ctx.continue_target;
+                    func.emit(OpCode::Jump(target));
+                    Ok(())
+                }
+                None => Err(CompileError::Internal(
+                    "`continue` used outside of a while loop".to_string(),
+                )),
+            },
+
+            Statement::Complain(complain) => {
+                // `complain "msg"` raises a runtime error carrying the message.
+                let msg_idx = func.add_constant(Value::String(complain.message.clone()));
+                func.emit(OpCode::Const(msg_idx));
+                func.emit(OpCode::Throw);
+                Ok(())
+            }
+
+            Statement::EmoteAnnotated(emote) => {
+                // The emote tag is metadata; compile the underlying statement.
+                self.compile_statement(&emote.statement, func)
             }
 
             _ => Err(CompileError::NotImplemented(format!(
@@ -605,10 +691,41 @@ impl BytecodeCompiler {
                 Ok(())
             }
 
-            _ => Err(CompileError::NotImplemented(format!(
-                "Expression compilation: {:?}",
-                expr
-            ))),
+            Expr::RecordLiteral(_type_name, fields) => {
+                // Push each field as a (key, value) pair: key constant, then value.
+                // `MakeRecord` pops them into a structural record (the type name is
+                // compile-time only).
+                for (key, value_expr) in fields {
+                    let key_idx = func.add_constant(Value::String(key.clone()));
+                    func.emit(OpCode::Const(key_idx));
+                    self.compile_expr(&value_expr.node, func)?;
+                }
+                func.emit(OpCode::MakeRecord(fields.len()));
+                Ok(())
+            }
+
+            Expr::FieldAccess(object, field) => {
+                // `obj.field` lowers to indexing the record by the field name.
+                self.compile_expr(&object.node, func)?;
+                let key_idx = func.add_constant(Value::String(field.clone()));
+                func.emit(OpCode::Const(key_idx));
+                func.emit(OpCode::Index);
+                Ok(())
+            }
+
+            Expr::UnitMeasurement(inner, _unit) => {
+                // Units of measure are a compile-time concern; at runtime the
+                // value is just the underlying number.
+                self.compile_expr(&inner.node, func)
+            }
+
+            Expr::GratitudeLiteral(text) => {
+                // A gratitude literal is a string-valued acknowledgement.
+                let idx = func.add_constant(Value::String(text.clone()));
+                func.emit(OpCode::Const(idx));
+                Ok(())
+            } // All `Expr` variants are now handled; `Lambda`/`CallExpr` closure
+              // *calls* still need a calling-convention fix (tracked separately).
         }
     }
 

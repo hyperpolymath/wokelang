@@ -102,6 +102,12 @@ pub enum OpCode {
     Nop,
     /// Halt execution
     Halt,
+    /// Pop a string and raise it as a runtime error (compiles `complain "msg"`)
+    Throw,
+    /// Push a Bool indicating whether consent for the given permission is
+    /// granted. Under `#care`, ungranted permissions are denied (deny-by-default);
+    /// with `#care` off the check always passes. Compiles `only if okay "..."`.
+    CheckConsent(String),
 }
 
 /// A compiled function
@@ -175,6 +181,8 @@ pub struct CompiledProgram {
     pub entry: Option<usize>,
     /// Global variables (name -> value)
     pub globals: HashMap<String, Value>,
+    /// Whether the `#care` consent-checking pragma is enabled for this program.
+    pub care: bool,
 }
 
 impl CompiledProgram {
@@ -183,6 +191,7 @@ impl CompiledProgram {
             functions: Vec::new(),
             entry: None,
             globals: HashMap::new(),
+            care: false,
         }
     }
 
