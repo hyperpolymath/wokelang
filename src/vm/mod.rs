@@ -209,7 +209,10 @@ mod tests {
             }
         "#;
         let err = run_vm(source).unwrap_err();
-        assert!(err.contains("boom"), "expected error mentioning boom, got: {err}");
+        assert!(
+            err.contains("boom"),
+            "expected error mentioning boom, got: {err}"
+        );
     }
 
     #[test]

@@ -724,9 +724,8 @@ impl BytecodeCompiler {
                 let idx = func.add_constant(Value::String(text.clone()));
                 func.emit(OpCode::Const(idx));
                 Ok(())
-            }
-            // All `Expr` variants are now handled; `Lambda`/`CallExpr` closure
-            // *calls* still need a calling-convention fix (tracked separately).
+            } // All `Expr` variants are now handled; `Lambda`/`CallExpr` closure
+              // *calls* still need a calling-convention fix (tracked separately).
         }
     }
 
