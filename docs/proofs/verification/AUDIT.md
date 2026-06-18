@@ -65,7 +65,7 @@ the Rust type checker (`src/typechecker/mod.rs`).
 | Result type | `okay`/`oops`/`unwrap`/`error`, `tOkay…tUnwrap` | present in **Rust** typechecker (`Result(_, _)`); **absent** from `core/eval.ml` |
 | Unary | `neg` (int/float), `not` | + measured propagation |
 | Calls / arrays | `call` (no typing rule); **arrays typed + evaluated** (`tArray`/`tArrayVal`, `sArrayStep`/`sArrayVal`/`sArrayErr`) | builtins + user functions; arrays typed |
-| Statements | declared (`Stmt`), **no typing/exec** | full eval in `core/eval.ml` |
+| Statements | **typing judgment** (`StmtWellTyped`, context-threading) + monotonicity/append metatheorems; execution/preservation not yet | full eval in `core/eval.ml` |
 | Units of measure | **not modelled** | `EMeasured` / `VMeasured`, unit-match checking |
 | Pattern matching, workers, custom types | **not modelled** | present |
 | Consent | `consent_monotonicity/preservation` | matches **spec** `axiomatic-semantics.md` (consent Hoare logic) |
@@ -113,9 +113,17 @@ the implementations toward it, or (b) build a *second* Lean model faithful to
    **DONE (2026-06-18).** `tArray`/`tArrayVal` + `sArrayStep`/`sArrayVal`/
    `sArrayErr`, with full `progress`/`preservation` coverage (see
    "Extensions landed" below). This brings Lean to parity with Coq on arrays.
-3. **Decide the eval-correspondence question** (a) vs (b) above with the
+3. ~~Statement typing~~ — **DONE (2026-06-18):** `StmtWellTyped`/
+   `StmtsWellTyped` + monotonicity/append (see "Statement typing landed"
+   below). **Next on statements: a dynamic story** — a statement execution
+   relation + a store-typing *preservation* theorem. The prerequisite is
+   generalising the expression `preservation`/`type_safety` to **open** terms
+   (non-empty context + a store-typing agreement), since statement-embedded
+   expressions reference declared variables (the current expression proofs
+   assume the empty context, deriving a contradiction in the `var` case).
+4. **Decide the eval-correspondence question** (a) vs (b) above with the
    maintainer before attempting PROOF-NEEDS #2.
-4. **Compiler/VM track** (the file's §8 TODO stubs: bytecode, compiler,
+5. **Compiler/VM track** (the file's §8 TODO stubs: bytecode, compiler,
    VM semantics, compiler-correctness) remains open and is a larger effort.
 
 ## Echo-types design compatibility (checked 2026-06-14)
@@ -154,6 +162,38 @@ theorems (`weaken_collapses_distinction`, `affine_canonical`,
 - **Tier 3 (capability):** `capSubsumes` is a preorder (`_refl`, `_trans`).
 - Still open in Tier 1: **float** arithmetic variants (`sub`/`mul`/`div` on
   `float`, mirroring `add` on float).
+
+## Statement typing landed (2026-06-18) — both provers, in parity
+
+Statements went from *declared datatype with no judgments* to a typed
+sub-language with machine-checked metatheory, in **both** Lean (`WokeLang.lean`)
+and Coq (`WokeLang.v`):
+
+- **Judgment** `StmtWellTyped Γ s Γ'` / `StmtsWellTyped Γ ss Γ'` — a
+  context-threading typing relation over all nine statement forms (`varDecl`,
+  `assign`, `return`, `if`, `loop`, `attempt`, `consent`, `expr`, `complain`),
+  mutually inductive (blocks contain statements). `varDecl` extends the
+  context; `assign` requires a prior declaration at the assigned type;
+  compound statements are block-scoped (they return the incoming context).
+  This is the statement-level analogue of the expression `has_type`/`HasType`.
+- **Metatheorems (all proved):**
+  - `ctxDomSub_{refl,trans,extend}` — the context-domain preorder + the
+    extension fact;
+  - `stmt_wellTyped_mono` / `stmts_wellTyped_mono` — **context monotonicity**:
+    a well-typed statement (or block) never undeclares a variable;
+  - `stmts_wellTyped_append` — **sequencing composes**: typing one block then
+    another from the resulting context types their concatenation;
+  - `stmts_wellTyped_example` — an inhabitation smoke (`let x = 0; x`).
+- **Method note:** the single-statement metatheorems are non-recursive (blocks
+  are scoped), which breaks the mutual dependency; the block versions then go
+  by ordinary induction on the *list* (sidestepping a mutual-induction scheme).
+- **Soundness:** Lean is `sorry`-free; in Coq `Print Assumptions` reports all
+  four statement lemmas **"Closed under the global context"** — i.e. axiom-free
+  (they do not touch the classical-reals axioms the float fragment needs).
+
+**Still open on statements:** the *dynamic* story — an execution relation +
+store-typing preservation — which first needs open-term expression
+preservation (see "Recommended next proof steps" #3).
 
 ## Arrays landed (2026-06-18) — Lean now at parity with Coq
 
