@@ -51,6 +51,8 @@ struct CallFrame {
     ip: usize,
     /// Base pointer for locals (points into value stack)
     bp: usize,
+    /// Captured upvalues, if this frame is executing a closure (else empty)
+    upvalues: Vec<Value>,
 }
 
 /// The virtual machine
@@ -90,6 +92,7 @@ impl VirtualMachine {
             function_idx: entry_idx,
             ip: 0,
             bp: 0,
+            upvalues: Vec::new(),
         });
 
         // Execute
@@ -312,6 +315,7 @@ impl VirtualMachine {
                         function_idx: callee_idx,
                         ip: 0,
                         bp,
+                        upvalues: Vec::new(),
                     });
                 }
 
@@ -469,23 +473,46 @@ impl VirtualMachine {
                     self.push(Value::Bool(granted));
                 }
 
-                OpCode::MakeClosure(func_idx) => {
-                    // Non-capturing closure: just the bytecode function index.
-                    self.push(Value::VmClosure(func_idx));
+                OpCode::MakeClosure(func_idx, upvalue_srcs) => {
+                    // Capture the listed enclosing locals by value from the
+                    // current frame's locals (stack[bp + src]).
+                    let bp = self.frames.last().ok_or(VMError::InvalidIP)?.bp;
+                    let mut upvalues = Vec::with_capacity(upvalue_srcs.len());
+                    for src in &upvalue_srcs {
+                        let v = self
+                            .stack
+                            .get(bp + *src)
+                            .ok_or(VMError::InvalidLocalIndex(*src))?
+                            .clone();
+                        upvalues.push(v);
+                    }
+                    self.push(Value::VmClosure { func_idx, upvalues });
+                }
+
+                OpCode::LoadUpvalue(idx) => {
+                    let value = self
+                        .frames
+                        .last()
+                        .ok_or(VMError::InvalidIP)?
+                        .upvalues
+                        .get(idx)
+                        .ok_or(VMError::InvalidLocalIndex(idx))?
+                        .clone();
+                    self.push(value);
                 }
 
                 OpCode::CallValue(argc) => {
                     // Stack: [callee_closure, arg0, .., arg{argc-1}]. Remove the
                     // closure from below the args, then enter its frame with the
-                    // args as locals 0..argc.
+                    // args as locals 0..argc and the closure's captured upvalues.
                     let cpos = self
                         .stack
                         .len()
                         .checked_sub(argc + 1)
                         .ok_or(VMError::StackUnderflow)?;
                     let callee = self.stack.remove(cpos);
-                    let func_idx = match callee {
-                        Value::VmClosure(idx) => idx,
+                    let (func_idx, upvalues) = match callee {
+                        Value::VmClosure { func_idx, upvalues } => (func_idx, upvalues),
                         other => {
                             return Err(VMError::TypeError(format!(
                                 "cannot call non-closure value: {:?}",
@@ -500,6 +527,7 @@ impl VirtualMachine {
                         function_idx: func_idx,
                         ip: 0,
                         bp: cpos,
+                        upvalues,
                     });
                 }
             }
