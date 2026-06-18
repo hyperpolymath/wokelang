@@ -55,6 +55,11 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@4be9e76fd7c4901c61fb841f559994984270fce7 # stable
+        with:
+          # Keep in sync with rust-toolchain.toml. Pins the lint gate so a
+          # floating `stable` cannot reintroduce a fmt/clippy skew on main.
+          toolchain: "1.96.0"
+          components: clippy, rustfmt
 
       - name: Cache cargo registry
         uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
