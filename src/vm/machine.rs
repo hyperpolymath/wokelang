@@ -333,8 +333,9 @@ impl VirtualMachine {
                 }
 
                 OpCode::Print => {
+                    // Use Display (not Debug) to match the interpreter's `print`.
                     let value = self.pop()?;
-                    println!("{:?}", value);
+                    println!("{}", value);
                     self.push(Value::Unit);
                 }
 

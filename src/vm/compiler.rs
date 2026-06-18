@@ -570,6 +570,35 @@ impl BytecodeCompiler {
             }
 
             Expr::Call(func_name, args) => {
+                // Built-ins that lower directly to VM opcodes. `Okay(x)`/`Oops(x)`
+                // parse as ordinary calls, so they (and a few stdlib-style ops the
+                // VM already has opcodes for) are recognised here, before the
+                // user-function lookup — mirroring the interpreter's inline
+                // built-in dispatch.
+                if args.len() == 1 {
+                    let unary = match func_name.as_str() {
+                        "Okay" => Some(OpCode::MakeOkay),
+                        "Oops" => Some(OpCode::MakeOops),
+                        "isOkay" => Some(OpCode::IsOkay),
+                        "unwrap" => Some(OpCode::TryUnwrap),
+                        "len" => Some(OpCode::Len),
+                        "toString" => Some(OpCode::ToString),
+                        "print" | "printInline" => Some(OpCode::Print),
+                        _ => None,
+                    };
+                    if let Some(op) = unary {
+                        self.compile_expr(&args[0].node, func)?;
+                        func.emit(op);
+                        return Ok(());
+                    }
+                    if func_name == "isOops" {
+                        self.compile_expr(&args[0].node, func)?;
+                        func.emit(OpCode::IsOkay);
+                        func.emit(OpCode::Not);
+                        return Ok(());
+                    }
+                }
+
                 // Resolve the callee to its function-table index. The arity is
                 // recovered at runtime from the called function's definition.
                 let func_idx = *self
