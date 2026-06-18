@@ -64,7 +64,7 @@ the Rust type checker (`src/typechecker/mod.rs`).
 | Logical | `and` (both `bool`) | `and or` with **`to_bool` coercion** of any value |
 | Result type | `okay`/`oops`/`unwrap`/`error`, `tOkay…tUnwrap` | present in **Rust** typechecker (`Result(_, _)`); **absent** from `core/eval.ml` |
 | Unary | `neg` (int/float), `not` | + measured propagation |
-| Calls / arrays | `call`, `array` exprs (no typing rules) | builtins + user functions; arrays typed |
+| Calls / arrays | `call` (no typing rule); **arrays typed + evaluated** (`tArray`/`tArrayVal`, `sArrayStep`/`sArrayVal`/`sArrayErr`) | builtins + user functions; arrays typed |
 | Statements | declared (`Stmt`), **no typing/exec** | full eval in `core/eval.ml` |
 | Units of measure | **not modelled** | `EMeasured` / `VMeasured`, unit-match checking |
 | Pattern matching, workers, custom types | **not modelled** | present |
@@ -109,8 +109,10 @@ the implementations toward it, or (b) build a *second* Lean model faithful to
      proven);
    - ordering comparisons `lt/gt/le/ge` ⇒ `bool`;
    - `or` (mirror of `and`).
-2. **Array typing** (`tArray`, an `array` congruence/▸ value rule) to retire
-   one of the `array`-shaped TODO gaps.
+2. ~~**Array typing** (`tArray`, an `array` congruence/▸ value rule)~~ —
+   **DONE (2026-06-18).** `tArray`/`tArrayVal` + `sArrayStep`/`sArrayVal`/
+   `sArrayErr`, with full `progress`/`preservation` coverage (see
+   "Extensions landed" below). This brings Lean to parity with Coq on arrays.
 3. **Decide the eval-correspondence question** (a) vs (b) above with the
    maintainer before attempting PROOF-NEEDS #2.
 4. **Compiler/VM track** (the file's §8 TODO stubs: bytecode, compiler,
@@ -151,7 +153,33 @@ theorems (`weaken_collapses_distinction`, `affine_canonical`,
     `decide`).
 - **Tier 3 (capability):** `capSubsumes` is a preorder (`_refl`, `_trans`).
 - Still open in Tier 1: **float** arithmetic variants (`sub`/`mul`/`div` on
-  `float`, mirroring `add` on float) and **`array`** typing/evaluation.
+  `float`, mirroring `add` on float).
+
+## Arrays landed (2026-06-18) — Lean now at parity with Coq
+
+The one array-shaped Tier-1 gap is closed on the Lean side, mirroring Coq's
+`T_Array`/`T_Lit_Array`:
+
+- **Typing:** `tArray` (array expression, elementwise) and `tArrayVal`
+  (fully-evaluated `.vArray` literal value), both with the `∀ e ∈ es` premise.
+- **Evaluation:** `sArrayStep` (reduce the left-most non-value element),
+  `sArrayVal` (normalise `.array (vs.map .lit)` to `.lit (.vArray vs)`), and
+  `sArrayErr` (propagate a panic out of an array, as the binop rules do). A
+  fully-evaluated array is *not* an `IsValue` — it always steps via `sArrayVal`
+  to the array literal, which is the value. (This is cleaner than Coq, where a
+  `map ELit`-array is simultaneously a value *and* steppable, forcing extra
+  array-equality step rules; in Lean, array equality reuses the generic
+  `.lit`-equality rules after normalisation.)
+- **Proofs:** `progress` and `preservation` cover all three step rules,
+  `sorry`-free and axiom-free under Lean 4.30.0. The helper `array_split`
+  does the pure-list "all-literals vs. prefix + first non-literal" split
+  (the analogue of Coq's `array_elements_progress`).
+- **Method note:** Lean's `∀ e ∈ es` premise yields a per-element induction
+  hypothesis directly from `induction`, so the Lean `progress` needs **no
+  well-founded recursion on an `expr_size` measure** — the device the Coq
+  proof requires because Coq's `Forall`-based scheme does not recurse into the
+  nested `has_type`s. The two developments now prove the same array results by
+  different means.
 
 ## Coq proofs (`WokeLang.v`) — audited 2026-06-14
 
@@ -178,10 +206,16 @@ treatment as the Lean file.
   axioms beyond those implicit in `Coq.Reals`"). Consistent, standard, honest.
 
 - **Coverage vs. the Lean file.** Complementary, not identical:
-  - Coq is **ahead on arrays** — full `T_Array`/`T_Lit_Array`, array stepping
-    (`S_Array_step`/`S_Array_val`), and a `progress` that uses **well-founded
-    induction on `expr_size`** to get an IH for array elements. (This is exactly
-    the Tier-1 item still open on the Lean side.)
+  - Arrays are **now at parity** (Lean caught up 2026-06-18): both have
+    `T_Array`/`T_Lit_Array` (Coq) ⟷ `tArray`/`tArrayVal` (Lean) and array
+    stepping. The proofs differ in method: Coq's `progress` uses **well-founded
+    induction on `expr_size`** to get an IH for array elements (its
+    `Forall`-based induction scheme does not recurse into the nested
+    `has_type`s); Lean phrases the premise as `∀ e ∈ es`, which yields the
+    per-element IH directly, so no size measure is needed. Coq additionally
+    treats a `map ELit`-array as a value (needing extra array-equality step
+    rules); Lean normalises arrays to a `.vArray` literal first and reuses
+    generic `.lit`-equality.
   - Coq models floats as `ℝ` ⇒ `value_eq_dec` is fully decidable (`Req_EM_T`),
     at the cost of the classical-reals axioms above. (Lean models `Float` as
     opaque IEEE and decides equality classically via `by_cases`.)
