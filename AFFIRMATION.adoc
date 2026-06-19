@@ -1,0 +1,138 @@
+// SPDX-License-Identifier: MPL-2.0
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+= WokeLang — Affirmation of Current State
+:toc:
+:sectnums:
+:affirmed: 2026-06-19
+:revdate: 2026-06-19
+
+[abstract]
+A point-in-time *affirmation* of where WokeLang stands: a timestamped
+attestation of what is true now, organised as the project's normative
+*MUST / INTEND / WISH* standing. It is a report, not a gate — the hard gates
+live in `.machine_readable/contractiles/` (the `must` contractile).
+
+[NOTE]
+====
+*Provenance & method.* Produced in an AI-assisted (Claude Code) working
+session, reflecting the state after the proof and bytecode-VM work merged on
+2026-06-18/19 (PRs #90–#94). It follows the RSR conventions visible in this
+repository; the canonical `AFFIRMATION.adoc` template in
+`hyperpolymath/standards` was *not reachable from this session*, so reconcile
+this document against that template when available.
+====
+
+== Affirmation
+
+As of *{affirmed}*, we affirm that WokeLang is a *working, consent-driven,
+human-centred programming language* whose *type safety is machine-checked and
+CI-gated* for a deliberately-scoped expression/statement core. Its normative
+MUSTs hold. The live development frontier is making the bytecode VM a true
+second compilation target and reconciling documentation to reality.
+
+== MUST — the normative core (what WokeLang must be to *be* itself)
+
+[cols="3,1,4",options="header"]
+|===
+| MUST | Status | Where we are
+
+| A working language: lex → parse → typecheck → run `.woke`
+| ✅ met
+| Rust toolchain (parser, typechecker, interpreter, bytecode VM, LSP, DAP, formatter, linter, REPL); 188 lib tests; OCaml reference core
+
+| Consent-driven safety actually *enforced* (the defining feature)
+| ✅ met
+| Interpreter always; the *VM now enforces* under `#care` (deny-by-default, PR #92); consent lives in the type system of the Idris calculus
+
+| Machine-checked type safety (progress + preservation)
+| ✅ met (core)
+| Lean + Coq (expression core + arrays + statement typing) and the Idris consent calculus. A *deliberate subset* of the surface language
+
+| Proofs sound and non-rotting (CI-gated, `sorry`/axiom-free)
+| ✅ met
+| `lean-proofs.yml` + `coq-proofs.yml`; axiom-free bar Coq's unavoidable reals axioms
+
+| Human-centred + ethical scaffolding (consent, gratitude, emotes, Result)
+| ✅ met
+| In the interpreter and now the VM
+
+| RSR repository compliance (license/governance/contractiles)
+| ✅ mostly
+| Template `Mustfile` checks pass; commit-signing `must` is the soft spot
+|===
+
+== INTEND — committed next-actions (we WILL do this)
+
+[cols="3,1,4",options="header"]
+|===
+| INTENT | Status | Where we are
+
+| Make the bytecode VM a real compilation target
+| in_progress
+| Major strides 2026-06-18/19: machine opcodes, full expr/stmt coverage, consent enforcement, Result constructors, closures + upvalue capture. Remainder → wishes
+
+| Broaden the verified core toward the Rust type system
+| in_progress
+| binop parity + arrays + statement typing landed; float arithmetic still open
+
+| Reconcile documentation to reality
+| declared
+| README/EXPLAINME stale; `TOOLCHAIN-WISHLIST` lists *built* tools (LSP/DAP/WASM) as "missing"; completion figure contradicts (`STATE.a2ml` 35% vs wishlist 85%)
+
+| Integrate echo-types into the type checker
+| declared
+| `STATE.a2ml` frontier; not started
+
+| Resolve eval ↔ spec correspondence (PROOF-NEEDS #2)
+| declared
+| Needs a maintainer decision (treat the spec as normative, or build a second model)
+|===
+
+== WISH — horizon aspirations (we WISH this were true)
+
+[cols="4,1,1",options="header"]
+|===
+| WISH | Horizon | Status
+
+| Interpreter↔VM parity harness (conformance through both) | near | declared
+| `.wbc` bytecode serialization | near | declared
+| Consent grant-sources (`superpower` declarations) on the VM | near | declared
+| Worker / concurrency statements on the VM | near | declared
+| By-reference + multi-level closure capture | near | declared
+| Full surface-language type safety (statement dynamics, units, pattern matching) | mid | declared
+| WASM codegen correctness | mid | declared
+| Remaining dev tooling (debugger UI, profiler, package manager, doc-gen) | mid | declared
+| Ordinal/echo Bachmann–Howard consumer-evidence; formal VM↔spec compiler-correctness | far | declared
+| Establishment (paper / Zenodo) + production-grade toolchain | far | declared
+|===
+
+== Where we are (synthesis)
+
+WokeLang's MUSTs are met for a deliberately-scoped core: a real, running,
+consent-enforcing language whose type safety is machine-checked and CI-gated.
+The frontier is the INTEND layer — turning the bytecode VM into a genuine
+second compilation target (which moved a great deal this session: it went from
+crashing on most programs to running the core language *with consent enforced
+and closures that capture state*) and reconciling the stale documentation and
+scope numbers. Everything past that is the WISH horizon.
+
+The one honest asterisk: `STATE.a2ml` pegs whole-vision completion at *~35%* —
+that figure counts the entire surface language plus full tooling plus ecosystem
+(the large WISH/INTEND surface), so it coexists with "the core MUSTs hold." The
+gap between "MUSTs met" and "35%" *is* the roadmap above.
+
+== Provenance
+
+Work merged to `main` that this affirmation reflects:
+
+* PR #90 — Lean array typing (mirror of Coq `T_Array` / `T_Lit_Array`)
+* PR #91 — statement typing judgment + metatheory (Lean + Coq)
+* PR #92 — VM: full expression coverage + Result/record/index execution + consent enforcement under `#care`
+* PR #93 — VM: Result constructors from surface syntax + closures
+* PR #94 — VM: upvalue capture for closures
+
+Deeper detail: `docs/proofs/verification/AUDIT.md` (proofs) and the per-PR
+descriptions. Next-session handoff: `docs/NEXT-CLAUDE-PROMPT.md`.
+
+// Affirmed 2026-06-19 (UTC date) in an AI-assisted Claude Code session, on
+// behalf of the maintainer. Reconcile against hyperpolymath/standards.
