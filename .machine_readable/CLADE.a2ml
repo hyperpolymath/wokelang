@@ -21,6 +21,6 @@ gitlab = "hyperpolymath/wokelang"
 bitbucket = "hyperpolymath/wokelang"
 
 [lineage]
-type = "monorepo-child"
-parent = "nextgen-languages"
+type = "standalone"
+parent = "none — standalone repo; nextgen-languages is the nl-clade coordination repo, not a code parent"
 born = "2026-03-16"
