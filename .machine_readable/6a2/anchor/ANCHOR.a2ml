@@ -16,4 +16,4 @@ ssg:
 # Relationships
 parents:
   - "org.hyperpolymath.boj-server"          # SSG / publish parent (boj build trigger)
-  - "org.hyperpolymath.nextgen-languages"   # code lineage (monorepo-child, clade nl)
+  - "org.hyperpolymath.nextgen-languages"   # nl-clade coordination repo (clade nl) — NOT a code parent; wokelang is standalone

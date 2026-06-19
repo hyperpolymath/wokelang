@@ -8,7 +8,7 @@ edition = "2024"
 description = "WebAssembly backend for WokeLang — consent gates and dimensional types to WASM"
 authors = ["Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>"]
 license = "MPL-2.0"
-repository = "https://github.com/hyperpolymath/nextgen-languages"
+repository = "https://github.com/hyperpolymath/wokelang"
 
 [dependencies]
 wasm-encoder = "0.225"

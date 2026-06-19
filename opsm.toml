@@ -10,8 +10,8 @@ description = "Wokelang compiler — general-purpose BEAM-friendly application l
 license = "MPL-2.0"
 authors = ["Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>"]
 keywords = ["wokelang", "hyperpolymath", "nextgen-languages", "compiler"]
-homepage = "https://github.com/hyperpolymath/nextgen-languages"
-repository = "https://github.com/hyperpolymath/nextgen-languages"
+homepage = "https://github.com/hyperpolymath/wokelang"
+repository = "https://github.com/hyperpolymath/wokelang"
 forth = "wokelang"
 
 [opsm]
