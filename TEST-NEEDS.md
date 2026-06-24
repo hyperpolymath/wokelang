@@ -1,5 +1,5 @@
 <!--
-SPDX-License-Identifier: MPL-2.0
+SPDX-License-Identifier: CC-BY-SA-4.0
 Copyright (c) Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
 -->
 # TEST-NEEDS: wokelang
@@ -142,8 +142,8 @@ cargo test --test lsp_integration_test     → (existing 8 tests)
 ## Compliance
 
 ### SPDX Headers
-- All new test files: `SPDX-License-Identifier: MPL-2.0`
-- All new conformance test programs: `SPDX-License-Identifier: MPL-2.0`
+- All new test files: `SPDX-License-Identifier: CC-BY-SA-4.0`
+- All new conformance test programs: `SPDX-License-Identifier: CC-BY-SA-4.0`
 - Test runner script: SPDX header included
 
 ### Author Attribution
