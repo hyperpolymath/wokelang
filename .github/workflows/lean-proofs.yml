@@ -62,3 +62,9 @@ jobs:
           set -euo pipefail
           lean docs/proofs/verification/WokeGrammarRegular.lean
           echo "✅ WokeGrammarRegular.lean verified"
+
+      - name: Verify WokeGrammarCFL.lean (§7.3 CFL closure: union/concat/star)
+        run: |
+          set -euo pipefail
+          lean docs/proofs/verification/WokeGrammarCFL.lean
+          echo "✅ WokeGrammarCFL.lean verified"

@@ -69,7 +69,7 @@ reach here, with reason).
 | T6.3 | §6.3 Left-associativity | ✅ | **P1** | `a-b-c ↦ (a-b)-c` from the strict-`<` model + general statement | MACHINE-CHECKED |
 | T1.1 | §1.1 CFG membership | ✅ | **P4** | By construction (the grammar relation is a CFG) | MACHINE-CHECKED |
 | T1.2 | §1.1 LL(1) = ✗ | ✅ | **P4** | Exhibit the FIRST/FIRST conflict (`primary → identifier` vs `identifier "(" …`) — a 1-lookahead non-determinism witness | MACHINE-CHECKED |
-| T7.3a | §7.3 CFL closed under ∪, ·, * | ⚠️ needs a general CFG/language module | **P5** | Explicit grammar constructions + language-equality proofs (standalone module, not a fact about *this* grammar) | FLAGGED |
+| T7.3a | §7.3 CFL closed under ∪, ·, * | ✅ done from scratch | **P5→done** | `WokeGrammarCFL.lean`: CFG derivation relation + reusable embedding lemma + union/concat/star grammar constructions, `propext`-only | MACHINE-CHECKED |
 | T7.1 | §7.1 Not regular (pumping lemma) | ✅ done from scratch | **P6→done** | `WokeGrammarRegular.lean`: bespoke finite pigeonhole + `Fin k` DFA + fooling-set on `aⁿbⁿ` (≅ `(ⁿ)ⁿ`), Mathlib-free | MACHINE-CHECKED |
 | T7.3b | §7.3 CFL **not** closed under ∩, ¬ | ⚠️ no (needs non-CFL-ness of `aⁿbⁿcⁿ`) | **P6** | Requires the pumping lemma *for CFLs* — same Mathlib gap | FLAGGED |
 
@@ -169,12 +169,14 @@ identical" per `AUDIT.md`.)
   `Fin k` DFA + the fooling-set argument on `aⁿbⁿ` were built from scratch in
   core Lean, `sorry`-free (classical-logic axioms only). `aⁿbⁿ ≅ (ⁿ x )ⁿ`, the
   grammar's balanced-nesting sublanguage, so the expression language is non-regular.
-- **§7.3 CFL *positive* closure (∪, ·, \*)** and **non-closure under ∩ / ¬** are
-  general facts about the *class* CFL (not this grammar). The positive direction
-  needs a general CFG + derivation-semantics module with closure constructions;
-  the negative direction additionally needs the **CFL** pumping lemma. These
-  remain a scoped standalone development — recorded rather than stubbed, per the
-  agreed "flag, don't fake" rule.
+- **§7.3 CFL *positive* closure (∪, ·, \*) — DONE** (`WokeGrammarCFL.lean`): a
+  general CFG derivation relation + a reusable grammar-embedding lemma
+  (`embGen_iff`) + explicit union/concat/star grammar constructions, `sorry`-free
+  (`propext`-only). The WokeLang surface grammar is context-free, so it inhabits
+  this class and these operations apply.
+- **§7.3 *non-closure* under ∩ / ¬** is still scoped: it needs the pumping lemma
+  **for CFLs** (e.g. to show `aⁿbⁿcⁿ` is not context-free), a separate larger
+  development — recorded rather than stubbed.
 
 ## Status
 
