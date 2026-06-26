@@ -321,14 +321,13 @@ The binding power comparison ensures this:
 
 ## 7. Formal Language Theory
 
-> **Mechanization status.** The §7 results (not-regular via pumping; CFL closure /
-> non-closure) are general facts about the *classes* REG/CFL, not about the
-> WokeLang grammar specifically, and need a general automata/grammar library
-> (Mathlib's `Computability.*`) that the repo's deliberately Mathlib-free, offline,
-> single-file prover setup does not provide. They are therefore **not machine-checked
-> here** — recorded honestly in `../verification/GRAMMAR-PROOF-INVENTORY.md` rather
-> than stubbed. The combinatorial kernel (unbounded balanced nesting) *is* exercised
-> concretely in `WokeGrammar.lean`.
+> **Mechanization status.** §7.1 **not-regular is now machine-checked** in
+> [`../verification/WokeGrammarRegular.lean`](../verification/WokeGrammarRegular.lean):
+> a from-scratch finite pigeonhole + a `Fin k` DFA + the fooling-set argument on
+> `aⁿbⁿ` (≅ the grammar's balanced nesting `(ⁿ x )ⁿ`), Mathlib-free and `sorry`-free.
+> The §7.3 CFL closure/non-closure results remain general facts about the *class*
+> CFL needing a full grammar-derivation module; their status is tracked in
+> `../verification/GRAMMAR-PROOF-INVENTORY.md`.
 
 ### 7.1 Chomsky Hierarchy Position
 
