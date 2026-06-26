@@ -57,7 +57,7 @@ reach here, with reason).
 
 | # | Prose claim (grammar-proofs.md) | Faithful here? | Priority | Mechanization | Status |
 |---|---|---|---|---|---|
-| T2.1 | §2.1 No left recursion | ✅ yes (whole grammar) | **P2** | Grammar as data; `¬ LeftRecursive G` by decision/structural proof over **all** productions | MACHINE-CHECKED |
+| T2.1 | §2.1 No left recursion | ✅ yes (whole grammar) | **P2** | Grammar as data; rank-decreasing `Reach` ⇒ `¬ Reach a a` over **all** productions | MACHINE-CHECKED (**+ found a real discrepancy:** the guard pattern IS left-recursive — see below) |
 | T2.2 | §2.2 Unambiguity | ✅ for the core (undecidable in general) | **P1** | Determinism of the verified parser ⇒ unique parse: `Derives ts e₁ → Derives ts e₂ → e₁=e₂` for the expression core | MACHINE-CHECKED (core) |
 | T2.3 | §2.3 LL(2) | ◑ partial | **P4** | The one 2-token decision (`ident` vs `ident(`) witnessed; determinism of the core parser. Full LL(2) table for all 94 productions is not built | MACHINE-CHECKED (witness) |
 | T3.1 | §3.1 Parser soundness | ✅ for the core | **P1** | `parse ts = some (e, rest) → Derives (consumed) e` | MACHINE-CHECKED (core) |
@@ -69,7 +69,7 @@ reach here, with reason).
 | T6.3 | §6.3 Left-associativity | ✅ | **P1** | `a-b-c ↦ (a-b)-c` from the strict-`<` model + general statement | MACHINE-CHECKED |
 | T1.1 | §1.1 CFG membership | ✅ | **P4** | By construction (the grammar relation is a CFG) | MACHINE-CHECKED |
 | T1.2 | §1.1 LL(1) = ✗ | ✅ | **P4** | Exhibit the FIRST/FIRST conflict (`primary → identifier` vs `identifier "(" …`) — a 1-lookahead non-determinism witness | MACHINE-CHECKED |
-| T7.3a | §7.3 CFL closed under ∪, ·, * | ✅ | **P5** | Explicit grammar constructions + language-equality proofs | MACHINE-CHECKED |
+| T7.3a | §7.3 CFL closed under ∪, ·, * | ⚠️ needs a general CFG/language module | **P5** | Explicit grammar constructions + language-equality proofs (standalone module, not a fact about *this* grammar) | FLAGGED |
 | T7.1 | §7.1 Not regular (pumping lemma) | ⚠️ no (needs automata/Mathlib offline) | **P6** | Mechanize the combinatorial kernel (the balanced-paren sublanguage `(ⁿ)ⁿ ⊆ L`); full DFA+pumping non-regularity needs Mathlib's `Computability` (network-fetched, unavailable) | FLAGGED + partial kernel |
 | T7.3b | §7.3 CFL **not** closed under ∩, ¬ | ⚠️ no (needs non-CFL-ness of `aⁿbⁿcⁿ`) | **P6** | Requires the pumping lemma *for CFLs* — same Mathlib gap | FLAGGED |
 
@@ -128,7 +128,64 @@ cleaner than `WokeLang.lean`).
   relation) is the one honest extension still open on P1; the rejection battery
   covers the no-junk direction concretely.
 
+## Landed — P2/P3/P4 (`WokeGrammarStructure.lean`, Lean 4.30.0)
+
+CI-gated (`lean-proofs.yml`), `sorry`-free; `no_left_recursion` depends on **no
+axioms at all** (fully constructive).
+
+- **T2.1 no left recursion (P2)** — the begins-with-first-nonterminal graph of the
+  *whole* grammar is encoded as data with a strictly-decreasing rank; `Reach`
+  (transitive first-symbol reachability) ⇒ `no_left_recursion : ∀ a, ¬ Reach a a`.
+  **Discrepancy found & machine-checked:** the grammar *as literally written* has
+  one left-recursive production — the guard pattern `pattern = … | pattern "when"
+  expression` (`guard_pattern_is_left_recursive`). So the prose §2.1 blanket "no
+  left recursion" is **false as written**; it holds only for the implemented
+  subset (the parser does not implement the guard alternative — the grammar's own
+  NOTE). This corrects the prose.
+- **T4.1 maximal munch / T4.2 keyword priority (P3)** — a word scanner taking the
+  maximal identifier run + keyword-on-exact-match: `kw_priority` (general),
+  `munch_maximal` (general longest-match: the remainder never extends the token),
+  plus kernel-`decide`d concretes (`remember`↦keyword, `remembering`↦*one*
+  identifier not `remember`+`ing`, `remember(`↦keyword then stop).
+- **T1.2 LL(1)=✗ / T2.3 LL(2)=✓ (P4)** — `not_LL1` (the `x` vs `x(…)` FIRST/FIRST
+  conflict shares FIRST₁ = identifier) and `LL2_separates` (two tokens decide,
+  mirroring the parser's `peek == '('` branch). CFG membership holds by
+  construction.
+
+## Landed — Coq mirror (`WokeGrammarStructure.v`, Coq 8.18.0)
+
+CI-gated (`coq-proofs.yml`); `Print Assumptions` reports **axiom-free** ("Closed
+under the global context"). Mirrors **P2 (no-left-recursion + guard discrepancy)**
+and **P4 (LL(1)✗/LL(2)✓)** in lockstep with Lean. (The Lean↔Coq relationship for
+the *parser metatheory* P1 follows the repo's existing pattern — Lean carries the
+universal `prefix_rt`/`completeness_rp` development; a Coq port of that is the
+scoped next step, exactly as `WokeLang.{lean,v}` are "complementary, not
+identical" per `AUDIT.md`.)
+
+## Flagged — P5/P6 (§7 formal-language-theory claims), honestly not mechanized
+
+These prose claims are **general facts about the *classes* `REG`/`CFL`**, not
+properties of the WokeLang grammar, and need a general automata/grammar library:
+
+- **T7.1 not regular (pumping lemma)** and **§7.3 CFL non-closure under ∩ / ¬**
+  require a formal DFA + pumping-lemma development (or the CFL pumping lemma for
+  the non-closure direction). Mathlib has this (`Mathlib.Computability.*`), but
+  the repo's proofs are deliberately **Mathlib-free and offline** (single-file
+  `lean <file>`), and `lake`/reservoir fetching is blocked by egress policy here.
+  Building DFA + pumping from scratch in core Lean is a large standalone module.
+- **§7.3 CFL *positive* closure (∪, ·, \*)** is mechanizable but needs a general
+  CFG + language-semantics module (a derivation relation over arbitrary grammars
+  and the three closure constructions) — also a standalone development, not a fact
+  about *this* grammar.
+
+Per the agreed "flag, don't fake" rule these are recorded here rather than stubbed.
+The combinatorial kernel of non-regularity (unbounded balanced nesting `(ⁿ … )ⁿ`)
+*is* exercised concretely — `WokeGrammar.lean` parses `((1))` and arbitrarily
+grouped inputs — but the full automata-theoretic theorems remain out of faithful
+reach in this setup.
+
 ## Status
 
-P1 landed (above). P2–P6 + the Coq mirror proceed in priority order; the
-authoritative status is always "does the CI prover check go green."
+P1 (merged, #102) + P2/P3/P4 + the structural Coq mirror are machine-checked and
+CI-gated. P5/P6 are honestly flagged above. The authoritative status is always
+"does the CI prover check go green."

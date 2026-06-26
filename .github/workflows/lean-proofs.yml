@@ -50,3 +50,9 @@ jobs:
           set -euo pipefail
           lean docs/proofs/verification/WokeGrammar.lean
           echo "✅ WokeGrammar.lean verified"
+
+      - name: Verify WokeGrammarStructure.lean (no-left-recursion + lexer + classification)
+        run: |
+          set -euo pipefail
+          lean docs/proofs/verification/WokeGrammarStructure.lean
+          echo "✅ WokeGrammarStructure.lean verified"
