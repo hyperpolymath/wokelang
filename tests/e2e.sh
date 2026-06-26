@@ -100,6 +100,16 @@ else
   fail "Grammar file not found: $GRAMMAR_FILE"
 fi
 
+# spec/grammar.ebnf must stay a byte-faithful synced copy of the canonical
+# grammar/wokelang.ebnf (drift guard — see scripts/check-grammar-sync.sh).
+if [ -x scripts/check-grammar-sync.sh ]; then
+  if scripts/check-grammar-sync.sh >/dev/null 2>&1; then
+    pass "spec/grammar.ebnf is in sync with canonical grammar/wokelang.ebnf"
+  else
+    fail "spec/grammar.ebnf drifted from grammar/wokelang.ebnf (run scripts/check-grammar-sync.sh --sync)"
+  fi
+fi
+
 # ---------------------------------------------------------------------------
 # 3. Conformance test fixtures
 # ---------------------------------------------------------------------------
