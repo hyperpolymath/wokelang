@@ -13,11 +13,13 @@ on:
     paths:
       - 'docs/proofs/verification/WokeLang.v'
       - 'docs/proofs/verification/WokeGrammarStructure.v'
+      - 'docs/proofs/verification/WokeGrammarParser.v'
       - '.github/workflows/coq-proofs.yml'
   pull_request:
     paths:
       - 'docs/proofs/verification/WokeLang.v'
       - 'docs/proofs/verification/WokeGrammarStructure.v'
+      - 'docs/proofs/verification/WokeGrammarParser.v'
       - '.github/workflows/coq-proofs.yml'
 
 permissions:
@@ -49,3 +51,10 @@ jobs:
           cd docs/proofs/verification
           coqc WokeGrammarStructure.v
           echo "✅ WokeGrammarStructure.v verified"
+
+      - name: Verify WokeGrammarParser.v (universal parser metatheory; axiom-free)
+        run: |
+          set -euo pipefail
+          cd docs/proofs/verification
+          coqc WokeGrammarParser.v
+          echo "✅ WokeGrammarParser.v verified"
