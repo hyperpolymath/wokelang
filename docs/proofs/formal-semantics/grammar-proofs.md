@@ -325,8 +325,11 @@ The binding power comparison ensures this:
 > [`../verification/WokeGrammarRegular.lean`](../verification/WokeGrammarRegular.lean):
 > a from-scratch finite pigeonhole + a `Fin k` DFA + the fooling-set argument on
 > `aⁿbⁿ` (≅ the grammar's balanced nesting `(ⁿ x )ⁿ`), Mathlib-free and `sorry`-free.
-> The §7.3 CFL closure/non-closure results remain general facts about the *class*
-> CFL needing a full grammar-derivation module; their status is tracked in
+> §7.3 **CFL closure under ∪, ·, \*** is now machine-checked too, in
+> [`../verification/WokeGrammarCFL.lean`](../verification/WokeGrammarCFL.lean)
+> (a CFG derivation relation + union/concat/star grammar constructions,
+> Mathlib-free, `sorry`-free). Only the §7.3 *non*-closure under ∩ / ¬ remains
+> scoped (it needs the pumping lemma for CFLs); status in
 > `../verification/GRAMMAR-PROOF-INVENTORY.md`.
 
 ### 7.1 Chomsky Hierarchy Position
