@@ -70,7 +70,7 @@ reach here, with reason).
 | T1.1 | §1.1 CFG membership | ✅ | **P4** | By construction (the grammar relation is a CFG) | MACHINE-CHECKED |
 | T1.2 | §1.1 LL(1) = ✗ | ✅ | **P4** | Exhibit the FIRST/FIRST conflict (`primary → identifier` vs `identifier "(" …`) — a 1-lookahead non-determinism witness | MACHINE-CHECKED |
 | T7.3a | §7.3 CFL closed under ∪, ·, * | ⚠️ needs a general CFG/language module | **P5** | Explicit grammar constructions + language-equality proofs (standalone module, not a fact about *this* grammar) | FLAGGED |
-| T7.1 | §7.1 Not regular (pumping lemma) | ⚠️ no (needs automata/Mathlib offline) | **P6** | Mechanize the combinatorial kernel (the balanced-paren sublanguage `(ⁿ)ⁿ ⊆ L`); full DFA+pumping non-regularity needs Mathlib's `Computability` (network-fetched, unavailable) | FLAGGED + partial kernel |
+| T7.1 | §7.1 Not regular (pumping lemma) | ✅ done from scratch | **P6→done** | `WokeGrammarRegular.lean`: bespoke finite pigeonhole + `Fin k` DFA + fooling-set on `aⁿbⁿ` (≅ `(ⁿ)ⁿ`), Mathlib-free | MACHINE-CHECKED |
 | T7.3b | §7.3 CFL **not** closed under ∩, ¬ | ⚠️ no (needs non-CFL-ness of `aⁿbⁿcⁿ`) | **P6** | Requires the pumping lemma *for CFLs* — same Mathlib gap | FLAGGED |
 
 ## Priority order (execution)
@@ -162,27 +162,19 @@ universal `prefix_rt`/`completeness_rp` development; a Coq port of that is the
 scoped next step, exactly as `WokeLang.{lean,v}` are "complementary, not
 identical" per `AUDIT.md`.)
 
-## Flagged — P5/P6 (§7 formal-language-theory claims), honestly not mechanized
+## §7 — status (T7.1 done from scratch; §7.3 scoped)
 
-These prose claims are **general facts about the *classes* `REG`/`CFL`**, not
-properties of the WokeLang grammar, and need a general automata/grammar library:
-
-- **T7.1 not regular (pumping lemma)** and **§7.3 CFL non-closure under ∩ / ¬**
-  require a formal DFA + pumping-lemma development (or the CFL pumping lemma for
-  the non-closure direction). Mathlib has this (`Mathlib.Computability.*`), but
-  the repo's proofs are deliberately **Mathlib-free and offline** (single-file
-  `lean <file>`), and `lake`/reservoir fetching is blocked by egress policy here.
-  Building DFA + pumping from scratch in core Lean is a large standalone module.
-- **§7.3 CFL *positive* closure (∪, ·, \*)** is mechanizable but needs a general
-  CFG + language-semantics module (a derivation relation over arbitrary grammars
-  and the three closure constructions) — also a standalone development, not a fact
-  about *this* grammar.
-
-Per the agreed "flag, don't fake" rule these are recorded here rather than stubbed.
-The combinatorial kernel of non-regularity (unbounded balanced nesting `(ⁿ … )ⁿ`)
-*is* exercised concretely — `WokeGrammar.lean` parses `((1))` and arbitrarily
-grouped inputs — but the full automata-theoretic theorems remain out of faithful
-reach in this setup.
+- **T7.1 not regular — DONE** (`WokeGrammarRegular.lean`): rather than fetch
+  Mathlib's automata library (blocked offline), a bespoke finite pigeonhole + a
+  `Fin k` DFA + the fooling-set argument on `aⁿbⁿ` were built from scratch in
+  core Lean, `sorry`-free (classical-logic axioms only). `aⁿbⁿ ≅ (ⁿ x )ⁿ`, the
+  grammar's balanced-nesting sublanguage, so the expression language is non-regular.
+- **§7.3 CFL *positive* closure (∪, ·, \*)** and **non-closure under ∩ / ¬** are
+  general facts about the *class* CFL (not this grammar). The positive direction
+  needs a general CFG + derivation-semantics module with closure constructions;
+  the negative direction additionally needs the **CFL** pumping lemma. These
+  remain a scoped standalone development — recorded rather than stubbed, per the
+  agreed "flag, don't fake" rule.
 
 ## Status
 
