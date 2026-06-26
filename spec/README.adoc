@@ -11,8 +11,11 @@ This directory contains the canonical language/query specification files for wok
 == Contents
 
 === grammar.ebnf
-The canonical EBNF grammar for wokelang.
-Copied from the original source location; the original is preserved.
+A generated, synchronized copy of the canonical EBNF grammar, whose single
+source of truth is `grammar/wokelang.ebnf` (verified against the live
+`src/lexer` and `src/parser`). Do not edit the grammar here; edit
+`grammar/wokelang.ebnf` and run `scripts/check-grammar-sync.sh --sync`. CI runs
+`scripts/check-grammar-sync.sh` to fail the build if the two ever drift apart.
 
 === SPEC.core.scm
 Core specification in Scheme format.

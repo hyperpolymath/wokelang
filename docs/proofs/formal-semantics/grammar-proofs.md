@@ -6,6 +6,15 @@ Copyright (c) Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
 
 This document provides formal proofs about the WokeLang grammar, including unambiguity, decidability, and parser correctness.
 
+> **Machine-checked status.** The prose below is being mechanized. The
+> precedence/associativity/completeness/unambiguity/termination claims for the
+> expression core are now **machine-checked** in
+> [`../verification/WokeGrammar.lean`](../verification/WokeGrammar.lean)
+> (Lean 4.30.0, CI-gated, `sorry`-free, axiom-clean). See
+> [`../verification/GRAMMAR-PROOF-INVENTORY.md`](../verification/GRAMMAR-PROOF-INVENTORY.md)
+> for the full claim-by-claim map of what is proven, what is concretely
+> witnessed, and what is honestly flagged as out of reach.
+
 ## 1. Grammar Classification
 
 ### 1.1 Grammar Hierarchy

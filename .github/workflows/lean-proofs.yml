@@ -44,3 +44,9 @@ jobs:
           lean --version
           lean docs/proofs/verification/WokeLang.lean
           echo "✅ WokeLang.lean verified"
+
+      - name: Verify WokeGrammar.lean (grammar proofs; sorry-free; must exit 0)
+        run: |
+          set -euo pipefail
+          lean docs/proofs/verification/WokeGrammar.lean
+          echo "✅ WokeGrammar.lean verified"
