@@ -64,6 +64,15 @@ logical_or = logical_and { "or" logical_and }
 
 The `{ }` repetition prevents left-recursion. □
 
+> **Correction (machine-checked, `WokeGrammarStructure.lean/.v`).** This blanket
+> claim is **inaccurate for the grammar as literally written**: the `pattern`
+> production has the guard alternative `pattern = … | pattern "when" expression`,
+> which is *directly left-recursive* (`guard_pattern_is_left_recursive`). No
+> left recursion holds for the **implemented** grammar (the parser does not
+> implement the guard alternative — see the grammar's own NOTE), which is what
+> `no_left_recursion` proves. The table above also omits `pattern`; with the
+> guard alternative it is the sole left-recursive production.
+
 ### 2.2 No Ambiguity
 
 **Theorem 2.2:** The WokeLang grammar is unambiguous.
@@ -311,6 +320,15 @@ The binding power comparison ensures this:
 ---
 
 ## 7. Formal Language Theory
+
+> **Mechanization status.** The §7 results (not-regular via pumping; CFL closure /
+> non-closure) are general facts about the *classes* REG/CFL, not about the
+> WokeLang grammar specifically, and need a general automata/grammar library
+> (Mathlib's `Computability.*`) that the repo's deliberately Mathlib-free, offline,
+> single-file prover setup does not provide. They are therefore **not machine-checked
+> here** — recorded honestly in `../verification/GRAMMAR-PROOF-INVENTORY.md` rather
+> than stubbed. The combinatorial kernel (unbounded balanced nesting) *is* exercised
+> concretely in `WokeGrammar.lean`.
 
 ### 7.1 Chomsky Hierarchy Position
 

@@ -12,10 +12,12 @@ on:
   push:
     paths:
       - 'docs/proofs/verification/WokeLang.v'
+      - 'docs/proofs/verification/WokeGrammarStructure.v'
       - '.github/workflows/coq-proofs.yml'
   pull_request:
     paths:
       - 'docs/proofs/verification/WokeLang.v'
+      - 'docs/proofs/verification/WokeGrammarStructure.v'
       - '.github/workflows/coq-proofs.yml'
 
 permissions:
@@ -40,3 +42,10 @@ jobs:
           cd docs/proofs/verification
           coqc WokeLang.v
           echo "✅ WokeLang.v verified"
+
+      - name: Verify WokeGrammarStructure.v (no-left-recursion + classification; axiom-free)
+        run: |
+          set -euo pipefail
+          cd docs/proofs/verification
+          coqc WokeGrammarStructure.v
+          echo "✅ WokeGrammarStructure.v verified"
