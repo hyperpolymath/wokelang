@@ -25,17 +25,18 @@ What is proved here (complete proofs — no holes, no escape hatches):
     context-free. Apply `cfl_pumping` to `aᵖbᵖcᵖ`; pumping down to `i = 0` forces
     equal letter-counts in the pumped part, so it spans an `a` and a `c`, which
     (positional core `prefix_pure`/`abc_window`) makes `|v w x| > p` — contradicting
-    `|v w x| ≤ p`. This is the standard witness that the CFLs are not closed under
-    intersection / complement.
+    `|v w x| ≤ p`.
+  • `cfl_not_closed_inter` : THE non-closure theorem — the context-free languages
+    are not closed under intersection. Witnesses `L₁ = {aⁱbⁱcʲ}` and `L₂ = {aᵐbⁿcⁿ}`
+    are both context-free (explicit ε-free binary-normal-form grammars `R1`, `R2`,
+    each with full soundness via tree inversion + completeness via tree building),
+    but `L₁ ∩ L₂ = {aⁿbⁿcⁿ}`, which `anbncn_not_cfl` rules out. (With CFL ∪-closure
+    and De Morgan this also refutes closure under complement.)
 
 Trust base: only the three standard classical kernel constants `propext`,
 `Classical.choice`, and `Quot.sound` — the same foundations Mathlib relies on
 (`Classical.choice` enters through the `pigeon` case split). There are no holes
 and no project-specific assumptions; every step is checked by Lean's kernel.
-
-NEXT: wrap `anbncn_not_cfl` into the explicit ∩ / ¬ non-closure statement by
-exhibiting the two witness CFLs `{aⁿbⁿcᵐ}`, `{aᵐbⁿcⁿ}` (BNF grammars + exact
-generation) whose intersection is `aⁿbⁿcⁿ`.
 -/
 
 -- A grammar in binary normal form: every production is A → B C, A → t, or A → ε.
@@ -534,5 +535,257 @@ theorem anbncn_not_cfl : ¬ IsCFL (fun z => ∃ n, 1 ≤ n ∧ z = abc n) := by
     rw [hz]; simp [List.append_assoc]
   have hgt := abc_window hwin hain hcin
   omega
+
+/-! ### CFLs are not closed under intersection / complement — explicit witnesses
+
+`L₁ = { aⁱbⁱcʲ : i,j ≥ 1 }` and `L₂ = { aᵐbⁿcⁿ : m,n ≥ 1 }` are both context-free
+(ε-free binary-normal-form grammars below), but `L₁ ∩ L₂ = { aⁿbⁿcⁿ }`, which is
+not (`anbncn_not_cfl`). -/
+
+/-- `aⁱbⁱ`. -/
+def ab (i : Nat) : List Letter := replicate i a ++ replicate i b
+
+theorem ab_cons (i : Nat) : [a] ++ (ab i ++ [b]) = ab (i + 1) := by
+  have hb : replicate i b ++ [b] = replicate (i + 1) b := replicate_succ'.symm
+  have ha : [a] ++ replicate i a = replicate (i + 1) a := by rw [replicate_succ]; rfl
+  simp only [ab, List.append_assoc]
+  rw [hb, ← List.append_assoc, ha]
+
+/-- Nonterminals for `L₁`'s grammar. -/
+inductive M1 | S | X | Z | Y | Ta | Tb | Tc
+  deriving DecidableEq
+
+/-- Productions: `S → X Y`, `X → a b | a Z`, `Z → X b`, `Y → c | c Y`, plus the
+single-terminal rules. Binary normal form, ε-free. -/
+inductive R1 : M1 → BProd M1 Letter → Prop
+  | s   : R1 .S  (.bin .X .Y)
+  | xab : R1 .X  (.bin .Ta .Tb)
+  | xaz : R1 .X  (.bin .Ta .Z)
+  | zxb : R1 .Z  (.bin .X .Tb)
+  | ycy : R1 .Y  (.bin .Tc .Y)
+  | yc  : R1 .Y  (.term .c)
+  | ta  : R1 .Ta (.term .a)
+  | tb  : R1 .Tb (.term .b)
+  | tc  : R1 .Tc (.term .c)
+
+/-- Per-nonterminal language characterization. -/
+def Char1 : M1 → List Letter → Prop
+  | .S,  w => ∃ i j, 1 ≤ i ∧ 1 ≤ j ∧ w = ab i ++ replicate j c
+  | .X,  w => ∃ i, 1 ≤ i ∧ w = ab i
+  | .Z,  w => ∃ i, 1 ≤ i ∧ w = ab i ++ [b]
+  | .Y,  w => ∃ j, 1 ≤ j ∧ w = replicate j c
+  | .Ta, w => w = [a]
+  | .Tb, w => w = [b]
+  | .Tc, w => w = [c]
+
+/-- **Soundness.** Every parse tree's yield lies in its nonterminal's language —
+proved by one structural induction with inversion on the root production. -/
+theorem sound_all1 {A : M1} {w : List Letter} (t : PT R1 A w) : Char1 A w := by
+  induction t with
+  | @bin A B C w1 w2 h _ _ ih1 ih2 =>
+    cases h with
+    | s => obtain ⟨i, hi, e1⟩ := ih1; obtain ⟨j, hj, e2⟩ := ih2
+           exact ⟨i, j, hi, hj, by rw [e1, e2]⟩
+    | xab => exact ⟨1, Nat.le_refl 1,
+               by rw [show w1 = [a] from ih1, show w2 = [b] from ih2]; simp [ab, replicate_succ]⟩
+    | xaz => obtain ⟨i, hi, e2⟩ := ih2
+             exact ⟨i + 1, by omega, by rw [show w1 = [a] from ih1, e2, ab_cons]⟩
+    | zxb => obtain ⟨i, hi, e1⟩ := ih1
+             exact ⟨i, hi, by rw [e1, show w2 = [b] from ih2]⟩
+    | ycy => obtain ⟨j, hj, e2⟩ := ih2
+             exact ⟨j + 1, by omega, by rw [show w1 = [c] from ih1, e2]; simp [replicate_succ]⟩
+  | @term A ltr h =>
+    cases h with
+    | yc => exact ⟨1, Nat.le_refl 1, by simp [replicate_succ]⟩
+    | ta => rfl
+    | tb => rfl
+    | tc => rfl
+  | @eps A h => cases h
+
+def enum1 : M1 → Nat
+  | .S => 0 | .X => 1 | .Z => 2 | .Y => 3 | .Ta => 4 | .Tb => 5 | .Tc => 6
+
+/-- **Completeness for `X`:** a tree for every `aⁱ⁺¹bⁱ⁺¹`. -/
+theorem tree_X1 : ∀ i, Nonempty (PT R1 .X (ab (i + 1))) := by
+  intro i
+  induction i with
+  | zero => exact ⟨(PT.bin .xab (.term .ta) (.term .tb) : PT R1 .X ([a] ++ [b]))⟩
+  | succ m ih =>
+    obtain ⟨tx⟩ := ih
+    have tz : PT R1 .Z (ab (m + 1) ++ [b]) := .bin .zxb tx (.term .tb)
+    have tx2 : PT R1 .X ([a] ++ (ab (m + 1) ++ [b])) := .bin .xaz (.term .ta) tz
+    rw [ab_cons] at tx2; exact ⟨tx2⟩
+
+/-- **Completeness for `Y`:** a tree for every `cʲ⁺¹`. -/
+theorem tree_Y1 : ∀ j, Nonempty (PT R1 .Y (replicate (j + 1) c)) := by
+  intro j
+  induction j with
+  | zero => exact ⟨.term .yc⟩
+  | succ m ih =>
+    obtain ⟨ty⟩ := ih
+    have h : PT R1 .Y ([c] ++ replicate (m + 1) c) := .bin .ycy (.term .tc) ty
+    rw [show [c] ++ replicate (m + 1) c = replicate (m + 2) c from by simp [replicate_succ]] at h
+    exact ⟨h⟩
+
+/-- `L₁ = { aⁱbⁱcʲ : i,j ≥ 1 }`. -/
+def L1 : List Letter → Prop := fun w => ∃ i j, 1 ≤ i ∧ 1 ≤ j ∧ w = ab i ++ replicate j c
+
+theorem isCFL_L1 : IsCFL L1 := by
+  refine ⟨M1, R1, .S, enum1, 7, ?_, ?_, ?_, ?_⟩
+  · intro A; cases A <;> decide
+  · intro A B; cases A <;> cases B <;> decide
+  · intro A; cases A <;> (intro h; cases h)
+  · intro w
+    constructor
+    · rintro ⟨i, j, hi, hj, rfl⟩
+      obtain ⟨i', rfl⟩ : ∃ i', i = i' + 1 := ⟨i - 1, by omega⟩
+      obtain ⟨j', rfl⟩ : ∃ j', j = j' + 1 := ⟨j - 1, by omega⟩
+      obtain ⟨tx⟩ := tree_X1 i'; obtain ⟨ty⟩ := tree_Y1 j'
+      exact ⟨.bin .s tx ty⟩
+    · rintro ⟨t⟩; exact sound_all1 t
+
+/-! #### `L₂ = { aᵐbⁿcⁿ : m,n ≥ 1 }` — mirror grammar (a⁺ then balanced bc) -/
+
+/-- `bⁿcⁿ`. -/
+def bc (i : Nat) : List Letter := replicate i b ++ replicate i c
+
+theorem bc_cons (i : Nat) : [b] ++ (bc i ++ [c]) = bc (i + 1) := by
+  have hc : replicate i c ++ [c] = replicate (i + 1) c := replicate_succ'.symm
+  have hb : [b] ++ replicate i b = replicate (i + 1) b := by rw [replicate_succ]; rfl
+  simp only [bc, List.append_assoc]
+  rw [hc, ← List.append_assoc, hb]
+
+inductive M2 | S | A2 | W | Z2 | Ta | Tb | Tc
+  deriving DecidableEq
+
+inductive R2 : M2 → BProd M2 Letter → Prop
+  | s   : R2 .S  (.bin .A2 .W)
+  | aa  : R2 .A2 (.term .a)
+  | aaa : R2 .A2 (.bin .Ta .A2)
+  | wbc : R2 .W  (.bin .Tb .Tc)
+  | wbz : R2 .W  (.bin .Tb .Z2)
+  | zwc : R2 .Z2 (.bin .W .Tc)
+  | ta  : R2 .Ta (.term .a)
+  | tb  : R2 .Tb (.term .b)
+  | tc  : R2 .Tc (.term .c)
+
+def Char2 : M2 → List Letter → Prop
+  | .S,  w => ∃ m n, 1 ≤ m ∧ 1 ≤ n ∧ w = replicate m a ++ bc n
+  | .A2, w => ∃ m, 1 ≤ m ∧ w = replicate m a
+  | .W,  w => ∃ n, 1 ≤ n ∧ w = bc n
+  | .Z2, w => ∃ n, 1 ≤ n ∧ w = bc n ++ [c]
+  | .Ta, w => w = [a]
+  | .Tb, w => w = [b]
+  | .Tc, w => w = [c]
+
+theorem sound_all2 {A : M2} {w : List Letter} (t : PT R2 A w) : Char2 A w := by
+  induction t with
+  | @bin A B C w1 w2 h _ _ ih1 ih2 =>
+    cases h with
+    | s => obtain ⟨m, hm, e1⟩ := ih1; obtain ⟨n, hn, e2⟩ := ih2
+           exact ⟨m, n, hm, hn, by rw [e1, e2]⟩
+    | aaa => obtain ⟨m, hm, e2⟩ := ih2
+             exact ⟨m + 1, by omega, by rw [show w1 = [a] from ih1, e2]; simp [replicate_succ]⟩
+    | wbc => exact ⟨1, Nat.le_refl 1,
+               by rw [show w1 = [b] from ih1, show w2 = [c] from ih2]; simp [bc, replicate_succ]⟩
+    | wbz => obtain ⟨n, hn, e2⟩ := ih2
+             exact ⟨n + 1, by omega, by rw [show w1 = [b] from ih1, e2, bc_cons]⟩
+    | zwc => obtain ⟨n, hn, e1⟩ := ih1
+             exact ⟨n, hn, by rw [e1, show w2 = [c] from ih2]⟩
+  | @term A ltr h =>
+    cases h with
+    | aa => exact ⟨1, Nat.le_refl 1, by simp [replicate_succ]⟩
+    | ta => rfl
+    | tb => rfl
+    | tc => rfl
+  | @eps A h => cases h
+
+def enum2 : M2 → Nat
+  | .S => 0 | .A2 => 1 | .W => 2 | .Z2 => 3 | .Ta => 4 | .Tb => 5 | .Tc => 6
+
+theorem tree_A2' : ∀ m, Nonempty (PT R2 .A2 (replicate (m + 1) a)) := by
+  intro m
+  induction m with
+  | zero => exact ⟨.term .aa⟩
+  | succ k ih =>
+    obtain ⟨ta2⟩ := ih
+    have h : PT R2 .A2 ([a] ++ replicate (k + 1) a) := .bin .aaa (.term .ta) ta2
+    rw [show [a] ++ replicate (k + 1) a = replicate (k + 2) a from by simp [replicate_succ]] at h
+    exact ⟨h⟩
+
+theorem tree_W2 : ∀ n, Nonempty (PT R2 .W (bc (n + 1))) := by
+  intro n
+  induction n with
+  | zero => exact ⟨(PT.bin .wbc (.term .tb) (.term .tc) : PT R2 .W ([b] ++ [c]))⟩
+  | succ k ih =>
+    obtain ⟨tw⟩ := ih
+    have tz : PT R2 .Z2 (bc (k + 1) ++ [c]) := .bin .zwc tw (.term .tc)
+    have tw2 : PT R2 .W ([b] ++ (bc (k + 1) ++ [c])) := .bin .wbz (.term .tb) tz
+    rw [bc_cons] at tw2; exact ⟨tw2⟩
+
+/-- `L₂ = { aᵐbⁿcⁿ : m,n ≥ 1 }`. -/
+def L2 : List Letter → Prop := fun w => ∃ m n, 1 ≤ m ∧ 1 ≤ n ∧ w = replicate m a ++ bc n
+
+theorem isCFL_L2 : IsCFL L2 := by
+  refine ⟨M2, R2, .S, enum2, 7, ?_, ?_, ?_, ?_⟩
+  · intro A; cases A <;> decide
+  · intro A B; cases A <;> cases B <;> decide
+  · intro A; cases A <;> (intro h; cases h)
+  · intro w
+    constructor
+    · rintro ⟨m, n, hm, hn, rfl⟩
+      obtain ⟨m', rfl⟩ : ∃ m', m = m' + 1 := ⟨m - 1, by omega⟩
+      obtain ⟨n', rfl⟩ : ∃ n', n = n' + 1 := ⟨n - 1, by omega⟩
+      obtain ⟨ta2⟩ := tree_A2' m'; obtain ⟨tw⟩ := tree_W2 n'
+      exact ⟨.bin .s ta2 tw⟩
+    · rintro ⟨t⟩; exact sound_all2 t
+
+/-! #### The intersection is `aⁿbⁿcⁿ`, hence not context-free -/
+
+/-- `aᵖbᵠcʳ` normal form. -/
+def tri (p q r : Nat) : List Letter := replicate p a ++ replicate q b ++ replicate r c
+
+theorem count_tri_a (p q r : Nat) : count a (tri p q r) = p := by
+  unfold tri
+  rw [count_append, count_append, count_replicate_self, count_repl_ne _ (by decide),
+    count_repl_ne _ (by decide)]; omega
+theorem count_tri_b (p q r : Nat) : count b (tri p q r) = q := by
+  unfold tri
+  rw [count_append, count_append, count_repl_ne _ (by decide), count_replicate_self,
+    count_repl_ne _ (by decide)]; omega
+theorem count_tri_c (p q r : Nat) : count c (tri p q r) = r := by
+  unfold tri
+  rw [count_append, count_append, count_repl_ne _ (by decide), count_repl_ne _ (by decide),
+    count_replicate_self]; omega
+
+/-- `L₁ ∩ L₂ = { aⁿbⁿcⁿ : n ≥ 1 }`: the equal-a-b constraint of `L₁` and the
+equal-b-c constraint of `L₂` together force all three counts equal. -/
+theorem inter_eq (w : List Letter) :
+    (L1 w ∧ L2 w) ↔ ∃ n, 1 ≤ n ∧ w = abc n := by
+  constructor
+  · rintro ⟨⟨i, j, hi, hj, e1⟩, ⟨m, n, hm, hn, e2⟩⟩
+    have h1 : w = tri i i j := e1
+    have h2 : w = tri m n n := by rw [e2]; simp [bc, tri, List.append_assoc]
+    have key : tri i i j = tri m n n := h1.symm.trans h2
+    have cb : i = n := by have := congrArg (count b) key; rwa [count_tri_b, count_tri_b] at this
+    have cc : j = n := by have := congrArg (count c) key; rwa [count_tri_c, count_tri_c] at this
+    exact ⟨i, hi, by rw [h1, show j = i from by omega]; rfl⟩
+  · rintro ⟨n, hn, rfl⟩
+    exact ⟨⟨n, n, hn, hn, rfl⟩, ⟨n, n, hn, hn, by simp [abc, bc, List.append_assoc]⟩⟩
+
+/-- **The context-free languages are not closed under intersection.** Witnesses
+`L₁ = {aⁱbⁱcʲ}` and `L₂ = {aᵐbⁿcⁿ}` are both context-free, but their intersection
+`{aⁿbⁿcⁿ}` is not (`anbncn_not_cfl`). (Closure under complement would, with the
+∪-closure of CFLs and De Morgan, give ∩-closure — so this also refutes
+complement-closure.) -/
+theorem cfl_not_closed_inter :
+    ∃ K₁ K₂ : List Letter → Prop,
+      IsCFL K₁ ∧ IsCFL K₂ ∧ ¬ IsCFL (fun w => K₁ w ∧ K₂ w) := by
+  refine ⟨L1, L2, isCFL_L1, isCFL_L2, ?_⟩
+  intro hcfl
+  apply anbncn_not_cfl
+  have heq : (fun w => L1 w ∧ L2 w) = (fun z => ∃ n, 1 ≤ n ∧ z = abc n) := by
+    funext w; exact propext (inter_eq w)
+  rwa [heq] at hcfl
 
 end Pump
