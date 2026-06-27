@@ -336,8 +336,10 @@ The binding power comparison ensures this:
 > application, the same file machine-checks **`aⁿbⁿcⁿ ∉ CFL`** (`anbncn_not_cfl`) —
 > the standard witness that the CFLs are not closed under ∩ / ¬ (pump down to
 > `i = 0` ⇒ equal letter-counts ⇒ the window spans `a`…`c` ⇒ `|vwx| > p`). The
-> remaining §7.3 *non*-closure step is purely the two witness-grammar constructions
-> `{aⁿbⁿcᵐ}`, `{aᵐbⁿcⁿ}`; status in
+> full §7.3 **non-closure under ∩** is then machine-checked too
+> (`cfl_not_closed_inter`): the witnesses `L₁ = {aⁱbⁱcʲ}` and `L₂ = {aᵐbⁿcⁿ}` are
+> each proved context-free by an explicit ε-free binary-normal-form grammar (with
+> soundness + completeness), and `L₁ ∩ L₂ = {aⁿbⁿcⁿ}` is not. Status in
 > `../verification/GRAMMAR-PROOF-INVENTORY.md`.
 
 ### 7.1 Chomsky Hierarchy Position

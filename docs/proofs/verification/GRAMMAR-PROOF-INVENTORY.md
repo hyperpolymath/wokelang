@@ -73,7 +73,7 @@ reach here, with reason).
 | T7.1 | §7.1 Not regular (pumping lemma) | ✅ done from scratch | **P6→done** | `WokeGrammarRegular.lean`: bespoke finite pigeonhole + `Fin k` DFA + fooling-set on `aⁿbⁿ` (≅ `(ⁿ)ⁿ`), Mathlib-free | MACHINE-CHECKED |
 | T7.0 | CFL pumping lemma (Mathlib-gap) | ✅ done from scratch | **Ext** | `WokeGrammarPumping.lean`: `cfl_pumping` — `descend`/`ht_descend`/`nodeNT_add` spine navigation + `Ctx.comp` + pigeonhole ⇒ `z = uvwxy`, `1≤|vx|`, `|vwx|≤2^(card+1)`, `uvⁱwxⁱy ∈ L`; classical kernel constants only | MACHINE-CHECKED |
 | T7.0b | `aⁿbⁿcⁿ ∉ CFL` (canonical non-CFL) | ✅ done from scratch | **Ext** | `WokeGrammarPumping.lean`: `anbncn_not_cfl` via `cfl_pumping` (pump `i=0` ⇒ equal counts ⇒ window spans `a`…`c` ⇒ `|vwx|>p`); positional core `prefix_pure`/`abc_window`; classical kernel constants only | MACHINE-CHECKED |
-| T7.3b | §7.3 CFL **not** closed under ∩, ¬ | ⚠️ canonical witness done; wrapper remaining | **P6** | `aⁿbⁿcⁿ ∉ CFL` (T7.0b) is the crux and is proved; remaining: the two witness CFLs `{aⁿbⁿcᵐ}`,`{aᵐbⁿcⁿ}` (BNF grammars + exact generation) whose intersection is `aⁿbⁿcⁿ` | IN PROGRESS |
+| T7.3b | §7.3 CFL **not** closed under ∩ | ✅ done from scratch | **P6→done** | `WokeGrammarPumping.lean`: `cfl_not_closed_inter` — witnesses `L₁={aⁱbⁱcʲ}`, `L₂={aᵐbⁿcⁿ}` are CFL (explicit BNF grammars `R1`,`R2` + soundness via tree inversion + completeness via tree building), `L₁∩L₂={aⁿbⁿcⁿ}` not CFL (T7.0b) | MACHINE-CHECKED |
 
 ## Priority order (execution)
 
@@ -85,7 +85,9 @@ reach here, with reason).
 3. **P3 — lexer maximal-munch + keyword-priority** (T4.1, T4.2).
 4. **P4 — classification** (T1.1 CFG, T1.2 LL(1)✗, T2.3 LL(2) witness).
 5. **P5 — CFL positive closure** (T7.3a).
-6. **P6 — honest flags** (T7.1, T7.3b): partial kernel + documented reason.
+6. **P6 — non-regularity + non-closure** (T7.1, T7.0/T7.0b, T7.3b): originally
+   flagged, now all machine-checked from scratch (DFA fooling-set; CFL pumping
+   lemma; `aⁿbⁿcⁿ ∉ CFL`; ∩ non-closure with explicit witness grammars).
 
 Then **mirror P1–P5 to Coq** (the repo keeps Lean/Coq in lockstep) and **gate
 both in CI**.
@@ -100,8 +102,8 @@ both in CI**.
   extraction.
 - **Full-CFG unambiguity** (T2.2 for the *entire* grammar) is undecidable; only
   the core is proven unambiguous (via parser determinism).
-- The **non-regularity / non-closure** results (T7.1, T7.3b) are flagged, not
-  faked — see P6.
+- The **non-regularity / non-closure** results (T7.1, T7.3b) were initially
+  flagged; they are now fully machine-checked from scratch (see P6) — never faked.
 
 ## Landed — P1 (`WokeGrammar.lean`, Lean 4.30.0)
 
@@ -196,11 +198,16 @@ identical" per `AUDIT.md`.)
   `i = 0` forces `count_a = count_b = count_c` in the deleted part, so the pumped
   window contains an `a` and a `c`; the positional core (`prefix_pure` by induction
   on the prefix, `abc_window`) then gives `|vwx| > p`, contradicting `|vwx| ≤ p`.
-- **§7.3 *non-closure* under ∩ / ¬** — the remaining wrapper. With `aⁿbⁿcⁿ ∉ CFL`
-  proved, the explicit statement follows from the two witness CFLs `{aⁿbⁿcᵐ}` and
-  `{aᵐbⁿcⁿ}` (whose intersection is `aⁿbⁿcⁿ`); each needs a BNF grammar plus an
-  exact-generation (soundness + completeness) proof — mechanical grammar-construction
-  plumbing on top of the verified crux.
+- **§7.3 *non-closure* under ∩ — DONE** (`WokeGrammarPumping.lean`,
+  `cfl_not_closed_inter`): the context-free languages are not closed under
+  intersection. Witnesses `L₁ = {aⁱbⁱcʲ}` and `L₂ = {aᵐbⁿcⁿ}` are each shown
+  context-free by an explicit ε-free binary-normal-form grammar (`R1`, `R2`) with
+  full *exact generation* — soundness (`sound_all1`/`sound_all2`, one structural
+  induction with inversion on the root production) and completeness (tree builders
+  `tree_X1`/`tree_Y1`, `tree_A2'`/`tree_W2`). Their intersection is `{aⁿbⁿcⁿ}`
+  (`inter_eq`, by equating the three letter-counts), which `anbncn_not_cfl` rules
+  out. Closure under **complement** is refuted by the same witnesses via De Morgan
+  against CFL ∪-closure (the standard corollary).
 
 ## Axiom audit (`#print axioms`, verified in-toolchain)
 
@@ -218,6 +225,9 @@ project-specific constants:
 | `prefix_pure` | `propext` |
 | `abc_window` | `propext`, `Quot.sound` |
 | `anbncn_not_cfl` | `propext`, `Classical.choice`, `Quot.sound` |
+| `isCFL_L1`, `isCFL_L2` | `propext`, `Quot.sound` |
+| `inter_eq` | `propext`, `Quot.sound` |
+| `cfl_not_closed_inter` | `propext`, `Classical.choice`, `Quot.sound` |
 
 `Classical.choice` enters only through the finite `pigeon`hole's case split; the
 rest are the kernel constants Mathlib itself rests on. The other files' headline

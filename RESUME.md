@@ -89,13 +89,18 @@ Done (in `WokeGrammarPumping.lean`):
    gives `|vwx| > p`, contradicting `|vwx| ≤ p`. This is the canonical non-CFL and
    the crux of the ∩/¬ non-closure result.
 
-Remaining (next increment):
+3. **The explicit ∩ non-closure statement** (`cfl_not_closed_inter`) — the two
+   witness CFLs `L₁ = {aⁱbⁱcʲ}` and `L₂ = {aᵐbⁿcⁿ}` are each proved context-free by
+   an explicit ε-free BNF grammar (`R1`, `R2`) with full exact generation
+   (soundness via tree inversion `sound_all1`/`sound_all2`, completeness via tree
+   builders), and `L₁ ∩ L₂ = {aⁿbⁿcⁿ}` (`inter_eq`) is discharged by
+   `anbncn_not_cfl`. **Done.**
 
-3. **The explicit ∩ / ¬ non-closure statement** — exhibit the two witness CFLs
-   `L₁ = {aⁿbⁿcᵐ}` and `L₂ = {aᵐbⁿcⁿ}` (each: a BNF grammar + an exact-generation
-   proof, i.e. soundness + completeness), with `L₁ ∩ L₂ = {aⁿbⁿcⁿ}` discharged by
-   `anbncn_not_cfl`. This is mechanical grammar-construction plumbing on top of the
-   verified crux.
+§7 is now fully machine-checked end-to-end. The only further extension one could
+add is closure under **complement** as a standalone theorem, which needs CFL
+∪-closure for this BNF `IsCFL` (the positive closure exists in
+`WokeGrammarCFL.lean` under a relation-based `IsCFL`); the De Morgan corollary is
+noted in `cfl_not_closed_inter`'s docstring.
 
 Plan: land it as its own follow-up PR (incremental, same as the pumping lemma).
 
