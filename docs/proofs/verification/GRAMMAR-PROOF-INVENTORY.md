@@ -72,7 +72,8 @@ reach here, with reason).
 | T7.3a | §7.3 CFL closed under ∪, ·, * | ✅ done from scratch | **P5→done** | `WokeGrammarCFL.lean`: CFG derivation relation + reusable embedding lemma + union/concat/star grammar constructions, `propext`-only | MACHINE-CHECKED |
 | T7.1 | §7.1 Not regular (pumping lemma) | ✅ done from scratch | **P6→done** | `WokeGrammarRegular.lean`: bespoke finite pigeonhole + `Fin k` DFA + fooling-set on `aⁿbⁿ` (≅ `(ⁿ)ⁿ`), Mathlib-free | MACHINE-CHECKED |
 | T7.0 | CFL pumping lemma (Mathlib-gap) | ✅ done from scratch | **Ext** | `WokeGrammarPumping.lean`: `cfl_pumping` — `descend`/`ht_descend`/`nodeNT_add` spine navigation + `Ctx.comp` + pigeonhole ⇒ `z = uvwxy`, `1≤|vx|`, `|vwx|≤2^(card+1)`, `uvⁱwxⁱy ∈ L`; classical kernel constants only | MACHINE-CHECKED |
-| T7.3b | §7.3 CFL **not** closed under ∩, ¬ | ⚠️ remaining (pumping lemma now available) | **P6** | The blocker (CFL pumping lemma) is now proved as T7.0; remaining: finite `IsCFL` + `aⁿbⁿcⁿ ∉ CFL` + De Morgan | IN PROGRESS |
+| T7.0b | `aⁿbⁿcⁿ ∉ CFL` (canonical non-CFL) | ✅ done from scratch | **Ext** | `WokeGrammarPumping.lean`: `anbncn_not_cfl` via `cfl_pumping` (pump `i=0` ⇒ equal counts ⇒ window spans `a`…`c` ⇒ `|vwx|>p`); positional core `prefix_pure`/`abc_window`; classical kernel constants only | MACHINE-CHECKED |
+| T7.3b | §7.3 CFL **not** closed under ∩, ¬ | ⚠️ canonical witness done; wrapper remaining | **P6** | `aⁿbⁿcⁿ ∉ CFL` (T7.0b) is the crux and is proved; remaining: the two witness CFLs `{aⁿbⁿcᵐ}`,`{aᵐbⁿcⁿ}` (BNF grammars + exact generation) whose intersection is `aⁿbⁿcⁿ` | IN PROGRESS |
 
 ## Priority order (execution)
 
@@ -186,11 +187,42 @@ identical" per `AUDIT.md`.)
   repeated-nonterminal extraction. Trust base: the three classical kernel
   constants (`propext`, `Classical.choice`, `Quot.sound`) — no holes, no
   project-specific assumptions.
-- **§7.3 *non-closure* under ∩ / ¬** is the remaining increment. With the pumping
-  lemma in hand it follows by the standard route: a finiteness-aware `IsCFL` (the
-  relation-based `IsCFL` is too permissive here — an infinite nonterminal type
-  could "generate" `aⁿbⁿcⁿ`), then `aⁿbⁿcⁿ ∉ CFL` via `cfl_pumping`, then
-  `L₁ ∩ L₂` non-closure by De Morgan against the proven positive ∪ closure.
+- **`aⁿbⁿcⁿ ∉ CFL` — DONE** (`WokeGrammarPumping.lean`, `anbncn_not_cfl`): the
+  canonical non-context-free language, the crux of any ∩/¬ non-closure argument.
+  `IsCFL` is defined finiteness-aware (an ε-free BNF grammar with an `enum`/`card`
+  nonterminal bound, matching `cfl_pumping`; the relation-based `IsCFL` used for
+  *positive* closure is too permissive here — an infinite nonterminal type could
+  "generate" `aⁿbⁿcⁿ`). Proof: apply `cfl_pumping` to `aᵖbᵖcᵖ`; pumping down to
+  `i = 0` forces `count_a = count_b = count_c` in the deleted part, so the pumped
+  window contains an `a` and a `c`; the positional core (`prefix_pure` by induction
+  on the prefix, `abc_window`) then gives `|vwx| > p`, contradicting `|vwx| ≤ p`.
+- **§7.3 *non-closure* under ∩ / ¬** — the remaining wrapper. With `aⁿbⁿcⁿ ∉ CFL`
+  proved, the explicit statement follows from the two witness CFLs `{aⁿbⁿcᵐ}` and
+  `{aᵐbⁿcⁿ}` (whose intersection is `aⁿbⁿcⁿ`); each needs a BNF grammar plus an
+  exact-generation (soundness + completeness) proof — mechanical grammar-construction
+  plumbing on top of the verified crux.
+
+## Axiom audit (`#print axioms`, verified in-toolchain)
+
+Kernel-dependency printout for the headline results in `WokeGrammarPumping.lean`
+(Lean 4.30.0). Only the standard classical constants appear — no `sorryAx`, no
+project-specific constants:
+
+| Theorem | Kernel dependencies |
+|---|---|
+| `yield_bound` | `propext`, `Quot.sound` |
+| `ht_descend` | `propext`, `Quot.sound` |
+| `nodeNT_add` | `propext`, `Classical.choice`, `Quot.sound` |
+| `descend_sibling_nonempty` | `propext`, `Quot.sound` |
+| `cfl_pumping` | `propext`, `Classical.choice`, `Quot.sound` |
+| `prefix_pure` | `propext` |
+| `abc_window` | `propext`, `Quot.sound` |
+| `anbncn_not_cfl` | `propext`, `Classical.choice`, `Quot.sound` |
+
+`Classical.choice` enters only through the finite `pigeon`hole's case split; the
+rest are the kernel constants Mathlib itself rests on. The other files' headline
+results sit on the same or a smaller base (`WokeGrammarCFL.lean` is `propext`-only;
+`WokeGrammarStructure`'s `no_left_recursion` is fully constant-free).
 
 ## Status
 

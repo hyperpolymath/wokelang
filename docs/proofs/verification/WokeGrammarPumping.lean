@@ -20,15 +20,22 @@ What is proved here (complete proofs — no holes, no escape hatches):
   • `cfl_pumping` : THE pumping lemma — for an ε-free binary-normal-form grammar
     with `card` nonterminals, any word `z ∈ L(S)` of length `≥ 2^(card+1)` splits
     as `z = u v w x y` with `1 ≤ |v x|`, `|v w x| ≤ 2^(card+1)`, and
-    `u vⁱ w xⁱ y ∈ L(S)` for every `i`.
+    `u vⁱ w xⁱ y ∈ L(S)` for every `i`;
+  • `IsCFL` + `anbncn_not_cfl` : the canonical application — `aⁿbⁿcⁿ` is NOT
+    context-free. Apply `cfl_pumping` to `aᵖbᵖcᵖ`; pumping down to `i = 0` forces
+    equal letter-counts in the pumped part, so it spans an `a` and a `c`, which
+    (positional core `prefix_pure`/`abc_window`) makes `|v w x| > p` — contradicting
+    `|v w x| ≤ p`. This is the standard witness that the CFLs are not closed under
+    intersection / complement.
 
 Trust base: only the three standard classical kernel constants `propext`,
 `Classical.choice`, and `Quot.sound` — the same foundations Mathlib relies on
 (`Classical.choice` enters through the `pigeon` case split). There are no holes
 and no project-specific assumptions; every step is checked by Lean's kernel.
 
-NEXT: the finite-grammar `IsCFL`, `aⁿbⁿcⁿ ∉ CFL` via `cfl_pumping`, and the
-∩ / ¬ non-closure corollary.
+NEXT: wrap `anbncn_not_cfl` into the explicit ∩ / ¬ non-closure statement by
+exhibiting the two witness CFLs `{aⁿbⁿcᵐ}`, `{aᵐbⁿcⁿ}` (BNF grammars + exact
+generation) whose intersection is `aⁿbⁿcⁿ`.
 -/
 
 -- A grammar in binary normal form: every production is A → B C, A → t, or A → ε.
@@ -264,9 +271,8 @@ theorem nodeNT_add {R : N → BProd N T → Prop} :
 
 /-- In an ε-free grammar (no `A → ε` productions), every parse tree yields a
 non-empty string. This is what makes the pumped portion `vx` non-empty. -/
-theorem yield_nonempty {R : N → BProd N T → Prop} (hRε : ∀ A, ¬ R A BProd.eps) :
-    ∀ {A w} (t : PT R A w), w ≠ [] := by
-  intro A w t
+theorem yield_nonempty {R : N → BProd N T → Prop} (hRε : ∀ A, ¬ R A BProd.eps)
+    {A : N} {w : List T} (t : PT R A w) : w ≠ [] := by
   induction t with
   | @bin A B C w1 w2 _ t1 t2 ih1 ih2 =>
     intro h; rcases List.append_eq_nil_iff.mp h with ⟨h1, _⟩; exact ih1 h1
@@ -385,5 +391,148 @@ theorem cfl_pumping {R : N → BProd N T → Prop} {S : N}
     exact ⟨by
       have h := fill outer (pumpIter pump i DP.m base)
       simpa [List.append_assoc] using h⟩
+
+/-! ### Application: `aⁿbⁿcⁿ` is not context-free -/
+
+/-- The terminal alphabet `{a, b, c}`. -/
+inductive Letter | a | b | c
+  deriving DecidableEq
+
+open Letter List
+
+/-- A language over `{a,b,c}` is **context-free** iff some ε-free binary-normal-form
+grammar with finitely many nonterminals generates exactly it. (Every ε-free CFL has
+such a grammar — ε-free Chomsky normal form — so this is the standard CFL class for
+ε-free languages, taken here as the definition.) -/
+def IsCFL (L : List Letter → Prop) : Prop :=
+  ∃ (M : Type) (R : M → BProd M Letter → Prop) (S : M) (enum : M → Nat) (card : Nat),
+    (∀ A, enum A < card) ∧ (∀ A B, enum A = enum B → A = B) ∧
+    (∀ A, ¬ R A BProd.eps) ∧ (∀ z, L z ↔ Nonempty (PT R S z))
+
+/-- `aⁿbⁿcⁿ`. -/
+def abc (n : Nat) : List Letter :=
+  replicate n a ++ replicate n b ++ replicate n c
+
+theorem count_repl_ne {x y : Letter} (n : Nat) (h : x ≠ y) :
+    count x (replicate n y) = 0 := by
+  rw [count_eq_zero]; intro hm; exact h (eq_of_mem_replicate hm)
+
+theorem count_abc (ℓ : Letter) (n : Nat) : count ℓ (abc n) = n := by
+  unfold abc
+  rw [count_append, count_append]
+  cases ℓ <;>
+    rw [count_replicate_self] <;>
+    rw [count_repl_ne _ (by decide), count_repl_ne _ (by decide)] <;>
+    omega
+
+theorem length_abc (n : Nat) : (abc n).length = 3 * n := by
+  unfold abc; rw [length_append, length_append, length_replicate,
+    length_replicate, length_replicate]; omega
+
+/-- Every element of a `{a,b,c}`-list is `a`, `b`, or `c`, so its length is the sum
+of the three letter-counts. -/
+theorem length_eq_counts (l : List Letter) :
+    l.length = count a l + count b l + count c l := by
+  induction l with
+  | nil => simp
+  | cons hd t ih => cases hd <;> simp [length_cons] <;> omega
+
+/-- **Positional core.** In `replicate n1 k1 ++ replicate n2 k2 ++ replicate n3 k3`,
+if the middle segment `m` of a split `u ++ m ++ y` contains a `k1` (and `k1` differs
+from `k2`, `k3`), then the prefix `u` contains no `k2` — it lies wholly in the first
+block. Proved by induction on the prefix; no indexing needed. -/
+theorem prefix_pure {k1 k2 k3 : Letter} (h12 : k1 ≠ k2) (h13 : k1 ≠ k3) :
+    ∀ (n1 n2 n3 : Nat) (u m y : List Letter),
+      u ++ m ++ y = replicate n1 k1 ++ replicate n2 k2 ++ replicate n3 k3 →
+      k1 ∈ m → count k2 u = 0 := by
+  intro n1 n2 n3 u
+  induction u generalizing n1 with
+  | nil => intro m y _ _; simp
+  | cons hd u' ih =>
+    intro m y heq hmem
+    cases n1 with
+    | zero =>
+      exfalso
+      have hin : k1 ∈ (hd :: u') ++ m ++ y :=
+        mem_append.mpr (Or.inl (mem_append.mpr (Or.inr hmem)))
+      rw [heq] at hin
+      simp only [replicate, nil_append, mem_append, mem_replicate] at hin
+      rcases hin with ⟨_, h⟩ | ⟨_, h⟩
+      · exact h12 h
+      · exact h13 h
+    | succ n1' =>
+      rw [replicate_succ] at heq
+      simp only [cons_append] at heq
+      obtain ⟨rfl, heq'⟩ := List.cons.inj heq
+      rw [count_cons_of_ne h12]
+      exact ih n1' m y heq' hmem
+
+/-- **The pumping window spans `a`…`c`.** If a split `abc p = u ++ m ++ y` has `m`
+containing both an `a` and a `c`, then `m` already contains the whole `b`-block, so
+`p < |m|`. -/
+theorem abc_window {p : Nat} {u m y : List Letter}
+    (heq : abc p = u ++ m ++ y) (ha : a ∈ m) (hc : c ∈ m) : p < m.length := by
+  have hbu : count b u = 0 :=
+    prefix_pure (by decide) (by decide) p p p u m y heq.symm ha
+  have hby : count b y = 0 := by
+    have hrev : (replicate p c ++ replicate p b ++ replicate p a : List Letter)
+        = y.reverse ++ m.reverse ++ u.reverse := by
+      have hr := congrArg List.reverse heq
+      simpa [abc, reverse_append, reverse_replicate, List.append_assoc] using hr
+    have hcm : c ∈ m.reverse := mem_reverse.mpr hc
+    have := prefix_pure (k1 := c) (k2 := b) (k3 := a) (by decide) (by decide)
+      p p p y.reverse m.reverse u.reverse hrev.symm hcm
+    rwa [count_reverse] at this
+  have hbz : count b (abc p) = p := count_abc b p
+  rw [heq, count_append, count_append, hbu, hby] at hbz
+  have hcm1 : 1 ≤ count c m := one_le_count_iff.mpr hc
+  have hlen := length_eq_counts m
+  omega
+
+/-- **`aⁿbⁿcⁿ` is not context-free.** The canonical witness that the context-free
+languages are not closed under intersection / complement: apply `cfl_pumping` to
+`aᵖbᵖcᵖ` (`p = 2^(card+1)`); pumping down to `i = 0` forces equal counts in the
+pumped part, so it spans an `a` and a `c`, contradicting `|v w x| ≤ p`. -/
+theorem anbncn_not_cfl : ¬ IsCFL (fun z => ∃ n, 1 ≤ n ∧ z = abc n) := by
+  rintro ⟨M, R, S, enum, card, hcard, henj, hRε, hgen⟩
+  have hp1 : 1 ≤ 2 ^ (card + 1) := Nat.one_le_two_pow
+  obtain ⟨t⟩ : Nonempty (PT R S (abc (2 ^ (card + 1)))) :=
+    (hgen _).mp ⟨2 ^ (card + 1), hp1, rfl⟩
+  have hlenz : 2 ^ (card + 1) ≤ (abc (2 ^ (card + 1))).length := by
+    rw [length_abc]; omega
+  obtain ⟨u, v, w, x, y, hz, hvx, hvwx, hpump⟩ :=
+    cfl_pumping enum card hcard henj hRε t hlenz
+  -- Pump down to i = 0: u w y ∈ L.
+  obtain ⟨t0⟩ := hpump 0
+  simp only [cat_zero, List.append_nil] at t0
+  obtain ⟨m0, _, h0⟩ := (hgen _).mpr ⟨t0⟩
+  -- For every letter, the counts removed by deleting `v` and `x` agree.
+  have key : ∀ ℓ : Letter, count ℓ v + count ℓ x = 2 ^ (card + 1) - m0 := by
+    intro ℓ
+    have ep : count ℓ (abc (2 ^ (card + 1))) = 2 ^ (card + 1) := count_abc ℓ _
+    have em : count ℓ (abc m0) = m0 := count_abc ℓ _
+    rw [hz] at ep
+    rw [← h0] at em
+    simp only [count_append] at ep em
+    omega
+  -- `|v x| = 3·(p - m0) ≥ 1`, so `p - m0 ≥ 1`: the pumped part has an `a` and a `c`.
+  have hvxlen : (v ++ x).length = 3 * (2 ^ (card + 1) - m0) := by
+    have hsum := length_eq_counts (v ++ x)
+    simp only [count_append] at hsum
+    rw [hsum, key a, key b, key c]; omega
+  have hk1 : 1 ≤ 2 ^ (card + 1) - m0 := by
+    rw [hvxlen] at hvx; omega
+  -- Hence `a` and `c` both occur in `v ++ w ++ x`.
+  have hca : 1 ≤ count a (v ++ w ++ x) := by
+    have := key a; simp only [count_append]; omega
+  have hcc : 1 ≤ count c (v ++ w ++ x) := by
+    have := key c; simp only [count_append]; omega
+  have hain : a ∈ v ++ w ++ x := one_le_count_iff.mp hca
+  have hcin : c ∈ v ++ w ++ x := one_le_count_iff.mp hcc
+  -- `v w x` is the window of `abc p`, so it spans `a`…`c` and is longer than `p`.
+  have hwin : abc (2 ^ (card + 1)) = u ++ (v ++ w ++ x) ++ y := by
+    rw [hz]; simp [List.append_assoc]
+  have hgt := abc_window hwin hain hcin
+  omega
 
 end Pump
