@@ -68,3 +68,9 @@ jobs:
           set -euo pipefail
           lean docs/proofs/verification/WokeGrammarCFL.lean
           echo "✅ WokeGrammarCFL.lean verified"
+
+      - name: Verify WokeGrammarPumping.lean (§7.3 non-closure: pumping foundation)
+        run: |
+          set -euo pipefail
+          lean docs/proofs/verification/WokeGrammarPumping.lean
+          echo "✅ WokeGrammarPumping.lean verified"

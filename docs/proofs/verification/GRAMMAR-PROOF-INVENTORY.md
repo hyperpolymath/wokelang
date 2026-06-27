@@ -174,9 +174,14 @@ identical" per `AUDIT.md`.)
   (`embGen_iff`) + explicit union/concat/star grammar constructions, `sorry`-free
   (`propext`-only). The WokeLang surface grammar is context-free, so it inhabits
   this class and these operations apply.
-- **§7.3 *non-closure* under ∩ / ¬** is still scoped: it needs the pumping lemma
-  **for CFLs** (e.g. to show `aⁿbⁿcⁿ` is not context-free), a separate larger
-  development — recorded rather than stubbed.
+- **§7.3 *non-closure* under ∩ / ¬** is being built incrementally. It needs the
+  pumping lemma **for CFLs** (which even Mathlib lacks). The verified **foundation**
+  is `WokeGrammarPumping.lean` (parse trees + the `|w| < 2^height` yield bound +
+  one-hole contexts/`fill` + `pumpIter` + spine + pigeonhole, all `sorry`-free).
+  Remaining: repeated-nonterminal extraction ⇒ the pumping lemma ⇒ `aⁿbⁿcⁿ ∉ CFL`
+  ⇒ non-closure (with a finiteness-aware `IsCFL` — the relation-based `IsCFL` is
+  too permissive for non-closure: an infinite nonterminal type could "generate"
+  `aⁿbⁿcⁿ`).
 
 ## Status
 
