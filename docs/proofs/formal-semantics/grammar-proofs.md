@@ -328,8 +328,12 @@ The binding power comparison ensures this:
 > §7.3 **CFL closure under ∪, ·, \*** is now machine-checked too, in
 > [`../verification/WokeGrammarCFL.lean`](../verification/WokeGrammarCFL.lean)
 > (a CFG derivation relation + union/concat/star grammar constructions,
-> Mathlib-free, `sorry`-free). Only the §7.3 *non*-closure under ∩ / ¬ remains
-> scoped (it needs the pumping lemma for CFLs); status in
+> Mathlib-free, `sorry`-free). The **pumping lemma for context-free languages**
+> — which even Mathlib lacks — is now machine-checked from scratch in core Lean in
+> [`../verification/WokeGrammarPumping.lean`](../verification/WokeGrammarPumping.lean)
+> (`cfl_pumping`: parse-tree spine navigation + finite pigeonhole ⇒ the `uvwxy`
+> decomposition with `1 ≤ |vx|` and `|vwx| ≤ 2^(card+1)`). Only the §7.3 *non*-closure
+> under ∩ / ¬ remains, and the pumping lemma it needed is now available; status in
 > `../verification/GRAMMAR-PROOF-INVENTORY.md`.
 
 ### 7.1 Chomsky Hierarchy Position
