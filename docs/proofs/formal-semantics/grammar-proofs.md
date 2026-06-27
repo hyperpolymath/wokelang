@@ -332,8 +332,12 @@ The binding power comparison ensures this:
 > — which even Mathlib lacks — is now machine-checked from scratch in core Lean in
 > [`../verification/WokeGrammarPumping.lean`](../verification/WokeGrammarPumping.lean)
 > (`cfl_pumping`: parse-tree spine navigation + finite pigeonhole ⇒ the `uvwxy`
-> decomposition with `1 ≤ |vx|` and `|vwx| ≤ 2^(card+1)`). Only the §7.3 *non*-closure
-> under ∩ / ¬ remains, and the pumping lemma it needed is now available; status in
+> decomposition with `1 ≤ |vx|` and `|vwx| ≤ 2^(card+1)`). As its canonical
+> application, the same file machine-checks **`aⁿbⁿcⁿ ∉ CFL`** (`anbncn_not_cfl`) —
+> the standard witness that the CFLs are not closed under ∩ / ¬ (pump down to
+> `i = 0` ⇒ equal letter-counts ⇒ the window spans `a`…`c` ⇒ `|vwx| > p`). The
+> remaining §7.3 *non*-closure step is purely the two witness-grammar constructions
+> `{aⁿbⁿcᵐ}`, `{aᵐbⁿcⁿ}`; status in
 > `../verification/GRAMMAR-PROOF-INVENTORY.md`.
 
 ### 7.1 Chomsky Hierarchy Position

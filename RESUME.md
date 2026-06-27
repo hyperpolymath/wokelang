@@ -77,21 +77,25 @@ for f in WokeLang WokeGrammarStructure WokeGrammarParser; do coqc $f.v && echo "
 rm -f *.vo *.vok *.vos *.glob .*.aux   # clean build artifacts
 ```
 
-## Next increment (not yet started)
+## §7.3 non-closure — status
 
-The only remaining item in the original §7 scope is the **§7.3 ∩ / ¬
-non-closure corollary**, now unblocked by `cfl_pumping`:
+Done (in `WokeGrammarPumping.lean`):
 
-1. A **finiteness-aware `IsCFL`** predicate. (The relation-based `IsCFL` used for
-   the *positive* closure is too permissive for non-closure — an infinite
-   nonterminal type could "generate" `aⁿbⁿcⁿ`. Non-closure needs a grammar with
-   finitely many nonterminals, matching `cfl_pumping`'s `enum`/`card` interface.)
-2. **`aⁿbⁿcⁿ ∉ CFL`** via `cfl_pumping`: any decomposition `uvwxy` with
-   `|vwx| ≤ p` touches at most two of the three letter-blocks, so pumping
-   unbalances the counts.
-3. **Non-closure under ∩** (and hence ¬) by De Morgan against the already-proven
-   ∪ closure: `L₁ = {aⁿbⁿcᵐ}` and `L₂ = {aᵐbⁿcⁿ}` are CFLs but `L₁ ∩ L₂ =
-   {aⁿbⁿcⁿ}` is not.
+1. **Finiteness-aware `IsCFL`** — a language is CF iff some ε-free BNF grammar with
+   an `enum`/`card` nonterminal bound generates exactly it (matches `cfl_pumping`).
+2. **`aⁿbⁿcⁿ ∉ CFL`** (`anbncn_not_cfl`) — via `cfl_pumping`: pumping down to
+   `i = 0` forces `count_a = count_b = count_c` in the deleted part, so the window
+   spans an `a` and a `c`; the positional core (`prefix_pure`, `abc_window`) then
+   gives `|vwx| > p`, contradicting `|vwx| ≤ p`. This is the canonical non-CFL and
+   the crux of the ∩/¬ non-closure result.
+
+Remaining (next increment):
+
+3. **The explicit ∩ / ¬ non-closure statement** — exhibit the two witness CFLs
+   `L₁ = {aⁿbⁿcᵐ}` and `L₂ = {aᵐbⁿcⁿ}` (each: a BNF grammar + an exact-generation
+   proof, i.e. soundness + completeness), with `L₁ ∩ L₂ = {aⁿbⁿcⁿ}` discharged by
+   `anbncn_not_cfl`. This is mechanical grammar-construction plumbing on top of the
+   verified crux.
 
 Plan: land it as its own follow-up PR (incremental, same as the pumping lemma).
 
