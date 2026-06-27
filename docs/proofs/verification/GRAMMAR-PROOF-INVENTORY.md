@@ -71,7 +71,8 @@ reach here, with reason).
 | T1.2 | §1.1 LL(1) = ✗ | ✅ | **P4** | Exhibit the FIRST/FIRST conflict (`primary → identifier` vs `identifier "(" …`) — a 1-lookahead non-determinism witness | MACHINE-CHECKED |
 | T7.3a | §7.3 CFL closed under ∪, ·, * | ✅ done from scratch | **P5→done** | `WokeGrammarCFL.lean`: CFG derivation relation + reusable embedding lemma + union/concat/star grammar constructions, `propext`-only | MACHINE-CHECKED |
 | T7.1 | §7.1 Not regular (pumping lemma) | ✅ done from scratch | **P6→done** | `WokeGrammarRegular.lean`: bespoke finite pigeonhole + `Fin k` DFA + fooling-set on `aⁿbⁿ` (≅ `(ⁿ)ⁿ`), Mathlib-free | MACHINE-CHECKED |
-| T7.3b | §7.3 CFL **not** closed under ∩, ¬ | ⚠️ no (needs non-CFL-ness of `aⁿbⁿcⁿ`) | **P6** | Requires the pumping lemma *for CFLs* — same Mathlib gap | FLAGGED |
+| T7.0 | CFL pumping lemma (Mathlib-gap) | ✅ done from scratch | **Ext** | `WokeGrammarPumping.lean`: `cfl_pumping` — `descend`/`ht_descend`/`nodeNT_add` spine navigation + `Ctx.comp` + pigeonhole ⇒ `z = uvwxy`, `1≤|vx|`, `|vwx|≤2^(card+1)`, `uvⁱwxⁱy ∈ L`; classical kernel constants only | MACHINE-CHECKED |
+| T7.3b | §7.3 CFL **not** closed under ∩, ¬ | ⚠️ remaining (pumping lemma now available) | **P6** | The blocker (CFL pumping lemma) is now proved as T7.0; remaining: finite `IsCFL` + `aⁿbⁿcⁿ ∉ CFL` + De Morgan | IN PROGRESS |
 
 ## Priority order (execution)
 
@@ -162,7 +163,7 @@ universal `prefix_rt`/`completeness_rp` development; a Coq port of that is the
 scoped next step, exactly as `WokeLang.{lean,v}` are "complementary, not
 identical" per `AUDIT.md`.)
 
-## §7 — status (T7.1 done from scratch; §7.3 scoped)
+## §7 — status (T7.1 done; §7.3 positive closure + CFL pumping lemma done)
 
 - **T7.1 not regular — DONE** (`WokeGrammarRegular.lean`): rather than fetch
   Mathlib's automata library (blocked offline), a bespoke finite pigeonhole + a
@@ -174,9 +175,22 @@ identical" per `AUDIT.md`.)
   (`embGen_iff`) + explicit union/concat/star grammar constructions, `sorry`-free
   (`propext`-only). The WokeLang surface grammar is context-free, so it inhabits
   this class and these operations apply.
-- **§7.3 *non-closure* under ∩ / ¬** is still scoped: it needs the pumping lemma
-  **for CFLs** (e.g. to show `aⁿbⁿcⁿ` is not context-free), a separate larger
-  development — recorded rather than stubbed.
+- **Pumping lemma for CFLs — DONE** (`WokeGrammarPumping.lean`): the full pumping
+  lemma (which even Mathlib lacks) is now machine-checked from scratch in core
+  Lean. `cfl_pumping` states that for an ε-free binary-normal-form grammar with
+  `card` nonterminals, any word `z ∈ L(S)` of length `≥ 2^(card+1)` splits as
+  `z = u v w x y` with `1 ≤ |v x|`, `|v w x| ≤ 2^(card+1)`, and `u vⁱ w xⁱ y ∈
+  L(S)` for all `i`. Engine: parse trees + `|w| < 2^height` yield bound + one-hole
+  contexts/`fill`/`comp` + `pumpIter` + tallest-spine `descend` (with the
+  `ht = height − depth` and depth-composition laws) + finite pigeonhole ⇒
+  repeated-nonterminal extraction. Trust base: the three classical kernel
+  constants (`propext`, `Classical.choice`, `Quot.sound`) — no holes, no
+  project-specific assumptions.
+- **§7.3 *non-closure* under ∩ / ¬** is the remaining increment. With the pumping
+  lemma in hand it follows by the standard route: a finiteness-aware `IsCFL` (the
+  relation-based `IsCFL` is too permissive here — an infinite nonterminal type
+  could "generate" `aⁿbⁿcⁿ`), then `aⁿbⁿcⁿ ∉ CFL` via `cfl_pumping`, then
+  `L₁ ∩ L₂` non-closure by De Morgan against the proven positive ∪ closure.
 
 ## Status
 
