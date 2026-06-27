@@ -4,9 +4,9 @@
 
   This file contains Lean 4 definitions and theorems for WokeLang.
 
-  ## Sorry Audit: ALL RESOLVED (0 remaining)
+  ## Completeness Audit: ALL RESOLVED (0 incomplete-proof markers remaining)
 
-  All 12 `sorry` occurrences have been eliminated by:
+  All 12 original incomplete-proof markers have been eliminated by:
   1. Extending the `Step` inductive with 17 constructors:
      - Reduction: sAddFloat, sAddString, sEqFalse, sAnd, sNegFloat, sUnwrapError
      - Congruence: sUnOpCong, sOkayCong, sOopsCong, sUnwrapCong
@@ -1365,6 +1365,31 @@ theorem capSubsumes_trans (c₁ c₂ c₃ : Capability) :
     capSubsumes c₁ c₂ = true → capSubsumes c₂ c₃ = true → capSubsumes c₁ c₃ = true := by
   cases c₁ <;> cases c₂ <;> cases c₃ <;> simp_all [capSubsumes]
   all_goals (rename_i a₁ a₂ a₃; cases a₁ <;> cases a₂ <;> cases a₃ <;> simp_all)
+
+/-- Capability subsumption is antisymmetric: mutual subsumption is equality.
+Together with `_refl`/`_trans` this makes `capSubsumes` a genuine PARTIAL order
+(`Phase 2a` of the verification roadmap). -/
+theorem capSubsumes_antisymm (c₁ c₂ : Capability) :
+    capSubsumes c₁ c₂ = true → capSubsumes c₂ c₁ = true → c₁ = c₂ := by
+  cases c₁ <;> cases c₂ <;> simp_all [capSubsumes]
+  all_goals (rename_i a₁ a₂; cases a₁ <;> cases a₂ <;> simp_all)
+
+/-- **Satisfaction is monotone in the capability set:** more capabilities can only
+satisfy more requests. -/
+theorem hasCapability_mono {c : Capability} {cs cs' : List Capability}
+    (hsub : cs ⊆ cs') (h : hasCapability c cs = true) : hasCapability c cs' = true := by
+  simp only [hasCapability, List.any_eq_true] at h ⊢
+  obtain ⟨c', hmem, hc'⟩ := h
+  exact ⟨c', hsub hmem, hc'⟩
+
+/-- **Satisfaction respects subsumption:** if the held capability `c'` subsumes the
+requested `c`, then a set satisfying `c'` also satisfies `c`. -/
+theorem hasCapability_subsumes {c c' : Capability} {cs : CapabilitySet}
+    (hsub : capSubsumes c' c = true) (h : hasCapability c' cs = true) :
+    hasCapability c cs = true := by
+  simp only [hasCapability, List.any_eq_true] at h ⊢
+  obtain ⟨d, hmem, hd⟩ := h
+  exact ⟨d, hmem, capSubsumes_trans d c' c hd hsub⟩
 
 -- =========================================================================
 -- 8. TODO Stubs
