@@ -192,6 +192,25 @@ identical" per `AUDIT.md`.)
   could "generate" `aⁿbⁿcⁿ`), then `aⁿbⁿcⁿ ∉ CFL` via `cfl_pumping`, then
   `L₁ ∩ L₂` non-closure by De Morgan against the proven positive ∪ closure.
 
+## Axiom audit (`#print axioms`, verified in-toolchain)
+
+Kernel-dependency printout for the headline results in `WokeGrammarPumping.lean`
+(Lean 4.30.0). Only the standard classical constants appear — no `sorryAx`, no
+project-specific constants:
+
+| Theorem | Kernel dependencies |
+|---|---|
+| `yield_bound` | `propext`, `Quot.sound` |
+| `ht_descend` | `propext`, `Quot.sound` |
+| `nodeNT_add` | `propext`, `Classical.choice`, `Quot.sound` |
+| `descend_sibling_nonempty` | `propext`, `Quot.sound` |
+| `cfl_pumping` | `propext`, `Classical.choice`, `Quot.sound` |
+
+`Classical.choice` enters only through the finite `pigeon`hole's case split; the
+rest are the kernel constants Mathlib itself rests on. The other files' headline
+results sit on the same or a smaller base (`WokeGrammarCFL.lean` is `propext`-only;
+`WokeGrammarStructure`'s `no_left_recursion` is fully constant-free).
+
 ## Status
 
 P1 (merged, #102) + P2/P3/P4 + the structural Coq mirror are machine-checked and

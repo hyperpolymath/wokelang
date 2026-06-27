@@ -264,9 +264,8 @@ theorem nodeNT_add {R : N → BProd N T → Prop} :
 
 /-- In an ε-free grammar (no `A → ε` productions), every parse tree yields a
 non-empty string. This is what makes the pumped portion `vx` non-empty. -/
-theorem yield_nonempty {R : N → BProd N T → Prop} (hRε : ∀ A, ¬ R A BProd.eps) :
-    ∀ {A w} (t : PT R A w), w ≠ [] := by
-  intro A w t
+theorem yield_nonempty {R : N → BProd N T → Prop} (hRε : ∀ A, ¬ R A BProd.eps)
+    {A : N} {w : List T} (t : PT R A w) : w ≠ [] := by
   induction t with
   | @bin A B C w1 w2 _ t1 t2 ih1 ih2 =>
     intro h; rcases List.append_eq_nil_iff.mp h with ⟨h1, _⟩; exact ih1 h1
