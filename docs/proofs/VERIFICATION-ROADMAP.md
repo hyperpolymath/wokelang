@@ -180,7 +180,27 @@ unlock Phases 1c / 3a / 4a.
   unless the store is restored on block exit). That store-restoration design is the open
   modelling decision for control-flow execution; `return_`'s value-propagation / block
   short-circuit (relevant once function calls are modelled) is likewise deferred.
-- [ ] Phase 1 (cont.: `[T-Call]` after 1b), 1b (control-flow execution + scoping), 1c — type-safety + operational metatheory.
+- [~] **Phase 1b (control-flow execution + block scoping)** — the four control-flow forms
+  `if`/`loop`/`attempt`/`consent` added to `StmtExec`, with **faithful lexical scoping**
+  (option A, the Rust `Environment{bindings,parent}` discipline): on block exit, the names a
+  block *declared* (`declaredVars`, via the `varDecl`s at its top level) are rolled back to
+  their entry values by `restoreVars`, while assignments to *enclosing* variables persist.
+  `loopStep` recurses on the restored store, so outer-variable mutations carry across
+  iterations while declarations re-scope each pass; `attemptOk` selectively restores,
+  `attemptErr` restores the entry store (op-sem `[B-Attempt-Err]`); `consentGrant/Deny`.
+  The `stmt_exec_preservation`/`stmts_exec_preservation` store-typing theorems are upgraded to
+  the **full mutual induction** (via the `StmtExec.rec` mutual recursor — `induction` does not
+  support mutual inductives, and the loop's same-statement recursion is non-AST-structural),
+  bridged by `ctx_agrees_off_declared` (a statics lemma: `Γ₁` agrees with `Γ` off the declared
+  names) + `store_wellTyped_restore`. Two faithfulness smoke tests run real programs: a
+  block-local declaration is rolled back (does not escape), and an outer-variable mutation
+  persists through a block. Hole-free (classical kernel base; the scoping lemmas need only
+  `propext`). *Documented divergences:* `loop` is bool/while-guarded (inheriting the merged
+  `StmtWellTyped.loop : … .bool`) whereas the interpreters use a counted-`int` loop (deferred —
+  changing it edits merged statics); `consent`/`attempt` abstract the permission oracle and
+  result channel; early exit (return/break/continue) is unmodeled. This is a preservation-only
+  result (no statement-progress/determinism claim).
+- [ ] Phase 1 (cont.: `[T-Call]` after 1b), 1b (counted-int loop; statement progress/determinism), 1c — type-safety + operational metatheory.
 - [ ] Phase 2b, 2c — consent + capability state machines.
 - [ ] Phase 3a (+3b) — HM inference.
 - [ ] Phase 4a–4c — compiler / parser / WASM.
