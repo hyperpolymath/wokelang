@@ -1510,6 +1510,58 @@ theorem store_wellTyped_extend {Γ : TypeEnv} {ρ : Env} {x : String} {t : WokeT
     simp only [extendEnv]; rw [if_neg hxy]; exact hv'
 
 -- =========================================================================
+-- 7d. Expression-evaluation invariants under a store (Phase 1b substrate)
+-- =========================================================================
+
+/-- **Expression evaluation never mutates the store.** Every base reduction
+returns the store it was given, and every congruence rule threads the
+sub-step's store unchanged, so a single expression step leaves `ρ` fixed. This
+is what lets statement execution compose: an expression sub-evaluation inside a
+statement cannot disturb the variable bindings the statement effect then acts on. -/
+theorem step_store_invariant {e e' : Expr} {ρ ρ' : Env}
+    (h : Step e ρ e' ρ') : ρ' = ρ := by
+  induction h with
+  | sBinOpLeft _ _ _ _ _ _ _ ih => exact ih
+  | sBinOpRight _ _ _ _ _ _ _ _ ih => exact ih
+  | sUnOpCong _ _ _ _ _ _ ih => exact ih
+  | sOkayCong _ _ _ _ _ ih => exact ih
+  | sOopsCong _ _ _ _ _ ih => exact ih
+  | sUnwrapCong _ _ _ _ _ ih => exact ih
+  | sArrayStep _ _ _ _ _ _ _ ih => exact ih
+  | _ => rfl
+
+/-- Multi-step evaluation is store-preserving too, by transitivity. -/
+theorem multiStep_store_invariant {e e' : Expr} {ρ ρ' : Env}
+    (h : MultiStep e ρ e' ρ') : ρ' = ρ := by
+  induction h with
+  | refl => rfl
+  | step _ _ _ _ _ _ hs _ ih => rw [ih]; exact step_store_invariant hs
+
+/-- **Literal typing is context-independent.** A literal value's type is
+determined structurally and never consults the type context, so a typing for
+`.lit v` in one context holds in any context. This is the weakening that lifts
+`StoreWellTyped`'s `HasType emptyTypeEnv (.lit v) t` into the arbitrary context
+`Γ` that statement-level expression typing lives in. -/
+theorem hasType_lit_any {Γ Γ' : TypeEnv} {v : Value} {t : WokeType}
+    (h : HasType Γ (.lit v) t) : HasType Γ' (.lit v) t := by
+  -- Generalise to a same-expression form so the `vOkay`/`vArray` recursions get
+  -- usable induction hypotheses; the `∃ w, e = .lit w` guard rules out the
+  -- non-literal typing rules (which `induction` still enumerates).
+  have gen : ∀ {Δ e t'}, HasType Δ e t' → ∀ {Δ'}, (∃ w, e = .lit w) → HasType Δ' e t' := by
+    intro Δ e t' hh
+    induction hh with
+    | tInt n => intro _ _; exact .tInt _ _
+    | tFloat f => intro _ _; exact .tFloat _ _
+    | tString s => intro _ _; exact .tString _ _
+    | tBool b => intro _ _; exact .tBool _ _
+    | tUnit => intro _ _; exact .tUnit _
+    | tOkayVal w t'' _ ih => intro _ _; exact .tOkayVal _ _ _ (ih ⟨w, rfl⟩)
+    | tOopsVal s t'' => intro _ _; exact .tOopsVal _ _ _
+    | tArrayVal vs t'' _ ih => intro _ _; exact .tArrayVal _ _ _ (fun w hw => ih w hw ⟨w, rfl⟩)
+    | _ => intro _ hlit; obtain ⟨w, hw⟩ := hlit; nomatch hw
+  exact gen h ⟨v, rfl⟩
+
+-- =========================================================================
 -- 8. TODO Stubs
 -- =========================================================================
 
