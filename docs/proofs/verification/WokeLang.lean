@@ -1474,6 +1474,42 @@ theorem subst_preserves_typing {x : String} {v : Value} {tx : WokeType} :
       exact .tArrayVal _ _ _ (fun w hw => by simpa only [subst] using ih w hw hΔ hv)
 
 -- =========================================================================
+-- 7c. Store typing (roadmap Phase 1b foundation)
+-- =========================================================================
+
+/-- **Store typing.** The runtime store `ρ` agrees with the type context `Γ`:
+every variable `Γ` types is bound in `ρ` to a value of that type. This is the
+bridge between the static `TypeEnv` and the dynamic `Env`, and the invariant every
+statement-execution preservation theorem is stated against. -/
+def StoreWellTyped (Γ : TypeEnv) (ρ : Env) : Prop :=
+  ∀ x t, Γ x = some t → ∃ v, ρ x = some v ∧ HasType emptyTypeEnv (.lit v) t
+
+/-- The empty store is well typed against the empty context. -/
+theorem store_wellTyped_empty : StoreWellTyped emptyTypeEnv emptyEnv := by
+  intro x t h; simp [emptyTypeEnv] at h
+
+/-- Looking up a typed variable in a well-typed store yields a value of that type. -/
+theorem store_wellTyped_lookup {Γ : TypeEnv} {ρ : Env} {x : String} {t : WokeType}
+    (hs : StoreWellTyped Γ ρ) (hx : Γ x = some t) :
+    ∃ v, ρ x = some v ∧ HasType emptyTypeEnv (.lit v) t := hs x t hx
+
+/-- **Store-extension lemma.** Extending the context and the store in lockstep with
+a value of the declared type preserves store typing. This is exactly what a
+`varDecl` statement does to the runtime, and the key step for its preservation. -/
+theorem store_wellTyped_extend {Γ : TypeEnv} {ρ : Env} {x : String} {t : WokeType}
+    {v : Value} (hs : StoreWellTyped Γ ρ) (hv : HasType emptyTypeEnv (.lit v) t) :
+    StoreWellTyped (extendTypeEnv x t Γ) (extendEnv x v ρ) := by
+  intro y ty hy
+  simp only [extendTypeEnv] at hy
+  by_cases hxy : (x == y) = true
+  · rw [if_pos hxy] at hy; injection hy with hty; subst hty
+    exact ⟨v, by simp only [extendEnv]; rw [if_pos hxy], hv⟩
+  · rw [if_neg hxy] at hy
+    obtain ⟨v', hv', hvt⟩ := hs y ty hy
+    refine ⟨v', ?_, hvt⟩
+    simp only [extendEnv]; rw [if_neg hxy]; exact hv'
+
+-- =========================================================================
 -- 8. TODO Stubs
 -- =========================================================================
 
