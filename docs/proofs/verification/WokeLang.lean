@@ -1826,6 +1826,83 @@ theorem store_wellTyped_update {Γ : TypeEnv} {ρ : Env} {x : String} {t : WokeT
   · obtain ⟨v', hv', hvt⟩ := hst y ty hy
     exact ⟨v', by simp only [extendEnv]; rw [if_neg hxy]; exact hv', hvt⟩
 
+-- ── Block-scope restore machinery (faithful lexical scoping) ──────────────
+-- A block introduces a new scope: variables it DECLARES (via `varDecl`) are
+-- local and vanish on block exit, while ASSIGNMENTS to enclosing variables
+-- persist. In the flat `Env` model we realize this with `restoreVars`: on
+-- block exit, the names the block declared are rolled back to their entry
+-- values, and every other binding (including outer-variable mutations) is kept
+-- — exactly the Rust interpreter's `Environment{bindings, parent}` discipline.
+
+/-- The names a single statement declares at its own level. Only `varDecl`
+declares; compound statements declare nothing at this level (their inner
+declarations are block-local to them and already restored by their own exit). -/
+def declaredVarsOf : Stmt → List String
+  | .varDecl x _ => [x]
+  | _ => []
+
+/-- The names a block declares at top level, left-to-right. -/
+def declaredVars : List Stmt → List String
+  | [] => []
+  | s :: ss => declaredVarsOf s ++ declaredVars ss
+
+/-- Roll back the declared names to their entry values; keep everything else
+(including assignments to enclosing variables) from the post-block store. -/
+def restoreVars (names : List String) (ρpre ρpost : Env) : Env :=
+  fun y => if y ∈ names then ρpre y else ρpost y
+
+/-- A statement leaves the type context unchanged on every variable it does not
+declare. -/
+theorem stmt_ctx_off_declared {Γ Γ' : TypeEnv} {s : Stmt}
+    (hw : StmtWellTyped Γ s Γ') : ∀ x, x ∉ declaredVarsOf s → Γ' x = Γ x := by
+  cases hw with
+  | varDecl Γ0 x0 e t hte =>
+      intro x hx
+      simp only [declaredVarsOf, List.mem_singleton] at hx
+      simp only [extendTypeEnv]
+      rw [if_neg (by simpa [beq_iff_eq] using fun h => hx h.symm)]
+  | assign _ _ _ _ _ _ => intro x _; rfl
+  | return_ _ _ _ _ => intro x _; rfl
+  | if_ _ _ _ _ _ _ _ _ _ => intro x _; rfl
+  | loop _ _ _ _ _ _ => intro x _; rfl
+  | attempt _ _ _ _ _ => intro x _; rfl
+  | consent _ _ _ _ _ => intro x _; rfl
+  | expr _ _ _ _ => intro x _; rfl
+  | complain _ _ => intro x _; rfl
+
+/-- A whole block leaves the type context unchanged on every variable it does
+not declare at top level — by induction on the block typing. (Compound
+statements inside the block do not extend the context, so only top-level
+`varDecl`s matter.) -/
+theorem ctx_agrees_off_declared {Γ Γ₁ : TypeEnv} {body : List Stmt}
+    (hw : StmtsWellTyped Γ body Γ₁) : ∀ x, x ∉ declaredVars body → Γ₁ x = Γ x := by
+  induction body generalizing Γ Γ₁ with
+  | nil => cases hw; intro x _; rfl
+  | cons s ss ih =>
+      cases hw with
+      | cons _ _ _ Γmid _ hws hwss =>
+          intro x hx
+          simp only [declaredVars, List.mem_append, not_or] at hx
+          rw [ih hwss x hx.2, stmt_ctx_off_declared hws x hx.1]
+
+/-- **Restore lemma.** If the entry store is well typed against the outer
+context `Γ`, and the post-block store is well typed against the block's output
+context `Γ₁`, and `Γ₁` agrees with `Γ` off the declared names, then the restored
+store is well typed against `Γ`. The declared names fall back to their (well
+typed) entry values; every other `Γ`-variable keeps its post-block value, whose
+type `Γ₁` (= `Γ` there) certifies. -/
+theorem store_wellTyped_restore {Γ Γ₁ : TypeEnv} {ρ ρb : Env} {body : List Stmt}
+    (hpre : StoreWellTyped Γ ρ) (hpost : StoreWellTyped Γ₁ ρb)
+    (hagree : ∀ x, x ∉ declaredVars body → Γ₁ x = Γ x) :
+    StoreWellTyped Γ (restoreVars (declaredVars body) ρ ρb) := by
+  intro x t hx
+  by_cases hmem : x ∈ declaredVars body
+  · obtain ⟨v, hv, hvt⟩ := hpre x t hx
+    exact ⟨v, by simp only [restoreVars, if_pos hmem]; exact hv, hvt⟩
+  · have hΓ₁ : Γ₁ x = some t := by rw [hagree x hmem]; exact hx
+    obtain ⟨v, hv, hvt⟩ := hpost x t hΓ₁
+    exact ⟨v, by simp only [restoreVars, if_neg hmem]; exact hv, hvt⟩
+
 mutual
 /-- Big-step execution of a single (simple) statement. -/
 inductive StmtExec : Stmt → Env → Env → Prop where
@@ -1836,6 +1913,27 @@ inductive StmtExec : Stmt → Env → Env → Prop where
   | assign : ∀ x e v ρ, MultiStep e ρ (.lit v) ρ →
       StmtExec (.assign x e) ρ (extendEnv x v ρ)
   | return_ : ∀ e v ρ, MultiStep e ρ (.lit v) ρ → StmtExec (.return_ e) ρ ρ
+  -- Control-flow forms. Each runs its body block, then RESTORES the names the
+  -- block declared to their entry values (faithful lexical scoping); outer-var
+  -- mutations survive. The bool guard inherits `StmtWellTyped.{if_,loop}`'s
+  -- `HasType Γ c .bool` premise (see the divergence note: the interpreters use a
+  -- counted-int `loop`; the merged statics fix `.bool`, deferred to a follow-up).
+  | ifTrue : ∀ c thn els ρ ρb, MultiStep c ρ (.lit (.vBool true)) ρ → StmtsExec thn ρ ρb →
+      StmtExec (.if_ c thn els) ρ (restoreVars (declaredVars thn) ρ ρb)
+  | ifFalse : ∀ c thn els ρ ρb, MultiStep c ρ (.lit (.vBool false)) ρ → StmtsExec els ρ ρb →
+      StmtExec (.if_ c thn els) ρ (restoreVars (declaredVars els) ρ ρb)
+  | loopDone : ∀ c body ρ, MultiStep c ρ (.lit (.vBool false)) ρ → StmtExec (.loop c body) ρ ρ
+  | loopStep : ∀ c body ρ ρb ρ', MultiStep c ρ (.lit (.vBool true)) ρ → StmtsExec body ρ ρb →
+      StmtExec (.loop c body) (restoreVars (declaredVars body) ρ ρb) ρ' →
+      StmtExec (.loop c body) ρ ρ'
+  | attemptOk : ∀ body hname ρ ρb, StmtsExec body ρ ρb →
+      StmtExec (.attempt body hname) ρ (restoreVars (declaredVars body) ρ ρb)
+  -- error mid-body: catch, restore the entry store (op-sem [B-Attempt-Err]).
+  | attemptErr : ∀ body hname ρ, StmtExec (.attempt body hname) ρ ρ
+  | consentGrant : ∀ p body ρ ρb, StmtsExec body ρ ρb →
+      StmtExec (.consent p body) ρ (restoreVars (declaredVars body) ρ ρb)
+  -- permission denied: skip the body (op-sem [B-Consent-Deny]).
+  | consentDeny : ∀ p body ρ, StmtExec (.consent p body) ρ ρ
 /-- Big-step execution of a block, threading the store left-to-right. -/
 inductive StmtsExec : List Stmt → Env → Env → Prop where
   | nil : ∀ ρ, StmtsExec [] ρ ρ
@@ -1843,30 +1941,84 @@ inductive StmtsExec : List Stmt → Env → Env → Prop where
       StmtExec s ρ ρ' → StmtsExec ss ρ' ρ'' → StmtsExec (s :: ss) ρ ρ''
 end
 
-/-- **Statement-execution preservation (single, simple statement).** A well-typed
-statement run in a well-typed store yields a store well-typed against the
-statement's output context. `varDecl` uses `store_wellTyped_extend`, `assign`
-uses `store_wellTyped_update`; the rest leave the store and context unchanged. -/
+/-- **Statement-execution preservation** (single statement). A well-typed
+statement run in a well-typed store yields a store well-typed against its output
+context. Proved by induction on the execution derivation; the mutual induction
+principle supplies, in each control-flow case, an IH for the body block (and, for
+`loopStep`, an IH for the recursive loop execution on the restored store).
+
+Simple statements: `varDecl` uses `store_wellTyped_extend`, `assign` uses
+`store_wellTyped_update`, the rest leave the store and context fixed. Control
+flow: each branch/body's IH gives `StoreWellTyped Γ₁ ρb`, then
+`store_wellTyped_restore` rolls the declared names back to `Γ` via
+`ctx_agrees_off_declared`. `loop` runs the recursive IH on the restored store (so
+outer-variable mutations carry across iterations while declarations are re-scoped
+each pass). `attemptErr`/`consentDeny` restore/skip to the entry store. -/
 theorem stmt_exec_preservation {Γ Γ' : TypeEnv} {s : Stmt} {ρ ρ' : Env}
     (hst : StoreWellTyped Γ ρ) (hw : StmtWellTyped Γ s Γ') (he : StmtExec s ρ ρ') :
     StoreWellTyped Γ' ρ' := by
-  cases he with
-  | complain m ρ => cases hw with | complain _ _ => exact hst
-  | expr e v ρ hm => cases hw with | expr _ _ t _ => exact hst
-  | return_ e v ρ hm => cases hw with | return_ _ _ t _ => exact hst
-  | varDecl x e v ρ hm =>
+  refine StmtExec.rec
+    (motive_1 := fun s r r' _ =>
+      ∀ Γ Γ', StoreWellTyped Γ r → StmtWellTyped Γ s Γ' → StoreWellTyped Γ' r')
+    (motive_2 := fun ss r r' _ =>
+      ∀ Γ Γ', StoreWellTyped Γ r → StmtsWellTyped Γ ss Γ' → StoreWellTyped Γ' r')
+    ?complain ?expr ?varDecl ?assign ?return_ ?ifTrue ?ifFalse ?loopDone ?loopStep
+    ?attemptOk ?attemptErr ?consentGrant ?consentDeny ?nil ?cons he Γ Γ' hst hw
+  case complain => intro m ρ Γ Γ' hst hw; cases hw with | complain _ _ => exact hst
+  case expr => intro e v ρ hm Γ Γ' hst hw; cases hw with | expr _ _ t _ => exact hst
+  case return_ => intro e v ρ hm Γ Γ' hst hw; cases hw with | return_ _ _ t _ => exact hst
+  case varDecl =>
+      intro x e v ρ hm Γ Γ' hst hw
       cases hw with
       | varDecl _ _ _ t hte =>
           exact store_wellTyped_extend hst
             (hasType_lit_any (store_multiStep_preservation hst hte hm))
-  | assign x e v ρ hm =>
+  case assign =>
+      intro x e v ρ hm Γ Γ' hst hw
       cases hw with
       | assign _ _ _ t hx hte =>
           exact store_wellTyped_update hst hx
             (hasType_lit_any (store_multiStep_preservation hst hte hm))
+  case ifTrue =>
+      intro c thn els ρ ρb hc hb ihb Γ Γ' hst hw
+      cases hw with
+      | if_ _ _ _ _ _ _ _ hwthn _ =>
+          exact store_wellTyped_restore hst (ihb _ _ hst hwthn) (ctx_agrees_off_declared hwthn)
+  case ifFalse =>
+      intro c thn els ρ ρb hc hb ihb Γ Γ' hst hw
+      cases hw with
+      | if_ _ _ _ _ _ _ _ _ hwels =>
+          exact store_wellTyped_restore hst (ihb _ _ hst hwels) (ctx_agrees_off_declared hwels)
+  case loopDone => intro c body ρ hc Γ Γ' hst hw; cases hw with | loop _ _ _ _ _ _ => exact hst
+  case loopStep =>
+      intro c body ρ ρb ρ' hc hb hrec ihb ihrec Γ Γ' hst hw
+      cases hw with
+      | loop _ _ _ _ hcc hwbody =>
+          exact ihrec _ _
+            (store_wellTyped_restore hst (ihb _ _ hst hwbody) (ctx_agrees_off_declared hwbody))
+            (StmtWellTyped.loop _ _ _ _ hcc hwbody)
+  case attemptOk =>
+      intro body hname ρ ρb hb ihb Γ Γ' hst hw
+      cases hw with
+      | attempt _ _ _ _ hwbody =>
+          exact store_wellTyped_restore hst (ihb _ _ hst hwbody) (ctx_agrees_off_declared hwbody)
+  case attemptErr =>
+      intro body hname ρ Γ Γ' hst hw; cases hw with | attempt _ _ _ _ _ => exact hst
+  case consentGrant =>
+      intro p body ρ ρb hb ihb Γ Γ' hst hw
+      cases hw with
+      | consent _ _ _ _ hwbody =>
+          exact store_wellTyped_restore hst (ihb _ _ hst hwbody) (ctx_agrees_off_declared hwbody)
+  case consentDeny =>
+      intro p body ρ Γ Γ' hst hw; cases hw with | consent _ _ _ _ _ => exact hst
+  case nil => intro ρ Γ Γ' hst hw; cases hw with | nil _ => exact hst
+  case cons =>
+      intro s ss ρ ρ' ρ'' hse hsse ihse ihsse Γ Γ' hst hw
+      cases hw with
+      | cons _ _ _ Γ₁ _ hws hwss => exact ihsse _ _ (ihse _ _ hst hws) hwss
 
-/-- **Statement-execution preservation (block of simple statements).** Threading
-the single-statement preservation through the block. -/
+/-- **Statement-execution preservation** (block). Threads the single-statement
+preservation through the block. -/
 theorem stmts_exec_preservation {Γ Γ' : TypeEnv} {ss : List Stmt} {ρ ρ' : Env}
     (hst : StoreWellTyped Γ ρ) (hw : StmtsWellTyped Γ ss Γ') (he : StmtsExec ss ρ ρ') :
     StoreWellTyped Γ' ρ' := by
@@ -1900,6 +2052,38 @@ example :
         (.expr (.var "x") (.vInt 0) (extendEnv "x" (.vInt 0) emptyEnv)
           (.step _ _ _ _ _ _ (.sVar "x" _ (.vInt 0) (by simp [extendEnv])) (.refl _ _)))
         (.nil _)))
+
+/-- Smoke test: `if true {} else {}` runs from the empty store back to the
+empty store (the taken branch is empty, so the restore is the identity). -/
+example : StmtExec (.if_ (.lit (.vBool true)) [] [])
+    emptyEnv (restoreVars (declaredVars ([] : List Stmt)) emptyEnv emptyEnv) :=
+  .ifTrue _ _ _ _ _ (.refl _ _) (.nil _)
+
+/-- **Faithfulness smoke test — block-local declarations do not escape.** The
+block-local `remember y = 0` inside `if true { … }` is rolled back on block exit,
+so running it from the empty store yields the empty store again. This is exactly
+what distinguishes faithful lexical scoping from a no-restore model (where `y`
+would leak into the enclosing scope). -/
+example :
+    restoreVars (declaredVars [Stmt.varDecl "y" (.lit (.vInt 0))])
+      emptyEnv (extendEnv "y" (.vInt 0) emptyEnv) = emptyEnv := by
+  funext z
+  simp only [restoreVars, declaredVars, declaredVarsOf, List.append_nil, List.mem_singleton,
+    extendEnv, emptyEnv]
+  by_cases hz : z = "y"
+  · simp [hz]
+  · rw [if_neg hz, if_neg (by simpa [beq_iff_eq] using fun h => hz h.symm)]
+
+/-- **Faithfulness smoke test — outer mutations persist through a block.** With
+`x : int` already in scope, `if true { x = 1 }` updates `x` and the new value
+survives block exit (`assign` declares nothing, so nothing is rolled back). -/
+example :
+    restoreVars (declaredVars [Stmt.assign "x" (.lit (.vInt 1))])
+      (extendEnv "x" (.vInt 0) emptyEnv) (extendEnv "x" (.vInt 1) emptyEnv)
+      = extendEnv "x" (.vInt 1) emptyEnv := by
+  funext z
+  simp only [restoreVars, declaredVars, declaredVarsOf, List.append_nil, List.not_mem_nil,
+    if_false]
 
 -- =========================================================================
 -- 8. TODO Stubs
