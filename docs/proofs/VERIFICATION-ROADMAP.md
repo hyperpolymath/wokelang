@@ -34,7 +34,7 @@ of every proof document and the implementation (2026-06).
 
 | File | Covers |
 |---|---|
-| `verification/WokeLang.lean` / `.v` | expression-core **type safety** (progress, preservation, type-safety, canonical forms, arrays, `Result`/`unwrap` panic); statement *typing* (no execution); consent monotonicity/preservation; capability preorder |
+| `verification/WokeLang.lean` / `.v` | expression-core **type safety** (progress, preservation, type-safety, canonical forms, arrays, `Result`/`unwrap` panic); statement **typing + execution** (all nine forms — simple + control-flow with faithful lexical block scoping; store-typing preservation); consent monotonicity/preservation; capability preorder |
 | `verification/WokeGrammar.lean` | verified-parser core (soundness, completeness, termination, precedence, determinism) |
 | `verification/WokeGrammarStructure.{lean,v}` | no-left-recursion (whole grammar), maximal munch, keyword priority, LL(1)✗/LL(2)✓ |
 | `verification/WokeGrammar{CFL,Regular,Pumping}.lean` | CFL closure, non-regularity, the CFL pumping lemma, `aⁿbⁿcⁿ ∉ CFL`, ∩ non-closure |
@@ -199,7 +199,12 @@ unlock Phases 1c / 3a / 4a.
   `StmtWellTyped.loop : … .bool`) whereas the interpreters use a counted-`int` loop (deferred —
   changing it edits merged statics); `consent`/`attempt` abstract the permission oracle and
   result channel; early exit (return/break/continue) is unmodeled. This is a preservation-only
-  result (no statement-progress/determinism claim).
+  result (no statement-progress/determinism claim). *Adversarially reviewed* (faithfulness vs the
+  Rust interpreter, non-vacuity, scoping edge-cases, honesty): **0 soundness defects** — the
+  scary cases (loop non-termination has no derivation; `ifTrue` over an arbitrary `ρb`; duplicate
+  declarations) were all confirmed sound; the confirmed findings were documentation/honesty
+  improvements (surfacing the divergences above, clarifying `attemptErr` as a store-effect
+  abstraction), folded into the file header and §7e comments.
 - [ ] Phase 1 (cont.: `[T-Call]` after 1b), 1b (counted-int loop; statement progress/determinism), 1c — type-safety + operational metatheory.
 - [ ] Phase 2b, 2c — consent + capability state machines.
 - [ ] Phase 3a (+3b) — HM inference.

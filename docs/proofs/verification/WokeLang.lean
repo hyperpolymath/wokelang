@@ -35,6 +35,37 @@
   - preservation: stepping preserves types
   - type_safety: multi-step evaluation preserves types (by induction + preservation)
   - consent_monotonicity / consent_preservation: consent system properties
+  - StmtExec / StmtsExec (§7e): a big-step statement-execution relation covering
+    ALL nine statement forms — the simple statements (complain, expr, varDecl,
+    assign, return_) and the control-flow forms (if_, loop, attempt, consent)
+    with faithful lexical block scoping (restoreVars rolls block-local
+    declarations back on exit; enclosing-variable mutations persist).
+  - stmt_exec_preservation / stmts_exec_preservation: store-typing preservation
+    for statement execution (a well-typed statement/block run in a well-typed
+    store yields a store well-typed against its output context). This is a
+    PRESERVATION-only result: there is no statement-progress or determinism claim.
+
+  ### Documented divergences (model vs. the real language)
+  The execution model is faithful to the type system and to the parts of the
+  interpreters it covers, but it deliberately abstracts/defers the following —
+  none is hidden:
+  - **loop is bool/while-guarded**, inheriting `StmtWellTyped.loop : … .bool`
+    (the guard is re-evaluated each iteration), whereas the Rust/OCaml
+    interpreters run a **counted-`int`** loop (`for _ in 0..n`). Making the model
+    counted would edit the merged statics (`.bool` → `.int`); deferred.
+  - **attempt** abstracts the result channel: `attemptOk`/`attemptErr` model only
+    the STORE effect (success keeps outer mutations; error restores the entry
+    store). Expression panics are not propagated through StmtExec (the simple
+    rules require evaluation to a `.lit` value), so `attemptErr` is an
+    abstraction of "an error occurred" rather than a derivation-driven catch; the
+    `hname` handler binding and the Okay/Oops result wrapping are unmodeled.
+  - **consent** abstracts the `#care` permission oracle: `consentGrant`/
+    `consentDeny` are both always available (intentional non-determinism); the
+    real capability/permission decision lives in the consent/capability theorems.
+  - **early exit** (return/break/continue) is unmodeled — bodies run to
+    completion; `return_` only evaluates its expression and keeps the store.
+  - the `maybe` type constructor exists in `WokeType` but has no typing/eval
+    rules yet (pre-existing; `result` is the supported option type).
 
   ### Arrays (parity with Coq's WokeLang.v):
   `tArray` / `tArrayVal` type array expressions and array literal values
@@ -1779,22 +1810,30 @@ theorem preservation_via_store {e e' : Expr} {ρ ρ' : Env} {t : WokeType}
   store_step_preservation (fun x t h => by simp [emptyTypeEnv] at h) ht hs
 
 -- =========================================================================
--- 7e. Statement execution — simple-statement fragment (Phase 1b)
+-- 7e. Statement execution — all forms, with block scoping (Phase 1b)
 -- =========================================================================
 
 /- A big-step statement-execution relation `StmtExec s ρ ρ'` ("statement `s`
 run in store `ρ` produces store `ρ'`"), with `StmtsExec` threading a block
-left-to-right. This increment covers the **simple** statements — those with no
-embedded sub-blocks: `complain`, `expr`, `varDecl`, `assign`, `return_`. Each
-evaluates its expression (if any) to a value via the closed-store `MultiStep`
-(the store is invariant under expression evaluation, `step_store_invariant`),
-then applies its store effect. `return_`'s value-propagation / block
-short-circuit and the control-flow forms (`if`/`loop`/`attempt`/`consent`,
-which introduce block scoping) are deliberately deferred to a later increment.
+left-to-right. It covers ALL nine statement forms:
 
-The metatheorem is **store-typing preservation**: a well-typed statement run in
-a well-typed store yields a store well-typed against the statement's output
-context (`StmtWellTyped Γ s Γ'`). -/
+  - the **simple** statements — `complain`, `expr`, `varDecl`, `assign`,
+    `return_` — each of which evaluates its expression (if any) to a value via
+    the closed-store `MultiStep` (the store is invariant under expression
+    evaluation, `step_store_invariant`) then applies its store effect;
+  - the **control-flow** forms — `if`/`loop`/`attempt`/`consent` — which run a
+    sub-block and then RESTORE the names that block declared to their entry
+    values (`restoreVars` + `declaredVars`), faithful lexical scoping in which
+    block-local declarations vanish on exit while enclosing-variable mutations
+    persist (`loop` carries those mutations across iterations via the restored
+    store). See the file header's "Documented divergences" for what `loop`'s
+    bool guard, `attempt`'s error/result channel, and `consent`'s permission
+    oracle deliberately abstract or defer.
+
+The metatheorem is **store-typing preservation**: a well-typed statement (or
+block) run in a well-typed store yields a store well-typed against its output
+context (`StmtWellTyped Γ s Γ'`). It is preservation-only — there is no
+statement-progress or determinism claim. -/
 
 /-- Multi-step store-typed preservation: evaluating a well-typed expression to
 completion in a well-typed store yields a value of the same type. The store is
@@ -1904,7 +1943,10 @@ theorem store_wellTyped_restore {Γ Γ₁ : TypeEnv} {ρ ρb : Env} {body : List
     exact ⟨v, by simp only [restoreVars, if_neg hmem]; exact hv, hvt⟩
 
 mutual
-/-- Big-step execution of a single (simple) statement. -/
+/-- Big-step execution of a single statement. Scoping (option A — the Rust
+`Environment{bindings,parent}` discipline) is realized by `restoreVars`; see the
+file header's "Documented divergences" for `loop`'s bool guard, `attempt`'s
+abstracted error/result channel, and `consent`'s abstracted permission oracle. -/
 inductive StmtExec : Stmt → Env → Env → Prop where
   | complain : ∀ m ρ, StmtExec (.complain m) ρ ρ
   | expr : ∀ e v ρ, MultiStep e ρ (.lit v) ρ → StmtExec (.expr e) ρ ρ
@@ -1916,8 +1958,8 @@ inductive StmtExec : Stmt → Env → Env → Prop where
   -- Control-flow forms. Each runs its body block, then RESTORES the names the
   -- block declared to their entry values (faithful lexical scoping); outer-var
   -- mutations survive. The bool guard inherits `StmtWellTyped.{if_,loop}`'s
-  -- `HasType Γ c .bool` premise (see the divergence note: the interpreters use a
-  -- counted-int `loop`; the merged statics fix `.bool`, deferred to a follow-up).
+  -- `HasType Γ c .bool` premise — DIVERGENCE: the interpreters use a counted-int
+  -- `loop` (`for _ in 0..n`); the merged statics fix `.bool`, deferred (see header).
   | ifTrue : ∀ c thn els ρ ρb, MultiStep c ρ (.lit (.vBool true)) ρ → StmtsExec thn ρ ρb →
       StmtExec (.if_ c thn els) ρ (restoreVars (declaredVars thn) ρ ρb)
   | ifFalse : ∀ c thn els ρ ρb, MultiStep c ρ (.lit (.vBool false)) ρ → StmtsExec els ρ ρb →
@@ -1928,11 +1970,18 @@ inductive StmtExec : Stmt → Env → Env → Prop where
       StmtExec (.loop c body) ρ ρ'
   | attemptOk : ∀ body hname ρ ρb, StmtsExec body ρ ρb →
       StmtExec (.attempt body hname) ρ (restoreVars (declaredVars body) ρ ρb)
-  -- error mid-body: catch, restore the entry store (op-sem [B-Attempt-Err]).
+  -- ABSTRACTION: `attemptErr` models the *store* effect of a caught error —
+  -- restore the entry store (op-sem [B-Attempt-Err]). Expression panics are NOT
+  -- propagated through StmtExec (the simple rules require evaluation to a `.lit`
+  -- value), so this is an abstraction of "an error occurred mid-body" rather than
+  -- a derivation-driven catch; it is intentionally available non-deterministically
+  -- alongside `attemptOk`. The `hname` handler binding / Okay-Oops result are unmodeled.
   | attemptErr : ∀ body hname ρ, StmtExec (.attempt body hname) ρ ρ
   | consentGrant : ∀ p body ρ ρb, StmtsExec body ρ ρb →
       StmtExec (.consent p body) ρ (restoreVars (declaredVars body) ρ ρb)
-  -- permission denied: skip the body (op-sem [B-Consent-Deny]).
+  -- ABSTRACTION: permission denied → skip the body (op-sem [B-Consent-Deny]).
+  -- `consentGrant`/`consentDeny` are both always available (the real `#care`
+  -- permission oracle is unmodeled here — it lives in the consent/capability theorems).
   | consentDeny : ∀ p body ρ, StmtExec (.consent p body) ρ ρ
 /-- Big-step execution of a block, threading the store left-to-right. -/
 inductive StmtsExec : List Stmt → Env → Env → Prop where
