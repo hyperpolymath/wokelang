@@ -127,7 +127,16 @@ unlock Phases 1c / 3a / 4a.
   `hasCapability_subsumes`). Coq parity (`cap_subsumes_trans`/`_antisymm`) remains
   a deliberate follow-up — the author left it unproven rather than ship fragile
   6×6×6 automation; a clean Coq proof wants a `cap_subsumes` characterization lemma.
-- [ ] Phase 1, 1b, 1c — type-safety + operational metatheory.
+- [~] **Phase 1 (partial)** — the **Substitution Lemma** (`subst` + `subst_preserves_typing`,
+  type-safety.md Lemma 3.4) is mechanized on the hole-free core, by induction on the
+  typing derivation with the context generalized (axioms `propext`, `Quot.sound`). This is
+  the prerequisite for `[T-Call]`'s preservation case and for Algorithm W soundness (3a).
+  *Finding:* `[T-Call]` dynamics here are NOT the assumed simple body-substitution —
+  `Expr.call` is by name and `TopItem.functionDef` bodies are **statement lists**, so call
+  reduction entangles with statement *execution* and belongs with **Phase 1b** (statement
+  dynamics), not this step. There is also no `index` constructor, so `[T-Index]` requires an
+  AST extension. Roadmap refined accordingly.
+- [ ] Phase 1 (cont.: `[T-Call]` after 1b), 1b, 1c — type-safety + operational metatheory.
 - [ ] Phase 2b, 2c — consent + capability state machines.
 - [ ] Phase 3a (+3b) — HM inference.
 - [ ] Phase 4a–4c — compiler / parser / WASM.

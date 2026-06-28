@@ -1392,6 +1392,88 @@ theorem hasCapability_subsumes {c c' : Capability} {cs : CapabilitySet}
   exact ⟨d, hmem, capSubsumes_trans d c' c hd hsub⟩
 
 -- =========================================================================
+-- 7b. Substitution lemma (roadmap Phase 1 core / type-safety.md Lemma 3.4)
+-- =========================================================================
+
+/-- Substitute the (closed) value `v` for the free variable `x` in an expression.
+Capture-avoiding is trivial here: values are closed, and `Expr` has no binders. -/
+def subst (x : String) (v : Value) : Expr → Expr
+  | .lit w => .lit w
+  | .var y => if x == y then .lit v else .var y
+  | .binOp op a b => .binOp op (subst x v a) (subst x v b)
+  | .unOp op a => .unOp op (subst x v a)
+  | .call f args => .call f (args.map (subst x v))
+  | .array es => .array (es.map (subst x v))
+  | .okay a => .okay (subst x v a)
+  | .oops a => .oops (subst x v a)
+  | .unwrap a => .unwrap (subst x v a)
+  | .error msg => .error msg
+
+/-- **Substitution Lemma.** If `e` is well typed under `Γ` extended with `x : tx`,
+and `v` is a value of type `tx` under `Γ`, then `subst x v e` is well typed under
+`Γ` at the same type. Proved by induction on the typing derivation, with the
+context generalized. This is the prerequisite for `[T-Call]`'s preservation case
+and for Algorithm W's soundness (roadmap Phases 1, 3a). -/
+theorem subst_preserves_typing {x : String} {v : Value} {tx : WokeType} :
+    ∀ {Δ e t}, HasType Δ e t → ∀ {Γ}, Δ = extendTypeEnv x tx Γ →
+      HasType Γ (.lit v) tx → HasType Γ (subst x v e) t := by
+  intro Δ e t h
+  induction h with
+  | tInt n => intro Γ _ _; simp only [subst]; exact .tInt _ _
+  | tFloat f => intro Γ _ _; simp only [subst]; exact .tFloat _ _
+  | tString s => intro Γ _ _; simp only [subst]; exact .tString _ _
+  | tBool b => intro Γ _ _; simp only [subst]; exact .tBool _ _
+  | tUnit => intro Γ _ _; simp only [subst]; exact .tUnit _
+  | tOkayVal w t' _ ih =>
+      intro Γ hΔ hv; simp only [subst]
+      exact .tOkayVal _ _ _ (by simpa only [subst] using ih hΔ hv)
+  | tOopsVal s t' => intro Γ _ _; simp only [subst]; exact .tOopsVal _ _ _
+  | tVar y t' hy =>
+      intro Γ hΔ hv; subst hΔ
+      by_cases hyx : (x == y) = true
+      · rw [show subst x v (.var y) = .lit v from by simp only [subst]; rw [if_pos hyx]]
+        have he : extendTypeEnv x tx Γ y = some tx := by
+          simp only [extendTypeEnv]; rw [if_pos hyx]
+        rw [he] at hy; injection hy with hty; subst hty; exact hv
+      · rw [show subst x v (.var y) = .var y from by simp only [subst]; rw [if_neg hyx]]
+        refine .tVar _ _ _ ?_
+        have he : extendTypeEnv x tx Γ y = Γ y := by
+          simp only [extendTypeEnv]; rw [if_neg hyx]
+        rw [he] at hy; exact hy
+  | tAddInt a b _ _ ih₁ ih₂ => intro Γ hΔ hv; simp only [subst]; exact .tAddInt _ _ _ (ih₁ hΔ hv) (ih₂ hΔ hv)
+  | tAddFloat a b _ _ ih₁ ih₂ => intro Γ hΔ hv; simp only [subst]; exact .tAddFloat _ _ _ (ih₁ hΔ hv) (ih₂ hΔ hv)
+  | tAddString a b _ _ ih₁ ih₂ => intro Γ hΔ hv; simp only [subst]; exact .tAddString _ _ _ (ih₁ hΔ hv) (ih₂ hΔ hv)
+  | tEq a b t' _ _ ih₁ ih₂ => intro Γ hΔ hv; simp only [subst]; exact .tEq _ _ _ _ (ih₁ hΔ hv) (ih₂ hΔ hv)
+  | tAnd a b _ _ ih₁ ih₂ => intro Γ hΔ hv; simp only [subst]; exact .tAnd _ _ _ (ih₁ hΔ hv) (ih₂ hΔ hv)
+  | tOr a b _ _ ih₁ ih₂ => intro Γ hΔ hv; simp only [subst]; exact .tOr _ _ _ (ih₁ hΔ hv) (ih₂ hΔ hv)
+  | tSubInt a b _ _ ih₁ ih₂ => intro Γ hΔ hv; simp only [subst]; exact .tSubInt _ _ _ (ih₁ hΔ hv) (ih₂ hΔ hv)
+  | tMulInt a b _ _ ih₁ ih₂ => intro Γ hΔ hv; simp only [subst]; exact .tMulInt _ _ _ (ih₁ hΔ hv) (ih₂ hΔ hv)
+  | tLt a b _ _ ih₁ ih₂ => intro Γ hΔ hv; simp only [subst]; exact .tLt _ _ _ (ih₁ hΔ hv) (ih₂ hΔ hv)
+  | tGt a b _ _ ih₁ ih₂ => intro Γ hΔ hv; simp only [subst]; exact .tGt _ _ _ (ih₁ hΔ hv) (ih₂ hΔ hv)
+  | tLe a b _ _ ih₁ ih₂ => intro Γ hΔ hv; simp only [subst]; exact .tLe _ _ _ (ih₁ hΔ hv) (ih₂ hΔ hv)
+  | tGe a b _ _ ih₁ ih₂ => intro Γ hΔ hv; simp only [subst]; exact .tGe _ _ _ (ih₁ hΔ hv) (ih₂ hΔ hv)
+  | tDivInt a b _ _ ih₁ ih₂ => intro Γ hΔ hv; simp only [subst]; exact .tDivInt _ _ _ (ih₁ hΔ hv) (ih₂ hΔ hv)
+  | tModInt a b _ _ ih₁ ih₂ => intro Γ hΔ hv; simp only [subst]; exact .tModInt _ _ _ (ih₁ hΔ hv) (ih₂ hΔ hv)
+  | tNegInt a _ ih => intro Γ hΔ hv; simp only [subst]; exact .tNegInt _ _ (ih hΔ hv)
+  | tNegFloat a _ ih => intro Γ hΔ hv; simp only [subst]; exact .tNegFloat _ _ (ih hΔ hv)
+  | tNot a _ ih => intro Γ hΔ hv; simp only [subst]; exact .tNot _ _ (ih hΔ hv)
+  | tOkay a t' _ ih => intro Γ hΔ hv; simp only [subst]; exact .tOkay _ _ _ (ih hΔ hv)
+  | tOops a t' _ ih => intro Γ hΔ hv; simp only [subst]; exact .tOops _ _ _ (ih hΔ hv)
+  | tUnwrap a tOk tErr _ ih => intro Γ hΔ hv; simp only [subst]; exact .tUnwrap _ _ _ _ (ih hΔ hv)
+  | tError msg t' => intro Γ _ _; simp only [subst]; exact .tError _ _ _
+  | tArray es t' _ ih =>
+      intro Γ hΔ hv
+      simp only [subst]
+      refine .tArray _ _ t' (fun e' he' => ?_)
+      rw [List.mem_map] at he'
+      obtain ⟨e0, he0, rfl⟩ := he'
+      exact ih e0 he0 hΔ hv
+  | tArrayVal vs t' _ ih =>
+      intro Γ hΔ hv
+      simp only [subst]
+      exact .tArrayVal _ _ _ (fun w hw => by simpa only [subst] using ih w hw hΔ hv)
+
+-- =========================================================================
 -- 8. TODO Stubs
 -- =========================================================================
 
