@@ -141,10 +141,19 @@ unlock Phases 1c / 3a / 4a.
   preservation proofs rest on: `store_wellTyped_empty` (empty store types against the
   empty context), `store_wellTyped_lookup` (a typed variable resolves to a value of its
   type), and `store_wellTyped_extend` (extending context+store in lockstep — exactly a
-  `varDecl` — preserves store typing). Hole-free (axiom `propext` only). The statement
-  *execution* relation itself is the next, higher-complexity step (the expression `Step`
-  is closed-term-only, so variable resolution needs design); this foundation lands first.
-- [ ] Phase 1 (cont.: `[T-Call]` after 1b), 1b (exec relation + stmt preservation), 1c — type-safety + operational metatheory.
+  `varDecl` — preserves store typing). Hole-free (axiom `propext` only).
+- [~] **Phase 1b (substrate)** — **expression-evaluation invariants under a store**, the
+  layer the statement-execution relation sits on: `step_store_invariant` and
+  `multiStep_store_invariant` (expression evaluation never mutates `ρ` — so a sub-evaluation
+  inside a statement can't disturb the bindings the statement effect then acts on), and
+  `hasType_lit_any` (literal typing is context-independent — the weakening that lifts
+  `StoreWellTyped`'s `HasType emptyTypeEnv (.lit v) t` into the arbitrary `Γ` statement-level
+  typing uses). Hole-free (`hasType_lit_any` needs **no** axioms). *Correction to the prior
+  note:* the expression `Step` is **not** closed-term-only — it has an `sVar` rule that
+  resolves variables from `ρ`; the closed-context use was only in the `emptyTypeEnv`-stated
+  `progress`/`preservation`. So the remaining work is a generalized store-typed preservation
+  (`HasType Γ e t` under `StoreWellTyped Γ ρ`), then the statement-execution relation itself.
+- [ ] Phase 1 (cont.: `[T-Call]` after 1b), 1b (store-typed preservation → exec relation → stmt preservation), 1c — type-safety + operational metatheory.
 - [ ] Phase 2b, 2c — consent + capability state machines.
 - [ ] Phase 3a (+3b) — HM inference.
 - [ ] Phase 4a–4c — compiler / parser / WASM.
