@@ -136,7 +136,15 @@ unlock Phases 1c / 3a / 4a.
   reduction entangles with statement *execution* and belongs with **Phase 1b** (statement
   dynamics), not this step. There is also no `index` constructor, so `[T-Index]` requires an
   AST extension. Roadmap refined accordingly.
-- [ ] Phase 1 (cont.: `[T-Call]` after 1b), 1b, 1c — type-safety + operational metatheory.
+- [~] **Phase 1b (foundation)** — **store typing** (`StoreWellTyped`) bridging the
+  static `TypeEnv` and the runtime `Env`, with the three lemmas the statement-execution
+  preservation proofs rest on: `store_wellTyped_empty` (empty store types against the
+  empty context), `store_wellTyped_lookup` (a typed variable resolves to a value of its
+  type), and `store_wellTyped_extend` (extending context+store in lockstep — exactly a
+  `varDecl` — preserves store typing). Hole-free (axiom `propext` only). The statement
+  *execution* relation itself is the next, higher-complexity step (the expression `Step`
+  is closed-term-only, so variable resolution needs design); this foundation lands first.
+- [ ] Phase 1 (cont.: `[T-Call]` after 1b), 1b (exec relation + stmt preservation), 1c — type-safety + operational metatheory.
 - [ ] Phase 2b, 2c — consent + capability state machines.
 - [ ] Phase 3a (+3b) — HM inference.
 - [ ] Phase 4a–4c — compiler / parser / WASM.
