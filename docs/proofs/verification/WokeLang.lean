@@ -1561,6 +1561,223 @@ theorem hasType_lit_any {Γ Γ' : TypeEnv} {v : Value} {t : WokeType}
     | _ => intro _ hlit; obtain ⟨w, hw⟩ := hlit; nomatch hw
   exact gen h ⟨v, rfl⟩
 
+/-- **Store-typed preservation.** The expression preservation theorem
+generalised from the empty context to an arbitrary type context `Γ`, under a
+store typing `StoreWellTyped Γ ρ`. This is the form statement execution needs:
+expressions inside a statement are typed in the running context, not in the
+empty one. Mirrors `preservation`; the *only* case that differs is `sVar`,
+which here discharges via `store_wellTyped_lookup` + `hasType_lit_any` (the
+runtime value bound to `x` has the type `Γ` assigns `x`) instead of the
+empty-context contradiction. -/
+theorem store_step_preservation {Γ : TypeEnv} {e e' : Expr} {ρ ρ' : Env} {t : WokeType}
+    (hst : StoreWellTyped Γ ρ) (ht : HasType Γ e t) (hs : Step e ρ e' ρ') :
+    HasType Γ e' t := by
+  induction hs generalizing t with
+  | sVar x ρ₀ v hx =>
+    cases ht with
+    | tVar _ _ hxt =>
+      obtain ⟨v', hv', hvt⟩ := hst x t hxt
+      rw [hx] at hv'; injection hv' with hvv; subst hvv
+      exact hasType_lit_any hvt
+  | sBinOpLeft op e₁ e₁' e₂ ρ ρ' hs₁ ih =>
+    cases ht with
+    | tAddInt _ _ h₁ h₂ => exact .tAddInt _ _ _ (ih hst h₁) h₂
+    | tAddFloat _ _ h₁ h₂ => exact .tAddFloat _ _ _ (ih hst h₁) h₂
+    | tAddString _ _ h₁ h₂ => exact .tAddString _ _ _ (ih hst h₁) h₂
+    | tEq _ _ _ h₁ h₂ => exact .tEq _ _ _ _ (ih hst h₁) h₂
+    | tAnd _ _ h₁ h₂ => exact .tAnd _ _ _ (ih hst h₁) h₂
+    | tOr _ _ h₁ h₂ => exact .tOr _ _ _ (ih hst h₁) h₂
+    | tSubInt _ _ h₁ h₂ => exact .tSubInt _ _ _ (ih hst h₁) h₂
+    | tMulInt _ _ h₁ h₂ => exact .tMulInt _ _ _ (ih hst h₁) h₂
+    | tLt _ _ h₁ h₂ => exact .tLt _ _ _ (ih hst h₁) h₂
+    | tGt _ _ h₁ h₂ => exact .tGt _ _ _ (ih hst h₁) h₂
+    | tLe _ _ h₁ h₂ => exact .tLe _ _ _ (ih hst h₁) h₂
+    | tGe _ _ h₁ h₂ => exact .tGe _ _ _ (ih hst h₁) h₂
+    | tDivInt _ _ h₁ h₂ => exact .tDivInt _ _ _ (ih hst h₁) h₂
+    | tModInt _ _ h₁ h₂ => exact .tModInt _ _ _ (ih hst h₁) h₂
+  | sBinOpRight op v₁ e₂ e₂' ρ ρ' _hv hs₂ ih =>
+    cases ht with
+    | tAddInt _ _ h₁ h₂ => exact .tAddInt _ _ _ h₁ (ih hst h₂)
+    | tAddFloat _ _ h₁ h₂ => exact .tAddFloat _ _ _ h₁ (ih hst h₂)
+    | tAddString _ _ h₁ h₂ => exact .tAddString _ _ _ h₁ (ih hst h₂)
+    | tEq _ _ _ h₁ h₂ => exact .tEq _ _ _ _ h₁ (ih hst h₂)
+    | tAnd _ _ h₁ h₂ => exact .tAnd _ _ _ h₁ (ih hst h₂)
+    | tOr _ _ h₁ h₂ => exact .tOr _ _ _ h₁ (ih hst h₂)
+    | tSubInt _ _ h₁ h₂ => exact .tSubInt _ _ _ h₁ (ih hst h₂)
+    | tMulInt _ _ h₁ h₂ => exact .tMulInt _ _ _ h₁ (ih hst h₂)
+    | tLt _ _ h₁ h₂ => exact .tLt _ _ _ h₁ (ih hst h₂)
+    | tGt _ _ h₁ h₂ => exact .tGt _ _ _ h₁ (ih hst h₂)
+    | tLe _ _ h₁ h₂ => exact .tLe _ _ _ h₁ (ih hst h₂)
+    | tGe _ _ h₁ h₂ => exact .tGe _ _ _ h₁ (ih hst h₂)
+    | tDivInt _ _ h₁ h₂ => exact .tDivInt _ _ _ h₁ (ih hst h₂)
+    | tModInt _ _ h₁ h₂ => exact .tModInt _ _ _ h₁ (ih hst h₂)
+  | sAddInt n₁ n₂ _ =>
+    cases ht with
+    | tAddInt _ _ h₁ h₂ => exact .tInt _ _
+    | tAddFloat _ _ h₁ _ => nomatch h₁
+    | tAddString _ _ h₁ _ => nomatch h₁
+  | sAddFloat f₁ f₂ _ =>
+    cases ht with
+    | tAddFloat _ _ h₁ h₂ => exact .tFloat _ _
+    | tAddInt _ _ h₁ _ => nomatch h₁
+    | tAddString _ _ h₁ _ => nomatch h₁
+  | sAddString s₁ s₂ _ =>
+    cases ht with
+    | tAddString _ _ h₁ h₂ => exact .tString _ _
+    | tAddInt _ _ h₁ _ => nomatch h₁
+    | tAddFloat _ _ h₁ _ => nomatch h₁
+  | sEqTrue v _ =>
+    cases ht with
+    | tEq _ _ _ h₁ h₂ => exact .tBool _ _
+  | sEqFalse v₁ v₂ _ hneq =>
+    cases ht with
+    | tEq _ _ _ h₁ h₂ => exact .tBool _ _
+  | sAnd b₁ b₂ _ =>
+    cases ht with
+    | tAnd _ _ h₁ h₂ => exact .tBool _ _
+  | sOr b₁ b₂ _ =>
+    cases ht with
+    | tOr _ _ h₁ h₂ => exact .tBool _ _
+  | sSubInt n₁ n₂ _ =>
+    cases ht with
+    | tSubInt _ _ h₁ h₂ => exact .tInt _ _
+  | sMulInt n₁ n₂ _ =>
+    cases ht with
+    | tMulInt _ _ h₁ h₂ => exact .tInt _ _
+  | sLt n₁ n₂ _ =>
+    cases ht with
+    | tLt _ _ h₁ h₂ => exact .tBool _ _
+  | sGt n₁ n₂ _ =>
+    cases ht with
+    | tGt _ _ h₁ h₂ => exact .tBool _ _
+  | sLe n₁ n₂ _ =>
+    cases ht with
+    | tLe _ _ h₁ h₂ => exact .tBool _ _
+  | sGe n₁ n₂ _ =>
+    cases ht with
+    | tGe _ _ h₁ h₂ => exact .tBool _ _
+  | sDivInt n₁ n₂ _ _ =>
+    cases ht with
+    | tDivInt _ _ h₁ h₂ => exact .tInt _ _
+  | sDivZero n₁ n₂ _ _ =>
+    cases ht with
+    | tDivInt _ _ h₁ h₂ => exact .tError _ _ _
+  | sModInt n₁ n₂ _ _ =>
+    cases ht with
+    | tModInt _ _ h₁ h₂ => exact .tInt _ _
+  | sModZero n₁ n₂ _ _ =>
+    cases ht with
+    | tModInt _ _ h₁ h₂ => exact .tError _ _ _
+  | sNegInt n _ =>
+    cases ht with
+    | tNegInt _ h₁ => exact .tInt _ _
+    | tNegFloat _ h₁ => nomatch h₁
+  | sNegFloat f _ =>
+    cases ht with
+    | tNegFloat _ h₁ => exact .tFloat _ _
+    | tNegInt _ h₁ => nomatch h₁
+  | sNot b _ =>
+    cases ht with
+    | tNot _ h₁ => exact .tBool _ _
+  | sUnOpCong op e e' ρ ρ' hs₁ ih =>
+    cases ht with
+    | tNegInt _ h₁ => exact .tNegInt _ _ (ih hst h₁)
+    | tNegFloat _ h₁ => exact .tNegFloat _ _ (ih hst h₁)
+    | tNot _ h₁ => exact .tNot _ _ (ih hst h₁)
+  | sOkay v _ _hv =>
+    cases ht with
+    | tOkay _ _ h₁ => exact .tOkayVal _ v _ h₁
+  | sOkayCong e e' ρ ρ' hs₁ ih =>
+    cases ht with
+    | tOkay _ _ h₁ => exact .tOkay _ _ _ (ih hst h₁)
+  | sOops s _ =>
+    cases ht with
+    | tOops _ _ h₁ => exact .tOopsVal _ s _
+  | sOopsCong e e' ρ ρ' hs₁ ih =>
+    cases ht with
+    | tOops _ _ h₁ => exact .tOops _ _ _ (ih hst h₁)
+  | sUnwrapOkay v _ =>
+    cases ht with
+    | tUnwrap _ tOk tErr h₁ =>
+      cases h₁ with
+      | tOkayVal _ _ hinner => exact hinner
+  | sUnwrapError s _ =>
+    cases ht with
+    | tUnwrap _ tOk tErr h₁ => exact .tError _ s t
+  | sUnwrapCong e e' ρ ρ' hs₁ ih =>
+    cases ht with
+    | tUnwrap _ _ tErr h₁ => exact .tUnwrap _ _ _ _ (ih hst h₁)
+  | sBinOpErrLeft op msg e₂ _ =>
+    cases ht with
+    | tAddInt _ _ h₁ h₂ => exact .tError _ msg _
+    | tAddFloat _ _ h₁ h₂ => exact .tError _ msg _
+    | tAddString _ _ h₁ h₂ => exact .tError _ msg _
+    | tEq _ _ _ h₁ h₂ => exact .tError _ msg _
+    | tAnd _ _ h₁ h₂ => exact .tError _ msg _
+    | tOr _ _ h₁ h₂ => exact .tError _ msg _
+    | tSubInt _ _ h₁ h₂ => exact .tError _ msg _
+    | tMulInt _ _ h₁ h₂ => exact .tError _ msg _
+    | tLt _ _ h₁ h₂ => exact .tError _ msg _
+    | tGt _ _ h₁ h₂ => exact .tError _ msg _
+    | tLe _ _ h₁ h₂ => exact .tError _ msg _
+    | tGe _ _ h₁ h₂ => exact .tError _ msg _
+    | tDivInt _ _ h₁ h₂ => exact .tError _ msg _
+    | tModInt _ _ h₁ h₂ => exact .tError _ msg _
+  | sBinOpErrRight op v₁ msg _ =>
+    cases ht with
+    | tAddInt _ _ h₁ h₂ => exact .tError _ msg _
+    | tAddFloat _ _ h₁ h₂ => exact .tError _ msg _
+    | tAddString _ _ h₁ h₂ => exact .tError _ msg _
+    | tEq _ _ _ h₁ h₂ => exact .tError _ msg _
+    | tAnd _ _ h₁ h₂ => exact .tError _ msg _
+    | tOr _ _ h₁ h₂ => exact .tError _ msg _
+    | tSubInt _ _ h₁ h₂ => exact .tError _ msg _
+    | tMulInt _ _ h₁ h₂ => exact .tError _ msg _
+    | tLt _ _ h₁ h₂ => exact .tError _ msg _
+    | tGt _ _ h₁ h₂ => exact .tError _ msg _
+    | tLe _ _ h₁ h₂ => exact .tError _ msg _
+    | tGe _ _ h₁ h₂ => exact .tError _ msg _
+    | tDivInt _ _ h₁ h₂ => exact .tError _ msg _
+    | tModInt _ _ h₁ h₂ => exact .tError _ msg _
+  | sUnOpErr op msg _ =>
+    cases ht with
+    | tNegInt _ h₁ => exact .tError _ msg _
+    | tNegFloat _ h₁ => exact .tError _ msg _
+    | tNot _ h₁ => exact .tError _ msg _
+  | sOkayErr msg _ =>
+    cases ht with
+    | tOkay _ _ h₁ => exact .tError _ msg _
+  | sOopsErr msg _ =>
+    cases ht with
+    | tOops _ _ h₁ => exact .tError _ msg _
+  | sUnwrapErr msg _ =>
+    cases ht with
+    | tUnwrap _ tOk tErr h₁ => exact .tError _ msg _
+  | sArrayStep vs e e' rest ρ ρ' hs ih =>
+    cases ht with
+    | tArray _ t' hall =>
+      refine .tArray _ _ t' (fun x hx => ?_)
+      rcases List.mem_append.1 hx with hpre | hcons
+      · exact hall x (List.mem_append.2 (Or.inl hpre))
+      · rcases List.mem_cons.1 hcons with rfl | htail
+        · exact ih hst (hall e (List.mem_append.2 (Or.inr List.mem_cons_self)))
+        · exact hall x (List.mem_append.2 (Or.inr (List.mem_cons_of_mem _ htail)))
+  | sArrayVal vs ρ =>
+    cases ht with
+    | tArray _ t' hall =>
+      exact .tArrayVal _ vs t' (fun v hv => hall (Expr.lit v) (List.mem_map.2 ⟨v, hv, rfl⟩))
+  | sArrayErr vs msg rest ρ =>
+    exact .tError _ msg _
+
+/-- Faithfulness check: `store_step_preservation` subsumes the empty-context
+`preservation`. The empty type context is *vacuously* store-typed against any
+store (`emptyTypeEnv x = none` is never `some t`), so the closed theorem is the
+`Γ := emptyTypeEnv` instance. -/
+theorem preservation_via_store {e e' : Expr} {ρ ρ' : Env} {t : WokeType}
+    (ht : HasType emptyTypeEnv e t) (hs : Step e ρ e' ρ') :
+    HasType emptyTypeEnv e' t :=
+  store_step_preservation (fun x t h => by simp [emptyTypeEnv] at h) ht hs
+
 -- =========================================================================
 -- 8. TODO Stubs
 -- =========================================================================
