@@ -153,7 +153,17 @@ unlock Phases 1c / 3a / 4a.
   resolves variables from `ρ`; the closed-context use was only in the `emptyTypeEnv`-stated
   `progress`/`preservation`. So the remaining work is a generalized store-typed preservation
   (`HasType Γ e t` under `StoreWellTyped Γ ρ`), then the statement-execution relation itself.
-- [ ] Phase 1 (cont.: `[T-Call]` after 1b), 1b (store-typed preservation → exec relation → stmt preservation), 1c — type-safety + operational metatheory.
+- [~] **Phase 1b (store-typed preservation)** — `store_step_preservation`: expression
+  preservation generalized from the empty context to an arbitrary `Γ` under `StoreWellTyped Γ ρ`
+  (`HasType Γ e t → Step e ρ e' ρ' → HasType Γ e' t`). This is the form statement execution
+  needs — expressions inside a statement are typed in the *running* context, not the empty one.
+  Mirrors `preservation`; the **only** case that differs is `sVar`, which discharges via
+  `store_wellTyped_lookup` + `hasType_lit_any` (the runtime value bound to `x` has the type
+  `Γ` assigns `x`) instead of the empty-context contradiction. A `preservation_via_store`
+  corollary confirms it subsumes the closed theorem (empty context is vacuously store-typed).
+  Hole-free (classical kernel base: `propext`, `Classical.choice`, `Quot.sound`). Purely
+  additive — the merged `preservation`/`type_safety` are untouched.
+- [ ] Phase 1 (cont.: `[T-Call]` after 1b), 1b (statement-execution relation → stmt preservation), 1c — type-safety + operational metatheory.
 - [ ] Phase 2b, 2c — consent + capability state machines.
 - [ ] Phase 3a (+3b) — HM inference.
 - [ ] Phase 4a–4c — compiler / parser / WASM.
