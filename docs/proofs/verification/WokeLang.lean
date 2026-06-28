@@ -1779,6 +1779,129 @@ theorem preservation_via_store {e e' : Expr} {ρ ρ' : Env} {t : WokeType}
   store_step_preservation (fun x t h => by simp [emptyTypeEnv] at h) ht hs
 
 -- =========================================================================
+-- 7e. Statement execution — simple-statement fragment (Phase 1b)
+-- =========================================================================
+
+/- A big-step statement-execution relation `StmtExec s ρ ρ'` ("statement `s`
+run in store `ρ` produces store `ρ'`"), with `StmtsExec` threading a block
+left-to-right. This increment covers the **simple** statements — those with no
+embedded sub-blocks: `complain`, `expr`, `varDecl`, `assign`, `return_`. Each
+evaluates its expression (if any) to a value via the closed-store `MultiStep`
+(the store is invariant under expression evaluation, `step_store_invariant`),
+then applies its store effect. `return_`'s value-propagation / block
+short-circuit and the control-flow forms (`if`/`loop`/`attempt`/`consent`,
+which introduce block scoping) are deliberately deferred to a later increment.
+
+The metatheorem is **store-typing preservation**: a well-typed statement run in
+a well-typed store yields a store well-typed against the statement's output
+context (`StmtWellTyped Γ s Γ'`). -/
+
+/-- Multi-step store-typed preservation: evaluating a well-typed expression to
+completion in a well-typed store yields a value of the same type. The store is
+unchanged throughout (`step_store_invariant`), so the one store typing carries. -/
+theorem store_multiStep_preservation {Γ : TypeEnv} {e e' : Expr} {ρ ρ' : Env} {t : WokeType}
+    (hst : StoreWellTyped Γ ρ) (ht : HasType Γ e t) (hm : MultiStep e ρ e' ρ') :
+    HasType Γ e' t := by
+  induction hm generalizing t with
+  | refl => exact ht
+  | step e₁ e₂ e₃ ρ₁ ρ₂ ρ₃ hs hm' ih =>
+      have hρ : ρ₂ = ρ₁ := step_store_invariant hs
+      subst hρ
+      exact ih hst (store_step_preservation hst ht hs)
+
+/-- **Store-update lemma.** Overwriting an *already-declared* variable with a
+value of its declared type preserves store typing against the *same* context.
+This is what an `assign` statement does to the runtime (cf. `store_wellTyped_extend`,
+which a `varDecl` uses to *grow* the context). -/
+theorem store_wellTyped_update {Γ : TypeEnv} {ρ : Env} {x : String} {t : WokeType}
+    {v : Value} (hst : StoreWellTyped Γ ρ) (hx : Γ x = some t)
+    (hv : HasType emptyTypeEnv (.lit v) t) :
+    StoreWellTyped Γ (extendEnv x v ρ) := by
+  intro y ty hy
+  by_cases hxy : (x == y) = true
+  · have hxy' : x = y := eq_of_beq hxy
+    subst hxy'
+    rw [hx] at hy; injection hy with hty; subst hty
+    exact ⟨v, by simp only [extendEnv]; rw [if_pos hxy], hv⟩
+  · obtain ⟨v', hv', hvt⟩ := hst y ty hy
+    exact ⟨v', by simp only [extendEnv]; rw [if_neg hxy]; exact hv', hvt⟩
+
+mutual
+/-- Big-step execution of a single (simple) statement. -/
+inductive StmtExec : Stmt → Env → Env → Prop where
+  | complain : ∀ m ρ, StmtExec (.complain m) ρ ρ
+  | expr : ∀ e v ρ, MultiStep e ρ (.lit v) ρ → StmtExec (.expr e) ρ ρ
+  | varDecl : ∀ x e v ρ, MultiStep e ρ (.lit v) ρ →
+      StmtExec (.varDecl x e) ρ (extendEnv x v ρ)
+  | assign : ∀ x e v ρ, MultiStep e ρ (.lit v) ρ →
+      StmtExec (.assign x e) ρ (extendEnv x v ρ)
+  | return_ : ∀ e v ρ, MultiStep e ρ (.lit v) ρ → StmtExec (.return_ e) ρ ρ
+/-- Big-step execution of a block, threading the store left-to-right. -/
+inductive StmtsExec : List Stmt → Env → Env → Prop where
+  | nil : ∀ ρ, StmtsExec [] ρ ρ
+  | cons : ∀ s ss ρ ρ' ρ'',
+      StmtExec s ρ ρ' → StmtsExec ss ρ' ρ'' → StmtsExec (s :: ss) ρ ρ''
+end
+
+/-- **Statement-execution preservation (single, simple statement).** A well-typed
+statement run in a well-typed store yields a store well-typed against the
+statement's output context. `varDecl` uses `store_wellTyped_extend`, `assign`
+uses `store_wellTyped_update`; the rest leave the store and context unchanged. -/
+theorem stmt_exec_preservation {Γ Γ' : TypeEnv} {s : Stmt} {ρ ρ' : Env}
+    (hst : StoreWellTyped Γ ρ) (hw : StmtWellTyped Γ s Γ') (he : StmtExec s ρ ρ') :
+    StoreWellTyped Γ' ρ' := by
+  cases he with
+  | complain m ρ => cases hw with | complain _ _ => exact hst
+  | expr e v ρ hm => cases hw with | expr _ _ t _ => exact hst
+  | return_ e v ρ hm => cases hw with | return_ _ _ t _ => exact hst
+  | varDecl x e v ρ hm =>
+      cases hw with
+      | varDecl _ _ _ t hte =>
+          exact store_wellTyped_extend hst
+            (hasType_lit_any (store_multiStep_preservation hst hte hm))
+  | assign x e v ρ hm =>
+      cases hw with
+      | assign _ _ _ t hx hte =>
+          exact store_wellTyped_update hst hx
+            (hasType_lit_any (store_multiStep_preservation hst hte hm))
+
+/-- **Statement-execution preservation (block of simple statements).** Threading
+the single-statement preservation through the block. -/
+theorem stmts_exec_preservation {Γ Γ' : TypeEnv} {ss : List Stmt} {ρ ρ' : Env}
+    (hst : StoreWellTyped Γ ρ) (hw : StmtsWellTyped Γ ss Γ') (he : StmtsExec ss ρ ρ') :
+    StoreWellTyped Γ' ρ' := by
+  induction ss generalizing Γ Γ' ρ ρ' with
+  | nil => cases hw; cases he; exact hst
+  | cons s rest ih =>
+      cases hw with
+      | cons _ _ _ Γ₁ _ hws hwss =>
+          cases he with
+          | cons _ _ _ ρ₁ _ hse hsse =>
+              exact ih (stmt_exec_preservation hst hws hse) hwss hsse
+
+/-- Smoke test: `let x = 0` executes from the empty store, binding `x ↦ 0`. -/
+example :
+    StmtExec (.varDecl "x" (.lit (.vInt 0))) emptyEnv (extendEnv "x" (.vInt 0) emptyEnv) :=
+  .varDecl "x" _ (.vInt 0) emptyEnv (.refl _ _)
+
+/-- Smoke test: the block `let x = 0; x` runs from the empty store and stays
+well-typed against the context it produces (`x : int`), via `stmts_exec_preservation`. -/
+example :
+    StoreWellTyped (extendTypeEnv "x" .int emptyTypeEnv)
+      (extendEnv "x" (.vInt 0) emptyEnv) :=
+  stmts_exec_preservation store_wellTyped_empty
+    (.cons _ _ _ _ _
+      (.varDecl _ "x" (.lit (.vInt 0)) .int (.tInt _ _))
+      (.cons _ _ _ _ _ (.expr _ (.var "x") .int (.tVar _ "x" .int (by simp [extendTypeEnv])))
+        (.nil _)))
+    (.cons _ _ _ _ _
+      (.varDecl "x" (.lit (.vInt 0)) (.vInt 0) emptyEnv (.refl _ _))
+      (.cons _ _ _ _ _
+        (.expr (.var "x") (.vInt 0) (extendEnv "x" (.vInt 0) emptyEnv)
+          (.step _ _ _ _ _ _ (.sVar "x" _ (.vInt 0) (by simp [extendEnv])) (.refl _ _)))
+        (.nil _)))
+
+-- =========================================================================
 -- 8. TODO Stubs
 -- =========================================================================
 

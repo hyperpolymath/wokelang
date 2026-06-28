@@ -163,7 +163,24 @@ unlock Phases 1c / 3a / 4a.
   corollary confirms it subsumes the closed theorem (empty context is vacuously store-typed).
   Hole-free (classical kernel base: `propext`, `Classical.choice`, `Quot.sound`). Purely
   additive — the merged `preservation`/`type_safety` are untouched.
-- [ ] Phase 1 (cont.: `[T-Call]` after 1b), 1b (statement-execution relation → stmt preservation), 1c — type-safety + operational metatheory.
+- [~] **Phase 1b (statement execution — simple fragment)** — a big-step execution relation
+  `StmtExec`/`StmtsExec` (mutual) and its **store-typing preservation** for the simple
+  statements (no embedded blocks): `complain`, `expr`, `varDecl`, `assign`, `return_`. Each
+  evaluates its expression to a value via the closed-store `MultiStep` then applies its store
+  effect; `stmt_exec_preservation` / `stmts_exec_preservation` show a well-typed statement/block
+  run in a well-typed store yields a store well-typed against the statement's output context
+  (`StmtWellTyped Γ s Γ'`). Supporting lemmas: `store_multiStep_preservation` (multi-step
+  store-typed preservation) and `store_wellTyped_update` (overwriting an already-declared
+  variable at its type — the `assign` analogue of `store_wellTyped_extend`). Two executable
+  smoke tests (`let x = 0`; the block `let x = 0; x`). Hole-free (classical kernel base;
+  `store_wellTyped_update` needs none). Purely additive.
+  *Deferred to the next increment:* the control-flow forms `if`/`loop`/`attempt`/`consent`,
+  which introduce **block scoping** in the flat `Env` model (a block-local `varDecl` shadowing
+  an outer variable at a different type would break preservation against the outer context
+  unless the store is restored on block exit). That store-restoration design is the open
+  modelling decision for control-flow execution; `return_`'s value-propagation / block
+  short-circuit (relevant once function calls are modelled) is likewise deferred.
+- [ ] Phase 1 (cont.: `[T-Call]` after 1b), 1b (control-flow execution + scoping), 1c — type-safety + operational metatheory.
 - [ ] Phase 2b, 2c — consent + capability state machines.
 - [ ] Phase 3a (+3b) — HM inference.
 - [ ] Phase 4a–4c — compiler / parser / WASM.
