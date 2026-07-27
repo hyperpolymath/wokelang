@@ -1,3 +1,17 @@
 # SPDX-License-Identifier: MPL-2.0
-# asdf version manager configuration
-rust stable
+# asdf / mise tool versions.
+#
+# Rust is pinned to the SAME version as rust-toolchain.toml. That file
+# documents why the pin exists: when a developer's `stable` lagged CI's,
+# clippy versions diverged (1.94 local vs 1.96 CI) and the `-D warnings` gate
+# failed on main with lints local clippy could not see. Declaring `stable`
+# here silently reintroduced exactly that drift, so bump the two together.
+rust 1.96.0
+
+# OCaml builds the reference core under core/ via dune + menhir.
+# Lower bound comes from wokelang.opam ("ocaml" {>= "4.14"}).
+ocaml 4.14.2
+
+# Lean is pinned separately by docs/proofs/verification/lean-toolchain
+# (leanprover/lean4:v4.30.0), which the lean-proofs workflow reads directly.
+# It is deliberately not duplicated here, so there is one source of truth.

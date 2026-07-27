@@ -156,6 +156,10 @@ pub fn e(args: &[Value], _caps: &mut CapabilityRegistry) -> Result<Value, Stdlib
     Ok(Value::Float(E))
 }
 
+// `3.14` below is arbitrary decimal test data, not an approximation of
+// pi, so clippy::approx_constant is a false positive here. Substituting
+// std::f64::consts::PI would change what these tests assert.
+#[allow(clippy::approx_constant)]
 #[cfg(test)]
 mod tests {
     use super::*;

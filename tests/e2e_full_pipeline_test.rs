@@ -21,7 +21,10 @@ fn e2e_lexer_parser_pipeline() {
         let ast = parser.parse();
         // Pipeline should work without crashing
         if let Ok(ast) = ast {
-            assert!(ast.items.len() > 0, "Should have parsed at least one item");
+            assert!(
+                !ast.items.is_empty(),
+                "Should have parsed at least one item"
+            );
 
             let mut typechecker = TypeChecker::new();
             let _result = typechecker.check_program(&ast);
@@ -72,7 +75,7 @@ fn e2e_function_definition() {
     let result = parser.parse();
     if let Ok(ast) = result {
         // Should have multiple items
-        assert!(ast.items.len() >= 1);
+        assert!(!ast.items.is_empty());
     }
 }
 

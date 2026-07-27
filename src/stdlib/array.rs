@@ -400,7 +400,7 @@ mod tests {
         let mut caps = test_caps();
         let arr = Value::Array(vec![Value::Int(1), Value::Int(2), Value::Int(3)]);
 
-        if let Value::Okay(v) = first(&[arr.clone()], &mut caps).unwrap() {
+        if let Value::Okay(v) = first(std::slice::from_ref(&arr), &mut caps).unwrap() {
             assert_eq!(*v, Value::Int(1));
         }
 

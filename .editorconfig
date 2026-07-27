@@ -1,13 +1,68 @@
 # SPDX-License-Identifier: MPL-2.0
-# .editorconfig — RSR standard editor configuration
+# .editorconfig — editor settings for the languages this repository actually
+# contains. Deliberately not a generic estate template: the sections below
+# track `git ls-files`, so a language that is not present does not get a rule.
 
 root = true
 
 [*]
-indent_style = space
-indent_size = 2
 charset = utf-8
 end_of_line = lf
-trim_trailing_whitespace = true
+indent_style = space
+indent_size = 2
 insert_final_newline = true
+trim_trailing_whitespace = true
 
+# Trailing whitespace is significant here (Markdown hard line breaks,
+# AsciiDoc continuations), so leave it alone.
+[*.{md,adoc}]
+trim_trailing_whitespace = false
+
+# ── WokeLang itself ────────────────────────────────────────────────────────
+[*.{woke,wl}]
+indent_size = 4
+
+[*.ebnf]
+indent_size = 2
+
+# ── Rust: the primary toolchain (src/) ─────────────────────────────────────
+[*.rs]
+indent_size = 4
+
+# ── OCaml: the reference core (core/), incl. ocamllex/menhir ───────────────
+[*.{ml,mli,mll,mly}]
+indent_size = 2
+
+[{dune,dune-project,*.opam}]
+indent_size = 1
+
+# ── Proof assistants ───────────────────────────────────────────────────────
+[*.lean]
+indent_size = 2
+
+[*.v]
+indent_size = 2
+
+[*.{idr,ipkg}]
+indent_size = 2
+
+# ── Configuration and data ─────────────────────────────────────────────────
+[*.{toml,yml,yaml,json,jsonl,ncl,a2ml}]
+indent_size = 2
+
+# Guile / Guix
+[*.scm]
+indent_size = 2
+
+# ── Shell, recipes, TeX ────────────────────────────────────────────────────
+[*.sh]
+indent_size = 2
+
+[{Justfile,Mustfile,*.just}]
+indent_size = 4
+
+[Makefile]
+indent_style = tab
+
+[*.{tex,bib}]
+indent_size = 2
