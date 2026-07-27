@@ -39,7 +39,7 @@ jobs:
 
       - name: Validate A2ML manifests
         if: steps.detect.outputs.count > 0
-        uses: hyperpolymath/a2ml-validate-action@d95da62b50b26e7fef64aaba44e28ef92a56b476 # main (repinned 2026-06-12: 6bff6ec startup-failed the gate)
+        uses: hyperpolymath/a2ml-ecosystem/validate-action@aa4b836bd969df2bc58128cb8e3d20bbc88d5e79 # main (repinned 2026-06-12: 6bff6ec startup-failed the gate)
         with:
           path: '.'
           strict: 'false'
@@ -88,7 +88,7 @@ jobs:
 
       - name: Validate K9 contracts
         if: steps.detect.outputs.k9_count > 0
-        uses: hyperpolymath/k9-validate-action@0cd8a79e579a3b5d93d4d5fe114d8f099d5549c9 # main (repinned 2026-06-12 to live HEAD)
+        uses: hyperpolymath/k9-ecosystem/validate-action@89f3c2702f4f650a92aa7411502f38da06abd562 # main (repinned 2026-06-12 to live HEAD)
         with:
           path: '.'
           strict: 'false'
