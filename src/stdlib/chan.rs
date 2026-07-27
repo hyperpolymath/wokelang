@@ -331,6 +331,10 @@ pub fn select(args: &[Value], _caps: &mut CapabilityRegistry) -> Result<Value, S
 // Tests
 // ===========================================================================
 
+// `3.14` below is arbitrary decimal test data, not an approximation of
+// pi, so clippy::approx_constant is a false positive here. Substituting
+// std::f64::consts::PI would change what these tests assert.
+#[allow(clippy::approx_constant)]
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -406,7 +410,7 @@ mod tests {
     fn test_send_and_try_recv() {
         let mut caps = test_caps();
         let channel = make_chan(&[], &mut caps).unwrap();
-        let ch = unwrap_channel(&channel);
+        let _ch = unwrap_channel(&channel);
 
         // Send via the stdlib function.
         let sent = send(&[channel.clone(), Value::Int(42)], &mut caps).unwrap();
@@ -430,9 +434,9 @@ mod tests {
         send(&[channel.clone(), Value::Int(3)], &mut caps).unwrap();
 
         // Receive in order.
-        let r1 = try_recv(&[channel.clone()], &mut caps).unwrap();
-        let r2 = try_recv(&[channel.clone()], &mut caps).unwrap();
-        let r3 = try_recv(&[channel.clone()], &mut caps).unwrap();
+        let r1 = try_recv(std::slice::from_ref(&channel), &mut caps).unwrap();
+        let r2 = try_recv(std::slice::from_ref(&channel), &mut caps).unwrap();
+        let r3 = try_recv(std::slice::from_ref(&channel), &mut caps).unwrap();
 
         assert_eq!(r1, Value::Okay(Box::new(Value::Int(1))));
         assert_eq!(r2, Value::Okay(Box::new(Value::Int(2))));
@@ -452,9 +456,9 @@ mod tests {
         send(&[channel.clone(), Value::Bool(true)], &mut caps).unwrap();
         send(&[channel.clone(), Value::Float(3.14)], &mut caps).unwrap();
 
-        let r1 = try_recv(&[channel.clone()], &mut caps).unwrap();
-        let r2 = try_recv(&[channel.clone()], &mut caps).unwrap();
-        let r3 = try_recv(&[channel.clone()], &mut caps).unwrap();
+        let r1 = try_recv(std::slice::from_ref(&channel), &mut caps).unwrap();
+        let r2 = try_recv(std::slice::from_ref(&channel), &mut caps).unwrap();
+        let r3 = try_recv(std::slice::from_ref(&channel), &mut caps).unwrap();
 
         assert_eq!(
             r1,
@@ -479,7 +483,7 @@ mod tests {
     fn test_send_on_closed_channel() {
         let mut caps = test_caps();
         let channel = make_chan(&[], &mut caps).unwrap();
-        close(&[channel.clone()], &mut caps).unwrap();
+        close(std::slice::from_ref(&channel), &mut caps).unwrap();
 
         let result = send(&[channel, Value::Int(1)], &mut caps).unwrap();
         assert!(matches!(result, Value::Oops(_)));
@@ -489,7 +493,7 @@ mod tests {
     fn test_recv_on_closed_channel() {
         let mut caps = test_caps();
         let channel = make_chan(&[], &mut caps).unwrap();
-        close(&[channel.clone()], &mut caps).unwrap();
+        close(std::slice::from_ref(&channel), &mut caps).unwrap();
 
         let result = try_recv(&[channel], &mut caps).unwrap();
         // Closed channel returns Oops (either "channel empty" or similar).
@@ -549,11 +553,11 @@ mod tests {
         let channel = make_chan(&[], &mut caps).unwrap();
 
         // Not closed initially.
-        let result = is_closed(&[channel.clone()], &mut caps).unwrap();
+        let result = is_closed(std::slice::from_ref(&channel), &mut caps).unwrap();
         assert_eq!(result, Value::Bool(false));
 
         // Close.
-        let result = close(&[channel.clone()], &mut caps).unwrap();
+        let result = close(std::slice::from_ref(&channel), &mut caps).unwrap();
         assert_eq!(result, Value::Bool(true));
 
         // Now closed.
@@ -566,9 +570,9 @@ mod tests {
         let mut caps = test_caps();
         let channel = make_chan(&[], &mut caps).unwrap();
 
-        close(&[channel.clone()], &mut caps).unwrap();
+        close(std::slice::from_ref(&channel), &mut caps).unwrap();
         // Closing again should not panic.
-        close(&[channel.clone()], &mut caps).unwrap();
+        close(std::slice::from_ref(&channel), &mut caps).unwrap();
         assert_eq!(is_closed(&[channel], &mut caps).unwrap(), Value::Bool(true));
     }
 
@@ -592,11 +596,11 @@ mod tests {
         send(&[channel.clone(), Value::Int(1)], &mut caps).unwrap();
         send(&[channel.clone(), Value::Int(2)], &mut caps).unwrap();
 
-        let result = len(&[channel.clone()], &mut caps).unwrap();
+        let result = len(std::slice::from_ref(&channel), &mut caps).unwrap();
         assert_eq!(result, Value::Int(2));
 
         // Values should still be receivable after len().
-        let r1 = try_recv(&[channel.clone()], &mut caps).unwrap();
+        let r1 = try_recv(std::slice::from_ref(&channel), &mut caps).unwrap();
         assert_eq!(r1, Value::Okay(Box::new(Value::Int(1))));
 
         let result = len(&[channel], &mut caps).unwrap();
@@ -607,7 +611,7 @@ mod tests {
     fn test_len_closed_channel() {
         let mut caps = test_caps();
         let channel = make_chan(&[], &mut caps).unwrap();
-        close(&[channel.clone()], &mut caps).unwrap();
+        close(std::slice::from_ref(&channel), &mut caps).unwrap();
 
         let result = len(&[channel], &mut caps).unwrap();
         assert_eq!(result, Value::Int(0));
@@ -711,8 +715,8 @@ mod tests {
         let ch1 = make_chan(&[], &mut caps).unwrap();
         let ch2 = make_chan(&[], &mut caps).unwrap();
 
-        close(&[ch1.clone()], &mut caps).unwrap();
-        close(&[ch2.clone()], &mut caps).unwrap();
+        close(std::slice::from_ref(&ch1), &mut caps).unwrap();
+        close(std::slice::from_ref(&ch2), &mut caps).unwrap();
 
         let channels_arr = Value::Array(vec![ch1, ch2]);
         let result = select(&[channels_arr, Value::Int(100)], &mut caps).unwrap();
@@ -753,7 +757,7 @@ mod tests {
         let ch_closed = make_chan(&[], &mut caps).unwrap();
         let ch_open = make_chan(&[], &mut caps).unwrap();
 
-        close(&[ch_closed.clone()], &mut caps).unwrap();
+        close(std::slice::from_ref(&ch_closed), &mut caps).unwrap();
         send(&[ch_open.clone(), Value::Int(7)], &mut caps).unwrap();
 
         let channels_arr = Value::Array(vec![ch_closed, ch_open]);

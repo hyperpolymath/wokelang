@@ -299,13 +299,16 @@ fn find_json_colon(s: &str) -> Result<usize, StdlibError> {
     ))
 }
 
+// `3.14` below is arbitrary decimal test data, not an approximation of
+// pi, so clippy::approx_constant is a false positive here. Substituting
+// std::f64::consts::PI would change what these tests assert.
+#[allow(clippy::approx_constant)]
 #[cfg(test)]
 mod tests {
     use super::*;
 
     fn test_caps() -> CapabilityRegistry {
-        let mut caps = CapabilityRegistry::permissive();
-        caps
+        CapabilityRegistry::permissive()
     }
 
     #[test]

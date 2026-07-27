@@ -74,7 +74,7 @@ fn test_definition_handler_for_function_definition() {
     if ast_result.is_ok() {
         let ast_val = ast_result.as_ref().unwrap();
         // Should have at least 2 items: func1 and main
-        assert!(ast_val.items.len() >= 1);
+        assert!(!ast_val.items.is_empty());
     }
 }
 

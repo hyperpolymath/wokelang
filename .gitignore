@@ -21,17 +21,11 @@ build/
 *.ibc
 
 # Zig
-**/zig-out/
-**/.zig-cache/
 
 # ReScript
-/lib/bs/
-/.bsb.lock
 
 # Dependencies
-/node_modules/
 /vendor/
-/deps/
 
 # Secrets
 .env
@@ -78,9 +72,23 @@ editors/vscode/lib/
 # OS
 .Trash-*/
 target/
-node_modules/
 _build/
-deps/
-.elixir_ls/
 .cache/
 dist/
+
+# ── Proof-assistant build artefacts ────────────────────────────────────────
+# Lean 4 (docs/proofs/verification/) — the .lean sources are tracked, the
+# compiled forms are not.
+*.olean
+*.ilean
+*.trace
+.lake/
+
+# Idris 2
+*.ibc
+*.ttc
+*.ttm
+
+# ── Exceptions ─────────────────────────────────────────────────────────────
+# `*.wasm` is ignored above, but this one is a tracked example fixture.
+!examples/math.wasm

@@ -1,57 +1,27 @@
+# SPDX-License-Identifier: MPL-2.0
+# mise configuration.
+#
+# This file previously carried a generic estate template that was wrong for
+# this repository in three ways, all of which mattered:
+#
+#   1. `rust = "latest"` contradicted rust-toolchain.toml, which pins 1.96.0
+#      precisely because a drifting `stable` broke the clippy `-D warnings`
+#      gate on main with lints local clippy could not see.
+#   2. It declared node, python, go, java, bun, npm, yarn, pnpm and pip —
+#      every one of which is on the BANNED list in this repo's own
+#      .claude/CLAUDE.md language policy.
+#   3. Its [alias] block chained fallbacks, e.g.
+#        test = "cargo test || npm test || go test ./..."
+#      which converts a genuine `cargo test` failure into an attempt at two
+#      more toolchains that do not exist here — a fake gate by construction.
+#
+# Tool versions live in .tool-versions (which mise reads natively); the Rust
+# compiler is owned by rust-toolchain.toml and Lean by
+# docs/proofs/verification/lean-toolchain. Nothing is duplicated here, so
+# there is exactly one source of truth per toolchain.
+#
+# Real entry points are `just` recipes in the Justfile — not aliases here.
+
 [tools]
-# Language runtimes
-node = "latest"
-python = "latest"
-rust = "latest"
-go = "latest"
-zig = "latest"
-java = "latest"
-bun = "latest"
-denojs = "latest"
-
-# Package managers
-npm = "latest"
-yarn = "latest"
-pnpm = "latest"
-pip = "latest"
-cargo = "latest"
-go-task = "latest"
-
-# Formatting & Linting
-gofmt = "latest"
-black = "latest"
-isort = "latest"
-ruff = "latest"
-prettier = "latest"
-shfmt = "latest"
-stylua = "latest"
-
-# Build tools
-cmake = "latest"
-make = "latest"
-ninja = "latest"
-
-# Shell tools
-git = "latest"
-gnu-sed = "latest"
-gnu-tar = "latest"
-gnu-grep = "latest"
-
-# Testing
-vitest = "latest"
-pytest = "latest"
-jest = "latest"
-
-[env]
-# Common environment variables
-NODE_ENV = "development"
-PYTHONDONTWRITEBYTECODE = "1"
-PYTHONUNBUFFERED = "1"
-
-# Task runner alias
-[alias]
-task = "go-task"
-build = "cargo build --release || npm run build || go build"
-test = "cargo test || npm test || go test ./..."
-lint = "ruff check . || prettier --check . || black --check ."
-fmt = "ruff format . || prettier --write . || black ."
+# Intentionally empty: see .tool-versions, rust-toolchain.toml and
+# docs/proofs/verification/lean-toolchain.

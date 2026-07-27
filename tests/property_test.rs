@@ -49,7 +49,7 @@ proptest! {
         );
 
         // First execution
-        let mut lexer1 = Lexer::new(&source);
+        let lexer1 = Lexer::new(&source);
         if let Ok(tokens1) = lexer1.tokenize() {
             let mut parser1 = Parser::new(tokens1, &source);
             if let Ok(ast1) = parser1.parse() {
@@ -59,7 +59,7 @@ proptest! {
                 let result1 = interp1.run(&ast1);
 
                 // Second execution
-                let mut lexer2 = Lexer::new(&source);
+                let lexer2 = Lexer::new(&source);
                 let tokens2 = lexer2.tokenize().unwrap();
                 let mut parser2 = Parser::new(tokens2, &source);
                 let ast2 = parser2.parse().unwrap();
@@ -96,7 +96,7 @@ proptest! {
         for i in 0..n {
             source.push_str(&format!("{}; ", i));
         }
-        source.push_str("}");
+        source.push('}');
 
         let lexer = Lexer::new(&source);
         if let Ok(tokens) = lexer.tokenize() {
@@ -119,7 +119,7 @@ proptest! {
         if let Ok(tokens) = lexer.tokenize() {
             let mut parser = Parser::new(tokens, &source);
             if let Ok(ast) = parser.parse() {
-                prop_assert!(ast.items.len() >= 1);
+                prop_assert!(!ast.items.is_empty());
             }
         }
     }
