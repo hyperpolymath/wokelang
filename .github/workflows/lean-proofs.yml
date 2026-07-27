@@ -57,19 +57,19 @@ jobs:
           lean docs/proofs/verification/WokeGrammarStructure.lean
           echo "✅ WokeGrammarStructure.lean verified"
 
-      - name: Verify WokeGrammarRegular.lean (§7.1 not-regular: DFA + pigeonhole)
+      - name: "Verify WokeGrammarRegular.lean (§7.1 not-regular: DFA + pigeonhole)"
         run: |
           set -euo pipefail
           lean docs/proofs/verification/WokeGrammarRegular.lean
           echo "✅ WokeGrammarRegular.lean verified"
 
-      - name: Verify WokeGrammarCFL.lean (§7.3 CFL closure: union/concat/star)
+      - name: "Verify WokeGrammarCFL.lean (§7.3 CFL closure: union/concat/star)"
         run: |
           set -euo pipefail
           lean docs/proofs/verification/WokeGrammarCFL.lean
           echo "✅ WokeGrammarCFL.lean verified"
 
-      - name: Verify WokeGrammarPumping.lean (§7.3 non-closure: pumping foundation)
+      - name: "Verify WokeGrammarPumping.lean (§7.3 non-closure: pumping foundation)"
         run: |
           set -euo pipefail
           lean docs/proofs/verification/WokeGrammarPumping.lean
