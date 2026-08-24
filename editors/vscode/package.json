@@ -1,7 +1,7 @@
 {
   "name": "wokelang",
   "displayName": "WokeLang",
-  "description": "Syntax highlighting and language configuration for WokeLang (.woke). The LSP client is temporarily removed pending reimplementation in AffineScript — see the repository issues.",
+  "description": "WokeLang VS Code extension providing syntax highlighting and LSP integration.",
   "version": "0.1.0",
   "publisher": "hyperpolymath",
   "license": "MPL-2.0",
@@ -42,6 +42,103 @@
         "scopeName": "source.wokelang",
         "path": "./syntaxes/wokelang.tmLanguage.json"
       }
-    ]
+    ],
+    "commands": [
+      {
+        "command": "wokelang.restartServer",
+        "title": "WokeLang: Restart Language Server"
+      },
+      {
+        "command": "wokelang.showInfo",
+        "title": "WokeLang: Show Server Info"
+      },
+      {
+        "command": "wokelang.checkConsent",
+        "title": "WokeLang: Check Consent"
+      },
+      {
+        "command": "wokelang.formatDocument",
+        "title": "WokeLang: Format Document"
+      }
+    ],
+    "menus": {
+      "editor/context": [
+        {
+          "command": "wokelang.checkConsent",
+          "when": "editorLangId == wokelang",
+          "group": "navigation"
+        },
+        {
+          "command": "wokelang.formatDocument",
+          "when": "editorLangId == wokelang",
+          "group": "1_modification"
+        }
+      ]
+    },
+    "keybindings": [
+      {
+        "command": "wokelang.formatDocument",
+        "key": "ctrl+shift+f",
+        "mac": "cmd+shift+f",
+        "when": "editorLangId == wokelang"
+      },
+      {
+        "command": "wokelang.checkConsent",
+        "key": "ctrl+shift+c",
+        "mac": "cmd+shift+c",
+        "when": "editorLangId == wokelang"
+      }
+    ],
+    "configuration": {
+      "type": "object",
+      "title": "WokeLang",
+      "properties": {
+        "wokelang.serverPath": {
+          "type": "string",
+          "default": "woke-lsp",
+          "description": "Path to the woke-lsp executable."
+        },
+        "wokelang.enableDiagnostics": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable LSP diagnostics."
+        },
+        "wokelang.enableCompletion": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable LSP autocompletion."
+        },
+        "wokelang.enableHover": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable LSP hover information."
+        },
+        "wokelang.enableFormatting": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable LSP document formatting."
+        },
+        "wokelang.trace.server": {
+          "type": "string",
+          "enum": [
+            "off",
+            "messages",
+            "verbose"
+          ],
+          "default": "off",
+          "description": "Trace level for the language server."
+        }
+      }
+    }
+  },
+  "main": "./extension.js",
+  "activationEvents": [
+    "onLanguage:wokelang"
+  ],
+  "dependencies": {
+    "vscode-languageclient": "^9.0.1"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.60.0"
   }
 }
