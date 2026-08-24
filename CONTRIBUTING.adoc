@@ -1,22 +1,27 @@
-// SPDX-License-Identifier: CC-BY-SA-4.0
-// Copyright (c) Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
-<!-- SPDX-License-Identifier: CC-BY-SA-4.0 -->
-= Contributing Guide
+== Contributing to WokeLang
 
-== Getting Started
+Thank you for your interest in contributing.
 
-1. Fork the repository
-2. Create a feature branch from `main`
-3. Sign off commits (`git commit -s`)
-4. Submit a pull request
+=== Getting Started
 
-== Commit Guidelines
+[arabic]
+. Fork the repository
+. Create a feature branch (`+feat/my-feature+`)
+. Ensure SPDX headers on all new files (`+MPL-2.0+`)
+. Run `+panic-attack assail+` before committing
+. Submit a pull request
 
-* Conventional commits: `type(scope): description`
-* Sign all commits (DCO required)
-* Atomic, focused commits
+=== Code Quality
 
-== License
+* All code must have detailed annotations
+* No dangerous patterns: `+believe_me+`, `+assert_total+`, `+sorry+`,
+`+Admitted+`, `+unsafeCoerce+`, `+Obj.magic+`
+* Tests required for new functionality
 
-Contributions licensed under project license.
+=== Reporting Issues
 
+Use GitHub Issues with clear reproduction steps.
+
+=== Author
+
+Jonathan D.A. Jewell j.d.a.jewell@open.ac.uk

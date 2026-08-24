@@ -1,0 +1,28 @@
+== // SPDX-License-Identifier: CC-BY-SA-4.0
+
+title: WokeLang date: 2026-03-31 —
+
+== WokeLang
+
+The public web home for this project is
+https://wokelang.org[wokelang.org].
+
+WokeLang: A Human-Centered Programming Language
+
+WokeLang is a programming language designed for human collaboration,
+empathy, and safety—without sacrificing power or performance. It
+combines:
+
+=== Project Links
+
+* Website: https://wokelang.org[wokelang.org]
+* Source: https://github.com/hyperpolymath/wokelang
+* README:
+https://github.com/hyperpolymath/wokelang/blob/main/README.adoc[project
+overview]
+* Docs:
+https://github.com/hyperpolymath/wokelang/tree/main/docs[documentation
+directory]
+
+This page is a lightweight landing point for the repository and will
+grow with the project.

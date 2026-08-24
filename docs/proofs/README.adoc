@@ -1,0 +1,90 @@
+== WokeLang Formal Proofs and Academic Documentation
+
+This directory contains formal mathematical proofs, specifications, and
+academic documentation for the WokeLang programming language.
+
+=== Directory Structure
+
+....
+proofs/
+├── formal-semantics/     # Operational and denotational semantics
+├── type-theory/          # Type system proofs and foundations
+├── security/             # Capability-based security proofs
+├── compiler/             # Compiler correctness proofs
+├── complexity/           # Complexity analysis
+├── concurrency/          # Worker system and concurrency proofs
+├── verification/         # Formal verification specifications (Coq/Lean)
+└── papers/               # White papers and design documents
+....
+
+=== Quick Reference
+
+[width="100%",cols="34%,25%,41%",options="header",]
+|===
+|Document |Status |Description
+|link:formal-semantics/operational-semantics.md[Operational Semantics]
+|Complete |Big-step and small-step semantics
+
+|link:formal-semantics/denotational-semantics.md[Denotational Semantics]
+|Complete |Mathematical meaning of programs
+
+|link:type-theory/type-safety.md[Type Safety] |Complete |Progress and
+preservation theorems
+
+|link:type-theory/hindley-milner.md[Hindley-Milner] |Complete |Type
+inference algorithm
+
+|link:security/capability-proofs.md[Capability Security] |Complete
+|Security properties
+
+|link:security/consent-model.md[Consent Model] |Complete |Formal consent
+semantics
+
+|link:compiler/semantic-preservation.md[Compiler Correctness] |Complete
+|Correctness of compilation
+
+|link:complexity/complexity-analysis.md[Complexity] |Complete |Time and
+space bounds
+
+|link:concurrency/worker-safety.md[Concurrency] |Complete |Worker system
+proofs
+
+|link:verification/WokeLang.v[Coq Specification] |Stub |Formal
+verification in Coq
+
+|link:papers/language-design-whitepaper.md[Language Design] |Complete
+|Design rationale
+|===
+
+=== Mathematical Notation
+
+Throughout these documents, we use standard notation:
+
+* `+Γ+` (Gamma): Type environment
+* `+⊢+` (turnstile): Type judgment
+* `+→+` (arrow): Function type / reduction
+* `+⇓+` (double arrow): Big-step evaluation
+* `+⊆+` (subset): Subtyping / capability subsumption
+* `+∀+` (forall): Universal quantification
+* `+∃+` (exists): Existential quantification
+* `+⊥+` (bottom): Error / undefined
+* `+⊤+` (top): Unit / any type
+
+=== Citation
+
+If using these proofs in academic work:
+
+[source,bibtex]
+----
+@misc{wokelang2025,
+  title={WokeLang: A Consent-Driven, Human-Centered Programming Language},
+  author={WokeLang Contributors},
+  year={2025},
+  howpublished={\url{https://github.com/hyperpolymath/wokelang}}
+}
+----
+
+=== License
+
+This documentation is released under the same license as WokeLang (see
+repository root).
